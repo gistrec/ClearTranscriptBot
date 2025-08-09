@@ -32,7 +32,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         text = parse_text(result)
 
-        path = Path(f"transcription_{task.id}.txt")
+        source_stem = Path(task.audio_s3_path).stem
+        path = Path(f"{source_stem}.txt")
         path.write_text(text, encoding="utf-8")
 
         object_name = f"result/{task.telegram_id}/{path.name}"
