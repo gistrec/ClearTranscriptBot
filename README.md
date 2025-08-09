@@ -13,7 +13,33 @@ obtain a transcript using Yandex Cloud SpeechKit.
 - `database/queries.py` – helper functions for common database operations.
 - `main.py` – glue code tying everything together.
 
-Environment variables are used for credentials.
+## Environment variables
+
+### Telegram
+
+- `TELEGRAM_BOT_TOKEN` – token used to authenticate the bot.
+
+### MySQL
+
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `MYSQL_HOST`
+- `MYSQL_PORT`
+- `MYSQL_DB`
+
+### Yandex Cloud
+
+#### S3
+
+- `YC_ACCESS_KEY_ID`
+- `YC_SECRET_ACCESS_KEY`
+- `S3_ENDPOINT`
+- `S3_BUCKET`
+
+#### SpeechKit
+
+- `YC_IAM_TOKEN`
+- `YC_FOLDER_ID`
 
 ## Database schema
 

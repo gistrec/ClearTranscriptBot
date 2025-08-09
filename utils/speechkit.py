@@ -9,12 +9,15 @@ import requests
 API_URL = "https://transcribe.api.cloud.yandex.net/speech/stt/v2/longRunningRecognize"
 OPERATIONS_URL = "https://operation.api.cloud.yandex.net/operations/{id}"
 
+YC_IAM_TOKEN = os.environ.get("YC_IAM_TOKEN")
+YC_FOLDER_ID = os.environ.get("YC_FOLDER_ID")
+
+if not YC_IAM_TOKEN or not YC_FOLDER_ID:
+    raise RuntimeError("YC_IAM_TOKEN and YC_FOLDER_ID must be set")
+
 
 def _auth_headers() -> Dict[str, str]:
-    token = os.environ.get("YC_IAM_TOKEN")
-    if not token:
-        raise RuntimeError("YC_IAM_TOKEN must be set")
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {YC_IAM_TOKEN}"}
 
 
 def get_transcription(operation_id: str) -> Optional[Dict[str, Any]]:
@@ -32,9 +35,6 @@ def get_transcription(operation_id: str) -> Optional[Dict[str, Any]]:
 
 def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
     """Start transcription for *s3_uri* and return operation id."""
-    folder_id = os.environ.get("YC_FOLDER_ID")
-    if not folder_id:
-        raise RuntimeError("YC_FOLDER_ID must be set")
     headers = _auth_headers()
     payload = {
         "config": {
@@ -44,7 +44,7 @@ def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
             },
         },
         "audio": {"uri": s3_uri},
-        "folderId": folder_id,
+        "folderId": YC_FOLDER_ID,
     }
     response = requests.post(API_URL, json=payload, headers=headers, timeout=30)
     response.raise_for_status()
