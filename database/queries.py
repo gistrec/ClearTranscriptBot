@@ -58,3 +58,13 @@ def update_transcription(transcription_id: int, **fields: Any) -> Optional[Trans
         session.commit()
         session.refresh(history)
         return history
+
+
+def get_transcriptions_by_status(status: str) -> list[TranscriptionHistory]:
+    """Return all transcriptions with the specified *status*."""
+    with SessionLocal() as session:
+        return (
+            session.query(TranscriptionHistory)
+            .filter(TranscriptionHistory.status == status)
+            .all()
+        )

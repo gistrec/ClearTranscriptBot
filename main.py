@@ -1,42 +1,103 @@
-"""Main application logic for ClearTranscriptBot."""
+"""Telegram bot for ClearTranscriptBot."""
 from __future__ import annotations
 
-import argparse
+import os
+import tempfile
 from pathlib import Path
 
-from database.queries import add_transcription
+from telegram import Update
+from telegram.ext import Application, ContextTypes, MessageHandler, filters
+
+from database.queries import (
+    add_transcription,
+    add_user,
+    get_user_by_telegram_id,
+    update_transcription,
+)
 from utils.ffmpeg import convert_to_ogg
 from utils.s3 import upload_file
 from utils.speechkit import run_transcription
+from scheduler import check_running_tasks
+
+S3_BUCKET = os.environ.get("S3_BUCKET", "")
 
 
-def process_file(path: str, bucket: str) -> str:
-    """Convert *path* to OGG, upload, transcribe and store result."""
-    src = Path(path)
-    ogg_path = src.with_suffix(".ogg")
-    convert_to_ogg(src, ogg_path)
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Respond to regular text messages."""
+    await update.message.reply_text(
+        "Отправьте видео или аудио, чтобы получить его трансрибацию"
+    )
 
-    s3_uri = upload_file(ogg_path, bucket)
-    transcription = run_transcription(s3_uri)
-    text = "\n".join([c.get("text", "") for c in transcription.get("chunks", [])])
 
-    add_transcription(
-        telegram_id=0,
-        status="completed",
-        audio_s3_path=str(s3_uri),
+def _is_supported(mime: str) -> bool:
+    return mime.startswith("audio/") or mime.startswith("video/")
+
+
+async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle incoming media files."""
+    message = update.message
+    telegram_id = message.from_user.id
+    if get_user_by_telegram_id(telegram_id) is None:
+        add_user(telegram_id, message.from_user.username)
+
+    file = None
+    mime = ""
+    file_name = "file"
+    if message.document:
+        file = await message.document.get_file()
+        mime = message.document.mime_type or ""
+        file_name = message.document.file_name or file_name
+    elif message.audio:
+        file = await message.audio.get_file()
+        mime = message.audio.mime_type or ""
+        file_name = message.audio.file_name or file_name
+    elif message.video:
+        file = await message.video.get_file()
+        mime = message.video.mime_type or ""
+        file_name = message.video.file_name or file_name
+    elif message.voice:
+        file = await message.voice.get_file()
+        mime = "audio/ogg"
+        file_name = "voice.ogg"
+    else:
+        await message.reply_text("Файл не поддерживается")
+        return
+
+    if not _is_supported(mime):
+        await message.reply_text("Файл должен быть видео или аудио")
+        return
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        local_path = Path(tmpdir) / file_name
+        await file.download_to_drive(custom_path=str(local_path))
+        ogg_path = local_path.with_suffix(".ogg")
+        convert_to_ogg(local_path, ogg_path)
+        object_name = f"source/{ogg_path.name}"
+        s3_uri = upload_file(ogg_path, S3_BUCKET, object_name)
+
+    history = add_transcription(
+        telegram_id=telegram_id,
+        status="running",
+        audio_s3_path=s3_uri,
         result_s3_path=None,
     )
-    return text
+    operation_id = run_transcription(s3_uri)
+    update_transcription(history.id, operation_id=operation_id)
+    await message.reply_text("Файл принят, обработка запущена")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Transcribe audio using Yandex Cloud")
-    parser.add_argument("path", help="Path to input audio/video file")
-    parser.add_argument("bucket", help="Destination S3 bucket")
-    args = parser.parse_args()
+    """Start the Telegram bot."""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
 
-    text = process_file(args.path, args.bucket)
-    print(text)
+    application = Application.builder().token(token).build()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
+    application.add_handler(MessageHandler(file_filters, handle_file))
+    application.job_queue.run_repeating(check_running_tasks, interval=1.0)
+    application.run_polling()
 
 
 if __name__ == "__main__":
