@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from db import get_connection
+from database.queries import add_transcription
 from utils.ffmpeg import convert_to_ogg
 from utils.s3 import upload_file
 from utils.speechkit import run_transcription
@@ -20,9 +20,12 @@ def process_file(path: str, bucket: str) -> str:
     transcription = run_transcription(s3_uri)
     text = "\n".join([c.get("text", "") for c in transcription.get("chunks", [])])
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("INSERT INTO transcripts (text) VALUES (%s)", (text,))
+    add_transcription(
+        telegram_id=0,
+        status="completed",
+        audio_s3_path=str(s3_uri),
+        result_s3_path=None,
+    )
     return text
 
 
