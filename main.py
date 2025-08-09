@@ -12,9 +12,9 @@ from database.queries import (
     get_user_by_telegram_id,
     update_transcription,
 )
-from utils.ffmpeg import convert_to_ogg
+from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
-from utils.speechkit import run_transcription
+from utils.speechkit import run_transcription, cost_yc_async_rub
 from scheduler import check_running_tasks
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -68,6 +68,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await message.reply_text("Файл должен быть видео или аудио")
         return
 
+    await message.reply_text("Файл получен, начинаем транскрибацию")
+
     with tempfile.TemporaryDirectory() as workdir:
         workdir = Path(workdir)
         in_dir  = workdir / "in"
@@ -78,6 +80,13 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         # сохраняем исходник в in/
         local_path = in_dir / Path(file_name).name
         await file.download_to_drive(custom_path=str(local_path))
+
+        duration = get_media_duration(local_path)
+        price = cost_yc_async_rub(duration)
+        await message.reply_text(
+            f"Длительность: {duration:.1f} сек\n"
+            f"Стоимость: {price} ₽"
+        )
 
         # конвертим в out/ c тем же stem + .ogg
         ogg_name = f"{local_path.stem}.ogg"
@@ -91,11 +100,11 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         telegram_id=telegram_id,
         status="running",
         audio_s3_path=s3_uri,
+        duration_seconds=int(duration),
         result_s3_path=None,
     )
     operation_id = run_transcription(s3_uri)
     update_transcription(history.id, operation_id=operation_id)
-    await message.reply_text("Файл принят, обработка запущена")
 
 
 def main() -> None:

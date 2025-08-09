@@ -3,6 +3,40 @@ import subprocess
 from pathlib import Path
 
 
+def get_media_duration(source: str | Path) -> float:
+    """Return duration of the media file in seconds.
+
+    The function relies on ``ffprobe`` being available in the system PATH.
+
+    Parameters
+    ----------
+    source:
+        Path to the input audio or video file.
+
+    Returns
+    -------
+    float
+        Duration in seconds. Returns ``0.0`` if the duration could not be
+        determined.
+    """
+    src = Path(source)
+    command = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(src),
+    ]
+    try:
+        out = subprocess.check_output(command, text=True).strip()
+        return float(out)
+    except Exception:
+        return 0.0
+
+
 def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
     """Convert an audio or video file to OGG using ffmpeg.
 
