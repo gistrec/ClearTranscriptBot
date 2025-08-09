@@ -11,6 +11,11 @@ MYSQL_HOST = os.getenv("MYSQL_HOST")
 MYSQL_PORT = os.getenv("MYSQL_PORT")
 MYSQL_DB = os.getenv("MYSQL_DB")
 
+if not all([MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT, MYSQL_DB]):
+    raise RuntimeError(
+        "MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT and MYSQL_DB must be set"
+    )
+
 # Как можно скачать сертификат для подключения к MySQL
 # mkdir ~/.mysql
 # curl -o ~/.mysql/root.crt https://storage.yandexcloud.net/cloud-certs/CA.pem

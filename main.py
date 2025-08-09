@@ -19,7 +19,10 @@ from utils.s3 import upload_file
 from utils.speechkit import run_transcription
 from scheduler import check_running_tasks
 
-S3_BUCKET = os.environ.get("S3_BUCKET", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+
+if not TELEGRAM_BOT_TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -73,7 +76,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         ogg_path = local_path.with_suffix(".ogg")
         convert_to_ogg(local_path, ogg_path)
         object_name = f"source/{ogg_path.name}"
-        s3_uri = upload_file(ogg_path, S3_BUCKET, object_name)
+        s3_uri = upload_file(ogg_path, object_name)
 
     history = add_transcription(
         telegram_id=telegram_id,
@@ -88,11 +91,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 def main() -> None:
     """Start the Telegram bot."""
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not token:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
-
-    application = Application.builder().token(token).build()
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
     application.add_handler(MessageHandler(file_filters, handle_file))
