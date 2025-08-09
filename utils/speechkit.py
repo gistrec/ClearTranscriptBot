@@ -21,10 +21,11 @@ def _auth_headers() -> Dict[str, str]:
     return {"Authorization": f"Api-Key {YC_API_KEY}"}
 
 
-def _chunks_to_text(response: dict, sep: str = "\n") -> str:
+def parse_text(result: dict, separator: str = "\n") -> str:
     """
     Склеивает тексты из chunks, беря alternatives[0].text
     """
+    response = result.get("response") or {}
     chunks = response.get("chunks") or []
     parts = []
     for ch in chunks:
@@ -34,10 +35,10 @@ def _chunks_to_text(response: dict, sep: str = "\n") -> str:
         t = (alts[0].get("text") or "").strip()
         if t:
             parts.append(t)
-    return sep.join(parts)
+    return separator.join(parts)
 
 
-def fetch_transcription(operation_id: str) -> Optional[str]:
+def fetch_transcription_result(operation_id: str) -> Optional[dict]:
     """Check status of *operation_id* and return result if finished."""
     headers = _auth_headers()
     status_response = requests.get(OPERATIONS_URL.format(id=operation_id), headers=headers, timeout=10)
@@ -56,10 +57,7 @@ def fetch_transcription(operation_id: str) -> Optional[str]:
     # }
     data = status_response.json()
     if data.get("done"):
-        if "response" in data:
-            print(data["response"])
-            return _chunks_to_text(data["response"])
-        raise RuntimeError(data.get("error", "Unknown error"))
+        return data
 
     return None
 

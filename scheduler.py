@@ -4,7 +4,7 @@ from pathlib import Path
 from telegram.ext import ContextTypes
 
 from database.queries import get_transcriptions_by_status, update_transcription
-from utils.speechkit import fetch_transcription
+from utils.speechkit import fetch_transcription_result, parse_text
 
 
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -16,14 +16,23 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             print(f"Task {task.id} doesn't have operation_id")
             continue
 
-        transcription = fetch_transcription(task.operation_id)
+        result = fetch_transcription_result(task.operation_id)
 
         # Результата еще нет
-        if transcription is None:
+        if result is None:
             continue
 
+        update_transcription(task.id, result_json=result)
+
+        if "response" not in result:
+            error = result.get("error", "Unknown error")
+            update_transcription(task.id, status="failed")
+            continue
+
+        text = parse_text(result)
+
         path = Path(f"transcription_{task.id}.txt")
-        path.write_text(transcription, encoding="utf-8")
+        path.write_text(text, encoding="utf-8")
 
         try:
             await bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))

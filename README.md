@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     audio_s3_path TEXT NOT NULL,
     duration_seconds INTEGER,
     result_s3_path TEXT,
+    result_json TEXT,
     operation_id VARCHAR(128),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

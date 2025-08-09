@@ -57,6 +57,9 @@ class TranscriptionHistory(Base):
     # Path to the audio file in S3
     audio_s3_path = Column(Text, nullable=False)
 
+    # Raw recognition result returned by SpeechKit
+    result_json = Column(Text, nullable=True)
+
     # Duration of the audio in seconds
     duration_seconds = Column(Integer, nullable=True)
 
