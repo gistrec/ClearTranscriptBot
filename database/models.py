@@ -63,5 +63,8 @@ class TranscriptionHistory(Base):
     # Path to the transcription result in S3
     result_s3_path = Column(Text, nullable=True)
 
+    # Identifier of Yandex Cloud operation
+    operation_id = Column(String(128), nullable=True)
+
     # Timestamp when the request was created
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
