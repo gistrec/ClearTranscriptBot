@@ -9,15 +9,15 @@ import requests
 API_URL = "https://transcribe.api.cloud.yandex.net/speech/stt/v2/longRunningRecognize"
 OPERATIONS_URL = "https://operation.api.cloud.yandex.net/operations/{id}"
 
-YC_IAM_TOKEN = os.environ.get("YC_IAM_TOKEN")
+YC_API_KEY = os.environ.get("YC_API_KEY")
 YC_FOLDER_ID = os.environ.get("YC_FOLDER_ID")
 
-if not YC_IAM_TOKEN or not YC_FOLDER_ID:
-    raise RuntimeError("YC_IAM_TOKEN and YC_FOLDER_ID must be set")
+if not YC_API_KEY or not YC_FOLDER_ID:
+    raise RuntimeError("YC_API_KEY and YC_FOLDER_ID must be set")
 
 
 def _auth_headers() -> Dict[str, str]:
-    return {"Authorization": f"Bearer {YC_IAM_TOKEN}"}
+    return {"Authorization": f"Api-Key {YC_API_KEY}"}
 
 
 def get_transcription(operation_id: str) -> Optional[Dict[str, Any]]:

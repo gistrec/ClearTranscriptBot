@@ -31,14 +31,14 @@ obtain a transcript using Yandex Cloud SpeechKit.
 
 #### S3
 
-- `YC_ACCESS_KEY_ID`
-- `YC_SECRET_ACCESS_KEY`
+- `S3_ACCESS_KEY`
+- `S3_SECRET_KEY`
 - `S3_ENDPOINT`
 - `S3_BUCKET`
 
 #### SpeechKit
 
-- `YC_IAM_TOKEN`
+- `YC_API_KEY`
 - `YC_FOLDER_ID`
 
 ## Database schema
