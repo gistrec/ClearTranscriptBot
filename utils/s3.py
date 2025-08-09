@@ -1,6 +1,4 @@
 """Utilities for uploading files to Yandex Cloud S3."""
-from __future__ import annotations
-
 import os
 from pathlib import Path
 from typing import Optional
@@ -43,4 +41,4 @@ def upload_file(file_path: str | Path, object_name: Optional[str] = None) -> str
     )
     s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
     s3.upload_file(str(file_path), S3_BUCKET, object_name)
-    return f"s3://{S3_BUCKET}/{object_name}"
+    return f"{S3_ENDPOINT}/{S3_BUCKET}/{object_name}"

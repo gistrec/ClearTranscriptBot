@@ -1,6 +1,4 @@
 """Telegram bot for ClearTranscriptBot."""
-from __future__ import annotations
-
 import os
 import tempfile
 from pathlib import Path
@@ -70,11 +68,22 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await message.reply_text("Файл должен быть видео или аудио")
         return
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        local_path = Path(tmpdir) / file_name
+    with tempfile.TemporaryDirectory() as workdir:
+        workdir = Path(workdir)
+        in_dir  = workdir / "in"
+        out_dir = workdir / "out"
+        in_dir.mkdir()
+        out_dir.mkdir()
+
+        # сохраняем исходник в in/
+        local_path = in_dir / Path(file_name).name
         await file.download_to_drive(custom_path=str(local_path))
-        ogg_path = local_path.with_suffix(".ogg")
+
+        # конвертим в out/ c тем же stem + .ogg
+        ogg_name = f"{local_path.stem}.ogg"
+        ogg_path = out_dir / ogg_name
         convert_to_ogg(local_path, ogg_path)
+
         object_name = f"source/{ogg_path.name}"
         s3_uri = upload_file(ogg_path, object_name)
 

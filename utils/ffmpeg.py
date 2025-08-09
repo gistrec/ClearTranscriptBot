@@ -1,6 +1,4 @@
 """Utility functions for working with ffmpeg."""
-from __future__ import annotations
-
 import subprocess
 from pathlib import Path
 
@@ -30,6 +28,13 @@ def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
         "-y",  # overwrite output files without asking
         "-i",
         str(src),
+        "-vn",
+        "-ac",
+        "1",
+        "-c:a",
+        "libopus",
+        "-b:a",
+        "64k",
         str(dst),
     ]
     subprocess.run(command, check=True)

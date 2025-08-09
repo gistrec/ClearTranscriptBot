@@ -1,27 +1,35 @@
 """Periodic scheduler for checking transcription statuses."""
-from __future__ import annotations
-
 from pathlib import Path
 
 from telegram.ext import ContextTypes
 
 from database.queries import get_transcriptions_by_status, update_transcription
-from utils.speechkit import get_transcription
+from utils.speechkit import fetch_transcription
 
 
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
     bot = context.bot
     tasks = get_transcriptions_by_status("running")
-    for item in tasks:
-        result = get_transcription(item.operation_id)
-        if result is None:
+    for task in tasks:
+        if not task.operation_id:
+            print(f"Task {task.id} doesn't have operation_id")
             continue
-        text = "\n".join(c.get("text", "") for c in result.get("chunks", []))
-        path = Path(f"transcription_{item.id}.txt")
-        path.write_text(text, encoding="utf-8")
+
+        transcription = fetch_transcription(task.operation_id)
+
+        # Результата еще нет
+        if transcription is None:
+            continue
+
+        path = Path(f"transcription_{task.id}.txt")
+        path.write_text(transcription, encoding="utf-8")
+
         try:
-            await bot.send_document(chat_id=item.telegram_id, document=path.open("rb"))
+            await bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))
+            update_transcription(task.id, status="completed", result_s3_path=None)
+        except Exception as e:
+            print("Ошибка во время отправки результата")
+            update_transcription(task.id, status="failed", result_s3_path=None)
         finally:
             path.unlink(missing_ok=True)
-        update_transcription(item.id, status="completed", result_s3_path=None)
