@@ -7,14 +7,14 @@ from typing import Optional
 
 import boto3
 
-YC_ACCESS_KEY_ID = os.environ.get("YC_ACCESS_KEY_ID")
-YC_SECRET_ACCESS_KEY = os.environ.get("YC_SECRET_ACCESS_KEY")
+S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
+S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
 S3_ENDPOINT = os.environ.get("S3_ENDPOINT")
 S3_BUCKET = os.environ.get("S3_BUCKET")
 
-if not all([YC_ACCESS_KEY_ID, YC_SECRET_ACCESS_KEY, S3_ENDPOINT, S3_BUCKET]):
+if not all([S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_BUCKET]):
     raise RuntimeError(
-        "YC_ACCESS_KEY_ID, YC_SECRET_ACCESS_KEY, S3_ENDPOINT and S3_BUCKET must be set"
+        "S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT and S3_BUCKET must be set"
     )
 
 
@@ -38,8 +38,8 @@ def upload_file(file_path: str | Path, object_name: Optional[str] = None) -> str
         object_name = file_path.name
 
     session = boto3.session.Session(
-        aws_access_key_id=YC_ACCESS_KEY_ID,
-        aws_secret_access_key=YC_SECRET_ACCESS_KEY,
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
     )
     s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
     s3.upload_file(str(file_path), S3_BUCKET, object_name)
