@@ -1,6 +1,7 @@
-APScheduler
 boto3
 mysqlclient
 python-telegram-bot
+python-telegram-bot[job-queue]
+python-telegram-bot[callback-data]
 requests
 sqlalchemy

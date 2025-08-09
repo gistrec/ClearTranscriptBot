@@ -84,7 +84,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         ogg_path = out_dir / ogg_name
         convert_to_ogg(local_path, ogg_path)
 
-        object_name = f"source/{ogg_path.name}"
+        object_name = f"source/{telegram_id}/{ogg_path.name}"
         s3_uri = upload_file(ogg_path, object_name)
 
     history = add_transcription(
