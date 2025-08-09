@@ -1,0 +1,6 @@
+APScheduler
+boto3
+mysqlclient
+python-telegram-bot
+requests
+sqlalchemy
