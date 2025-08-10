@@ -7,6 +7,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
+    CommandHandler,
     ContextTypes,
     MessageHandler,
     filters,
@@ -18,13 +19,17 @@ from database.queries import (
     get_user_by_telegram_id,
     get_transcription,
     update_transcription,
+    get_recent_transcriptions,
     change_user_balance,
 )
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.speechkit import run_transcription, cost_yc_async_rub, available_time_by_balance
+from utils.tg import STATUS_EMOJI, fmt_duration, fmt_price
 from scheduler import check_running_tasks
 from decimal import Decimal
+from zoneinfo import ZoneInfo
+from datetime import timezone
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
@@ -219,9 +224,42 @@ async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.message.reply_text("Задача отменена")
 
 
+async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    telegram_id = update.effective_user.id
+    items = get_recent_transcriptions(telegram_id, limit=10)
+
+    if not items:
+        await update.message.reply_text(
+            "История пуста. Пришлите видео или аудио — вернём текст."
+        )
+        return
+
+    msk = ZoneInfo("Europe/Moscow")
+    lines: list[str] = []
+    for r in items:
+        emoji = STATUS_EMOJI.get(r.status, "•")
+        dt = r.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.astimezone(msk)
+        dt_str = dt.strftime("%Y-%m-%d %H:%M")
+        dur = fmt_duration(r.duration_seconds)
+        price = fmt_price(r.price_rub)
+        lines.append(f"{emoji} #{r.id} • {dt_str} МСК • {dur} • {price}")
+
+    msg = (
+        "Последние 10 распознаваний:\n"
+        + "\n".join(lines)
+        + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • 🚫 отменено"
+    )
+
+    await update.message.reply_text(msg)
+
+
 def main() -> None:
     """Start the Telegram bot."""
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    application.add_handler(CommandHandler("history", handle_history))
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
     application.add_handler(MessageHandler(file_filters, handle_file))
