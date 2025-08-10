@@ -3,7 +3,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -36,6 +36,17 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 if not TELEGRAM_BOT_TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
+
+
+async def register_commands(application: Application) -> None:
+    await application.bot.set_my_commands(
+        [
+            BotCommand("start", "Начать работу"),
+            BotCommand("history", "История распознаваний"),
+            BotCommand("balance", "Текущий баланс"),
+            BotCommand("price", "Стоимость распознавания"),
+        ]
+    )
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -284,7 +295,12 @@ async def handle_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 def main() -> None:
     """Start the Telegram bot."""
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    application = (
+        Application.builder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .post_init(register_commands)
+        .build()
+    )
     application.add_handler(CommandHandler("history", handle_history))
     application.add_handler(CommandHandler("balance", handle_balance))
     application.add_handler(CommandHandler("price", handle_price))
