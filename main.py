@@ -76,9 +76,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     await message.reply_text(
-        "Файл получен.\n"
-        "Начинаю анализ длительности и стоимости транскрибации. "
-        "Скоро потребуется подтверждение для запуска задачи.",
+        "Файл получен.\n\n"
+        "Определяю длительность и стоимость перевода в текст. "
+        "Скоро попрошу подтвердить запуск.",
     )
 
     with tempfile.TemporaryDirectory() as workdir:
@@ -183,10 +183,10 @@ def main() -> None:
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
     application.add_handler(MessageHandler(file_filters, handle_file))
     application.add_handler(
-        CallbackQueryHandler(handle_create_task, pattern=r"^create_task:\\d+$")
+        CallbackQueryHandler(handle_create_task, pattern=r"^create_task:\d+$")
     )
     application.add_handler(
-        CallbackQueryHandler(handle_cancel_task, pattern=r"^cancel_task:\\d+$")
+        CallbackQueryHandler(handle_cancel_task, pattern=r"^cancel_task:\d+$")
     )
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
     application.run_polling()
