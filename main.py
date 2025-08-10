@@ -3,13 +3,20 @@ import os
 import tempfile
 from pathlib import Path
 
-from telegram import Update
-from telegram.ext import Application, ContextTypes, MessageHandler, filters
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from database.queries import (
     add_transcription,
     add_user,
     get_user_by_telegram_id,
+    get_transcription,
     update_transcription,
 )
 from utils.ffmpeg import convert_to_ogg, get_media_duration
@@ -68,27 +75,25 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await message.reply_text("Файл должен быть видео или аудио")
         return
 
-    await message.reply_text("Файл получен, начинаем транскрибацию")
+    await message.reply_text(
+        "Файл получен.\n"
+        "Начинаю анализ длительности и стоимости транскрибации. "
+        "Скоро потребуется подтверждение для запуска задачи.",
+    )
 
     with tempfile.TemporaryDirectory() as workdir:
         workdir = Path(workdir)
-        in_dir  = workdir / "in"
+        in_dir = workdir / "in"
         out_dir = workdir / "out"
         in_dir.mkdir()
         out_dir.mkdir()
 
-        # сохраняем исходник в in/
         local_path = in_dir / Path(file_name).name
         await file.download_to_drive(custom_path=str(local_path))
 
         duration = get_media_duration(local_path)
         price = cost_yc_async_rub(duration)
-        await message.reply_text(
-            f"Длительность: {duration:.1f} сек\n"
-            f"Стоимость: {price} ₽"
-        )
 
-        # конвертим в out/ c тем же stem + .ogg
         ogg_name = f"{local_path.stem}.ogg"
         ogg_path = out_dir / ogg_name
         convert_to_ogg(local_path, ogg_path)
@@ -98,13 +103,77 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     history = add_transcription(
         telegram_id=telegram_id,
-        status="running",
+        status="pending",
         audio_s3_path=s3_uri,
         duration_seconds=int(duration),
         result_s3_path=None,
     )
-    operation_id = run_transcription(s3_uri)
-    update_transcription(history.id, operation_id=operation_id)
+
+    buttons = [
+        InlineKeyboardButton(
+            "Распознать", callback_data=f"create_task:{history.id}"
+        ),
+        InlineKeyboardButton(
+            "Отменить", callback_data=f"cancel_task:{history.id}"
+        ),
+    ]
+    await message.reply_text(
+        f"Длительность: {duration:.1f} сек\nСтоимость: {price} ₽",
+        reply_markup=InlineKeyboardMarkup([buttons]),
+    )
+
+
+async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    try:
+        _, id_str = data.split(":", 1)
+        task_id = int(id_str)
+    except ValueError:
+        await query.edit_message_text("Некорректная задача")
+        return
+
+    task = get_transcription(task_id)
+    telegram_id = query.from_user.id
+    if task is None or task.telegram_id != telegram_id:
+        await query.edit_message_text("Задача не найдена")
+        return
+    if task.status != "pending":
+        await query.edit_message_text("Задача уже запущена")
+        return
+
+    operation_id = run_transcription(task.audio_s3_path)
+    update_transcription(task.id, status="running", operation_id=operation_id)
+
+    await query.edit_message_reply_markup(reply_markup=None)
+    await query.message.reply_text("Задача создана, начинаю распознавание")
+
+
+async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    try:
+        _, id_str = data.split(":", 1)
+        task_id = int(id_str)
+    except ValueError:
+        await query.edit_message_text("Некорректная задача")
+        return
+
+    task = get_transcription(task_id)
+    telegram_id = query.from_user.id
+    if task is None or task.telegram_id != telegram_id:
+        await query.edit_message_text("Задача не найдена")
+        return
+    if task.status != "pending":
+        await query.edit_message_text("Задача уже обработана")
+        return
+
+    update_transcription(task.id, status="cancelled")
+
+    await query.edit_message_reply_markup(reply_markup=None)
+    await query.message.reply_text("Задача отменена")
 
 
 def main() -> None:
@@ -113,6 +182,12 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
     application.add_handler(MessageHandler(file_filters, handle_file))
+    application.add_handler(
+        CallbackQueryHandler(handle_create_task, pattern=r"^create_task:\\d+$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_cancel_task, pattern=r"^cancel_task:\\d+$")
+    )
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
     application.run_polling()
 

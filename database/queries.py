@@ -45,6 +45,12 @@ def add_transcription(
         return history
 
 
+def get_transcription(transcription_id: int) -> Optional[TranscriptionHistory]:
+    """Fetch a transcription history record by its identifier."""
+    with SessionLocal() as session:
+        return session.get(TranscriptionHistory, transcription_id)
+
+
 def update_transcription(transcription_id: int, **fields: Any) -> Optional[TranscriptionHistory]:
     """Update fields of an existing transcription history record."""
     if not fields:
