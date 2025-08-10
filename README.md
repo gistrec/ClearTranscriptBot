@@ -18,6 +18,8 @@ obtain a transcript using Yandex Cloud SpeechKit.
 ### Telegram
 
 - `TELEGRAM_BOT_TOKEN` – token used to authenticate the bot.
+- `LOCAL_PTB` – set to any value to use a local Bot API server running at
+  `http://127.0.0.1:8081`.
 
 ### MySQL
 

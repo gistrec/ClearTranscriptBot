@@ -33,6 +33,7 @@ from zoneinfo import ZoneInfo
 from datetime import timezone
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+USE_LOCAL_PTB = os.environ.get("LOCAL_PTB") is not None
 
 if not TELEGRAM_BOT_TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
@@ -295,12 +296,19 @@ async def handle_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 def main() -> None:
     """Start the Telegram bot."""
-    application = (
+    builder = (
         Application.builder()
         .token(TELEGRAM_BOT_TOKEN)
         .post_init(register_commands)
-        .build()
     )
+    if USE_LOCAL_PTB:
+        builder = (
+            builder.base_url("http://127.0.0.1:8081/bot{token}")
+            .base_file_url("http://127.0.0.1:8081/file/bot{token}")
+            .http_version("1.1")
+            .get_updates_http_version("1.1")
+        )
+    application = builder.build()
     application.add_handler(CommandHandler("history", handle_history))
     application.add_handler(CommandHandler("balance", handle_balance))
     application.add_handler(CommandHandler("price", handle_price))
