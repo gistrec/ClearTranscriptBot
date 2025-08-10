@@ -256,10 +256,25 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(msg)
 
 
+async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    telegram_id = update.effective_user.id
+    user = get_user_by_telegram_id(telegram_id)
+    if user is None:
+        user = add_user(telegram_id, update.effective_user.username)
+    balance = Decimal(user.balance or 0)
+    minutes, seconds = available_time_by_balance(balance)
+    await update.message.reply_text(
+        f"Текущий баланс: {balance} ₽\n"
+        f"Хватит на распознавание: {minutes} мин {seconds} сек\n\n"
+        "Для пополнения баланса напишите @gistrec"
+    )
+
+
 def main() -> None:
     """Start the Telegram bot."""
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.add_handler(CommandHandler("history", handle_history))
+    application.add_handler(CommandHandler("balance", handle_balance))
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
     application.add_handler(MessageHandler(file_filters, handle_file))
