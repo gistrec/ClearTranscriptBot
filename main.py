@@ -18,11 +18,13 @@ from database.queries import (
     get_user_by_telegram_id,
     get_transcription,
     update_transcription,
+    change_user_balance,
 )
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
-from utils.speechkit import run_transcription, cost_yc_async_rub
+from utils.speechkit import run_transcription, cost_yc_async_rub, available_time_by_balance
 from scheduler import check_running_tasks
+from decimal import Decimal
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
@@ -32,7 +34,15 @@ if not TELEGRAM_BOT_TOKEN:
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Respond to regular text messages."""
+    telegram_id = update.message.from_user.id
+    user = get_user_by_telegram_id(telegram_id)
+    if user is None:
+        user = add_user(telegram_id, update.message.from_user.username)
+    balance = Decimal(user.balance or 0)
+    minutes, seconds = available_time_by_balance(balance)
     await update.message.reply_text(
+        f"Баланс: {balance} ₽\n"
+        f"Хватит на распознавание {minutes} мин {seconds} сек.\n\n"
         "Отправьте видео или аудио, чтобы получить его трансрибацию"
     )
 
@@ -45,8 +55,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     """Handle incoming media files."""
     message = update.message
     telegram_id = message.from_user.id
-    if get_user_by_telegram_id(telegram_id) is None:
-        add_user(telegram_id, message.from_user.username)
+    user = get_user_by_telegram_id(telegram_id)
+    if user is None:
+        user = add_user(telegram_id, message.from_user.username)
 
     file = None
     mime = ""
@@ -93,6 +104,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         duration = get_media_duration(local_path)
         price = cost_yc_async_rub(duration)
+        price_dec = Decimal(price)
+        if user.balance < price_dec:
+            await message.reply_text(
+                f"Недостаточно средств. Баланс: {user.balance} ₽, требуется: {price} ₽"
+            )
+            return
 
         ogg_name = f"{local_path.stem}.ogg"
         ogg_path = out_dir / ogg_name
@@ -142,6 +159,17 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if task.status != "pending":
         await query.edit_message_text("Задача уже запущена")
         return
+    user = get_user_by_telegram_id(telegram_id)
+    if user is None:
+        await query.edit_message_text("Пользователь не найден")
+        return
+    price = Decimal(cost_yc_async_rub(task.duration_seconds or 0))
+    if user.balance < price:
+        await query.edit_message_text(
+            f"Недостаточно средств. Баланс: {user.balance} ₽, требуется: {price} ₽"
+        )
+        return
+    change_user_balance(telegram_id, -price)
 
     operation_id = run_transcription(task.audio_s3_path)
     update_transcription(task.id, status="running", operation_id=operation_id)

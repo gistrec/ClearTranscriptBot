@@ -48,7 +48,7 @@ obtain a transcript using Yandex Cloud SpeechKit.
 CREATE TABLE IF NOT EXISTS users (
     telegram_id BIGINT PRIMARY KEY,
     telegram_login VARCHAR(32),
-    balance DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    balance DECIMAL(10,2) NOT NULL DEFAULT 250.00,
     registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
