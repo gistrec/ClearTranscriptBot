@@ -270,11 +270,20 @@ async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
+async def handle_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(
+        "Мы используем Yandex SpeechKit (асинхронное распознавание файлов)\n"
+        "Цена: 0,15 ₽ за каждые 15 секунд аудио\n\n"
+        "Подробнее о тарификации: https://yandex.cloud/ru/docs/speechkit/pricing#prices-stt"
+    )
+
+
 def main() -> None:
     """Start the Telegram bot."""
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.add_handler(CommandHandler("history", handle_history))
     application.add_handler(CommandHandler("balance", handle_balance))
+    application.add_handler(CommandHandler("price", handle_price))
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
     application.add_handler(MessageHandler(file_filters, handle_file))
