@@ -5,6 +5,7 @@ import requests
 from typing import Dict, Any, Optional
 from typing import Optional
 from math import ceil
+from decimal import Decimal
 
 
 API_URL = "https://transcribe.api.cloud.yandex.net/speech/stt/v2/longRunningRecognize"
@@ -122,3 +123,14 @@ def cost_yc_async_rub(duration_s: float, channels: int = 1, deferred: bool = Fal
 
     cost_rub = blocks_15s * (0.0375 if deferred else 0.15)
     return f"{cost_rub:.2f}"
+
+
+def available_time_by_balance(
+    balance_rub: Decimal, channels: int = 1, deferred: bool = False
+) -> tuple[int, int]:
+    """Return minutes and seconds that can be transcribed for *balance_rub*."""
+    price_per_block = Decimal("0.0375") if deferred else Decimal("0.15")
+    blocks = int(balance_rub / price_per_block)
+    total_seconds = blocks * 15
+    minutes, seconds = divmod(int(total_seconds), 60)
+    return minutes, seconds

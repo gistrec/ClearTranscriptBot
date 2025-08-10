@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Optional, Any
+from decimal import Decimal
 
 from .connection import SessionLocal
 from .models import User, TranscriptionHistory
@@ -74,3 +75,15 @@ def get_transcriptions_by_status(status: str) -> list[TranscriptionHistory]:
             .filter(TranscriptionHistory.status == status)
             .all()
         )
+
+
+def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
+    """Add *delta* to user's balance and return updated user."""
+    with SessionLocal() as session:
+        user = session.get(User, telegram_id)
+        if user is None:
+            return None
+        user.balance = (user.balance or Decimal("0")) + delta
+        session.commit()
+        session.refresh(user)
+        return user
