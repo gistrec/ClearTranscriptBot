@@ -40,11 +40,25 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         user = add_user(telegram_id, update.message.from_user.username)
     balance = Decimal(user.balance or 0)
     minutes, seconds = available_time_by_balance(balance)
-    await update.message.reply_text(
-        f"Баланс: {balance} ₽\n"
-        f"Хватит на распознавание {minutes} мин {seconds} сек.\n\n"
-        "Отправьте видео или аудио, чтобы получить его трансрибацию"
-    )
+    if update.message.text and update.message.text.startswith("/start"):
+        await update.message.reply_text(
+            "Отправьте видео или аудио — вернём текст.\n"
+            "Поддерживаем все популярные форматы:\n"
+            "• Видео: mp4, mov, mkv, webm и другие\n"
+            "• Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
+            f"Текущий баланс: {balance} ₽\n"
+            f"Хватит на распознавание: {minutes} мин {seconds} сек\n\n"
+            "Доступные команды:\n"
+            "• /history — история распознаваний\n"
+            "• /balance — текущий баланс\n"
+            "• /price — стоимость"
+        )
+    else:
+        await update.message.reply_text(
+            f"Баланс: {balance} ₽\n"
+            f"Хватит на распознавание {minutes} мин {seconds} сек.\n\n"
+            "Отправьте видео или аудио, чтобы получить его трансрибацию"
+        )
 
 
 def _is_supported(mime: str) -> bool:
