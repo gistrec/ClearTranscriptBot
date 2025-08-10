@@ -79,6 +79,18 @@ def get_transcriptions_by_status(status: str) -> list[TranscriptionHistory]:
         )
 
 
+def get_recent_transcriptions(telegram_id: int, limit: int = 10) -> list[TranscriptionHistory]:
+    """Return recent transcriptions for *telegram_id* limited by *limit*."""
+    with SessionLocal() as session:
+        return (
+            session.query(TranscriptionHistory)
+            .filter(TranscriptionHistory.telegram_id == telegram_id)
+            .order_by(TranscriptionHistory.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+
 def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
     """Add *delta* to user's balance and return updated user."""
     with SessionLocal() as session:
