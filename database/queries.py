@@ -29,6 +29,7 @@ def add_transcription(
     status: str,
     audio_s3_path: str,
     duration_seconds: int | None = None,
+    price_rub: Decimal | None = None,
     result_s3_path: str | None = None,
 ) -> TranscriptionHistory:
     """Persist a new transcription history record."""
@@ -38,6 +39,7 @@ def add_transcription(
             status=status,
             audio_s3_path=audio_s3_path,
             duration_seconds=duration_seconds,
+            price_rub=price_rub,
             result_s3_path=result_s3_path,
         )
         session.add(history)

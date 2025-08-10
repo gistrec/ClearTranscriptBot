@@ -63,6 +63,9 @@ class TranscriptionHistory(Base):
     # Duration of the audio in seconds
     duration_seconds = Column(Integer, nullable=True)
 
+    # Cost of recognition in rubles
+    price_rub = Column(Numeric(10, 2), nullable=True)
+
     # Path to the transcription result in S3
     result_s3_path = Column(Text, nullable=True)
 

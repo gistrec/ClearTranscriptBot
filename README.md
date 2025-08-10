@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     status VARCHAR(32) NOT NULL,
     audio_s3_path TEXT NOT NULL,
     duration_seconds INTEGER,
+    price_rub DECIMAL(10,2),
     result_s3_path TEXT,
     result_json TEXT,
     operation_id VARCHAR(128),

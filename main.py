@@ -123,6 +123,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         status="pending",
         audio_s3_path=s3_uri,
         duration_seconds=int(duration),
+        price_rub=price_dec,
         result_s3_path=None,
     )
 
@@ -163,7 +164,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if user is None:
         await query.edit_message_text("Пользователь не найден")
         return
-    price = Decimal(cost_yc_async_rub(task.duration_seconds or 0))
+    price = Decimal(task.price_rub or 0)
     if user.balance < price:
         await query.edit_message_text(
             f"Недостаточно средств. Баланс: {user.balance} ₽, требуется: {price} ₽"
