@@ -18,8 +18,11 @@ obtain a transcript using Yandex Cloud SpeechKit.
 ### Telegram
 
 - `TELEGRAM_BOT_TOKEN` – token used to authenticate the bot.
-- `LOCAL_PTB` – set to any value to use a local Bot API server running at
-  `http://127.0.0.1:8081`.
+- `TELEGRAM_API_ID` – optional, required only when using a local Bot API server.
+- `TELEGRAM_API_HASH` – optional, required only when using a local Bot API server.
+- `USE_LOCAL_PTB` – set to any value to use a local Bot API server running at
+  `http://127.0.0.1:8081`. You need to run the Bot API server locally (see
+  below).
 
 ### MySQL
 
@@ -42,6 +45,26 @@ obtain a transcript using Yandex Cloud SpeechKit.
 
 - `YC_API_KEY`
 - `YC_FOLDER_ID`
+
+## Local Bot API server
+
+To handle large files you can run a local copy of Telegram's Bot API server.
+Example using Docker:
+
+```bash
+docker run -d --name tg-bot-api \
+  -p 8081:8081 \
+  -v /var/lib/telegram-bot-api:/var/lib/telegram-bot-api \
+  -e TELEGRAM_API_ID=$TELEGRAM_API_ID \
+  -e TELEGRAM_API_HASH=$TELEGRAM_API_HASH \
+  -e TELEGRAM_LOCAL=True \
+  aiogram/telegram-bot-api:latest \
+  --http-ip-address=0.0.0.0 \
+  --dir=/var/lib/telegram-bot-api
+```
+
+Run this container and set `USE_LOCAL_PTB` so that the bot uses the local
+server.
 
 ## Database schema
 
