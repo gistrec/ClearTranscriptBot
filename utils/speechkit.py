@@ -123,12 +123,19 @@ def cost_yc_async_rub(duration_s: float, channels: int = 1, deferred: bool = Fal
     return f"{cost_rub:.2f}"
 
 
+def format_duration(duration_sec: int) -> str:
+    """Format duration in seconds as '{min} мин. {sec} сек.' or '{sec} сек.' if minutes are zero."""
+    minutes, seconds = divmod(int(duration_sec), 60)
+    if minutes > 0:
+        return f"{minutes} мин. {seconds} сек."
+    return f"{seconds} сек."
+
+
 def available_time_by_balance(
     balance_rub: Decimal, channels: int = 1, deferred: bool = False
-) -> tuple[int, int]:
+) -> str:
     """Return minutes and seconds that can be transcribed for *balance_rub*."""
     price_per_block = Decimal("0.0375") if deferred else Decimal("0.15")
     blocks = int(balance_rub / price_per_block)
     total_seconds = blocks * 15
-    minutes, seconds = divmod(int(total_seconds), 60)
-    return minutes, seconds
+    return format_duration(total_seconds)

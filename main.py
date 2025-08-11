@@ -26,8 +26,13 @@ from database.queries import (
 )
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
-from utils.speechkit import run_transcription, cost_yc_async_rub, available_time_by_balance
-from utils.tg import STATUS_EMOJI, fmt_duration, fmt_price, extract_local_path
+from utils.speechkit import (
+    run_transcription,
+    cost_yc_async_rub,
+    format_duration,
+    available_time_by_balance,
+)
+from utils.tg import STATUS_EMOJI, fmt_price, extract_local_path
 from scheduler import check_running_tasks
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -58,26 +63,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if user is None:
         user = add_user(telegram_id, update.message.from_user.username)
     balance = Decimal(user.balance or 0)
-    minutes, seconds = available_time_by_balance(balance)
-    if update.message.text and update.message.text.startswith("/start"):
-        await update.message.reply_text(
-            "Отправьте видео или аудио — вернём текст.\n"
-            "Поддерживаем все популярные форматы:\n"
-            "• Видео: mp4, mov, mkv, webm и другие\n"
-            "• Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
-            f"Текущий баланс: {balance} ₽\n"
-            f"Хватит на распознавание: {minutes} мин {seconds} сек\n\n"
-            "Доступные команды:\n"
-            "• /history — история распознаваний\n"
-            "• /balance — текущий баланс\n"
-            "• /price — стоимость"
-        )
-    else:
-        await update.message.reply_text(
-            f"Баланс: {balance} ₽\n"
-            f"Хватит на распознавание {minutes} мин {seconds} сек.\n\n"
-            "Отправьте видео или аудио, чтобы получить его трансрибацию"
-        )
+    duration_str = available_time_by_balance(balance)
+    await update.message.reply_text(
+        "Отправьте видео или аудио — вернём текст.\n"
+        "Поддерживаем все популярные форматы:\n"
+        "• Видео: mp4, mov, mkv, webm и другие\n"
+        "• Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
+        f"Текущий баланс: {balance} ₽\n"
+        f"Хватит на распознавание: {duration_str}\n\n"
+        "Доступные команды:\n"
+        "• /history — история распознаваний\n"
+        "• /balance — текущий баланс\n"
+        "• /price — стоимость"
+    )
 
 
 def _is_supported(mime: str) -> bool:
@@ -173,8 +171,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             "Отменить", callback_data=f"cancel_task:{history.id}"
         ),
     ]
+
+    duration_str = format_duration(int(duration))
     await message.reply_text(
-        f"Длительность: {duration:.1f} сек\nСтоимость: {price} ₽",
+        f"Длительность: {duration_str}\nСтоимость: {price} ₽",
         reply_markup=InlineKeyboardMarkup([buttons]),
     )
 
@@ -262,7 +262,7 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             dt = dt.replace(tzinfo=timezone.utc)
         dt = dt.astimezone(msk)
         dt_str = dt.strftime("%Y-%m-%d %H:%M")
-        dur = fmt_duration(r.duration_seconds)
+        dur = format_duration(r.duration_seconds)
         price = fmt_price(r.price_rub)
         lines.append(f"{emoji} #{r.id} • {dt_str} МСК • {dur} • {price}")
 
@@ -281,10 +281,10 @@ async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if user is None:
         user = add_user(telegram_id, update.effective_user.username)
     balance = Decimal(user.balance or 0)
-    minutes, seconds = available_time_by_balance(balance)
+    duration_str = available_time_by_balance(balance)
     await update.message.reply_text(
         f"Текущий баланс: {balance} ₽\n"
-        f"Хватит на распознавание: {minutes} мин {seconds} сек\n\n"
+        f"Хватит на распознавание: {duration_str}\n\n"
         "Для пополнения баланса напишите @gistrec"
     )
 
@@ -309,10 +309,10 @@ def main() -> None:
     )
     if USE_LOCAL_PTB:
         builder = (
-            builder.base_url("http://127.0.0.1:8081/bot{token}")
-            .base_file_url("http://127.0.0.1:8081/file/bot{token}")
-            .http_version("1.1")
-            .get_updates_http_version("1.1")
+            builder
+            .base_url("http://127.0.0.1:8081/bot")
+            .base_file_url("http://127.0.0.1:8081/file/bot")
+            .local_mode(True)
         )
     application = builder.build()
     application.add_handler(CommandHandler("history", handle_history))
@@ -321,12 +321,8 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
     application.add_handler(MessageHandler(file_filters, handle_file))
-    application.add_handler(
-        CallbackQueryHandler(handle_create_task, pattern=r"^create_task:\d+$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(handle_cancel_task, pattern=r"^cancel_task:\d+$")
-    )
+    application.add_handler(CallbackQueryHandler(handle_create_task, pattern=r"^create_task:\d+$"))
+    application.add_handler(CallbackQueryHandler(handle_cancel_task, pattern=r"^cancel_task:\d+$"))
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
     application.run_polling()
 
