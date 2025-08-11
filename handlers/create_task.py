@@ -1,3 +1,5 @@
+import asyncio
+import time
 from decimal import Decimal
 
 from telegram import Update
@@ -9,7 +11,7 @@ from database.queries import (
     get_user_by_telegram_id,
     update_transcription,
 )
-from utils.speechkit import run_transcription
+from utils.speechkit import format_duration, run_transcription
 
 
 async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -47,4 +49,51 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     update_transcription(task.id, status="running", operation_id=operation_id)
 
     await query.edit_message_reply_markup(reply_markup=None)
-    await query.message.reply_text("Задача создана, начинаю распознавание")
+
+    start_time = time.monotonic()
+    duration_str = format_duration(0)
+    status_message = await query.message.reply_text(
+        f"🧠 Задача №{task_id} в работе\n\n"
+        f"Прошло времени: {duration_str}\n\n"
+        "Отправлю результат, как только всё будет готово."
+    )
+
+    async def progress_updater() -> None:
+        while True:
+            await asyncio.sleep(5)
+            updated_task = get_transcription(task_id)
+            if updated_task.status == "running":
+                duration = int(time.monotonic() - start_time)
+                duration_text = format_duration(duration)
+                try:
+                    await status_message.edit_text(
+                        f"🧠 Задача №{task_id} в работе\n\n"
+                        f"Прошло времени: {duration_text}\n\n"
+                        "Отправлю результат, как только всё будет готово."
+                    )
+                except Exception:
+                    pass
+                continue
+            if updated_task.status == "completed":
+                duration = int(time.monotonic() - start_time)
+                duration_text = format_duration(duration)
+                try:
+                    await status_message.edit_text(
+                        f"✅ Задача №{task_id} готова!\n\n"
+                        f"Прошло времени: {duration_text}\n\n"
+                        "Отправляю результат…"
+                    )
+                except Exception:
+                    pass
+                break
+            if updated_task.status == "failed":
+                try:
+                    await status_message.edit_text(
+                        f"❌ Задача №{task_id} завершилась с ошибкой. Попробуйте ещё раз."
+                    )
+                except Exception:
+                    pass
+                break
+            break
+
+    context.application.create_task(progress_updater())
