@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     result_s3_path TEXT,
     result_json TEXT,
     operation_id VARCHAR(128),
+    message_id INTEGER,
+    chat_id BIGINT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
