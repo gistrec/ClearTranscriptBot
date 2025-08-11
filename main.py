@@ -36,7 +36,7 @@ from utils.tg import STATUS_EMOJI, fmt_price, extract_local_path
 from scheduler import check_running_tasks
 from decimal import Decimal
 from zoneinfo import ZoneInfo
-from datetime import timezone
+from datetime import datetime, timezone
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
@@ -179,6 +179,58 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
 
+async def update_task_message(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Update status message for a running task."""
+    job = context.job
+    data = job.data
+    task_id = data["task_id"]
+    chat_id = data["chat_id"]
+    message_id = data["message_id"]
+    start_time = data["start_time"]
+
+    task = get_transcription(task_id)
+    if task is None:
+        job.schedule_removal()
+        return
+
+    status = task.status
+    if status == "running":
+        elapsed = int((datetime.now(timezone.utc) - start_time).total_seconds())
+        duration_str = format_duration(elapsed)
+        text = (
+            f"🧠 Задача #{task_id} в работе\n\n"
+            f"Прошло: {duration_str}\n\n"
+            "Я отправлю результат, как только всё будет готово."
+        )
+    elif status == "completed":
+        elapsed = int((datetime.now(timezone.utc) - start_time).total_seconds())
+        duration_str = format_duration(elapsed)
+        text = (
+            f"✅ Задача #{task_id} готова!\n"
+            f"Прошло: {duration_str}\n\n"
+            "Отправляю результат…"
+        )
+        job.schedule_removal()
+    elif status == "failed":
+        text = (
+            f"❌ Задача #{task_id} завершилась с ошибкой. Попробуйте ещё раз."
+        )
+        job.schedule_removal()
+    elif status == "cancelled":
+        text = f"🚫 Задача #{task_id} отменена."
+        job.schedule_removal()
+    else:
+        job.schedule_removal()
+        return
+
+    try:
+        await context.bot.edit_message_text(
+            chat_id=chat_id, message_id=message_id, text=text
+        )
+    except Exception:
+        pass
+
+
 async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -214,7 +266,28 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     update_transcription(task.id, status="running", operation_id=operation_id)
 
     await query.edit_message_reply_markup(reply_markup=None)
-    await query.message.reply_text("Задача создана, начинаю распознавание")
+
+    start_time = datetime.now(timezone.utc)
+    duration_str = format_duration(0)
+    text = (
+        f"🧠 Задача #{task.id} в работе\n\n"
+        f"Прошло: {duration_str}\n\n"
+        "Я отправлю результат, как только всё будет готово."
+    )
+    msg = await query.message.reply_text(text)
+
+    context.job_queue.run_repeating(
+        update_task_message,
+        interval=5,
+        first=5,
+        data={
+            "chat_id": query.message.chat_id,
+            "message_id": msg.message_id,
+            "task_id": task.id,
+            "start_time": start_time,
+        },
+        name=f"task-status-{task.id}",
+    )
 
 
 async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
