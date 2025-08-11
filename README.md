@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS transcription_history (
 );
 
 -- Index to speed up lookups by user
-CREATE INDEX IF NOT EXISTS idx_transcription_history_telegram_id
+CREATE INDEX idx_transcription_history_telegram_id
     ON transcription_history(telegram_id);
 ```
 
