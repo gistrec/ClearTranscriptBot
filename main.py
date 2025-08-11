@@ -27,7 +27,7 @@ from database.queries import (
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.speechkit import run_transcription, cost_yc_async_rub, available_time_by_balance
-from utils.tg import STATUS_EMOJI, fmt_duration, fmt_price
+from utils.tg import STATUS_EMOJI, fmt_duration, fmt_price, extract_local_path
 from scheduler import check_running_tasks
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -133,8 +133,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         out_dir.mkdir()
 
         local_path = in_dir / Path(file_name).name
+
         if USE_LOCAL_PTB:
-            shutil.move(Path(file.file_path), local_path)
+            file_path = extract_local_path(file.file_path)
+            shutil.copy(file_path, local_path)  # читаем напрямую
         else:
             await file.download_to_drive(custom_path=str(local_path))
 
