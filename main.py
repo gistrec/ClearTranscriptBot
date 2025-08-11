@@ -1,5 +1,6 @@
 """Telegram bot for ClearTranscriptBot."""
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -33,7 +34,7 @@ from zoneinfo import ZoneInfo
 from datetime import timezone
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-USE_LOCAL_PTB = os.environ.get("LOCAL_PTB") is not None
+USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
 
 if not TELEGRAM_BOT_TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
@@ -132,7 +133,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         out_dir.mkdir()
 
         local_path = in_dir / Path(file_name).name
-        await file.download_to_drive(custom_path=str(local_path))
+        if USE_LOCAL_PTB:
+            shutil.move(Path(file.file_path), local_path)
+        else:
+            await file.download_to_drive(custom_path=str(local_path))
 
         duration = get_media_duration(local_path)
         price = cost_yc_async_rub(duration)
