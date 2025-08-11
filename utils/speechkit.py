@@ -43,7 +43,6 @@ def fetch_transcription_result(operation_id: str) -> Optional[dict]:
     """Check status of *operation_id* and return result if finished."""
     headers = _auth_headers()
     status_response = requests.get(OPERATIONS_URL.format(id=operation_id), headers=headers, timeout=10)
-    print(status_response.json())
     status_response.raise_for_status()
     # Пример ответа:
     # {
@@ -78,7 +77,6 @@ def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
         "folderId": YC_FOLDER_ID,
     }
     response = requests.post(API_URL, json=payload, headers=headers, timeout=10)
-    print(response.json())
     response.raise_for_status()
     # Пример ответа:
     # {
