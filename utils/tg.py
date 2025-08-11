@@ -8,7 +8,7 @@ ANCHOR = "/var/lib/telegram-bot-api"
 STATUS_EMOJI = {
     "pending": "🕓",
     "running": "⏳",
-    "done": "✅",
+    "completed": "✅",
     "failed": "❌",
     "cancelled": "🚫",
 }
