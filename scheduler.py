@@ -1,8 +1,8 @@
 """Periodic scheduler for checking transcription statuses."""
-import time
+import pytz
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from telegram.ext import ContextTypes
 
@@ -14,18 +14,20 @@ from utils.s3 import upload_file
 EDIT_INTERVAL_SEC = 5  # не редактировать чаще, чем раз в 5 сек
 
 
-def _need_edit(context, task_id: int, text: str) -> bool:
-    """Возвращает True, если прошло достаточно времени и текст реально изменился."""
+MoscowTimezone = pytz.timezone('Europe/Moscow')
+
+
+def _need_edit(context, task_id: int, now: datetime) -> bool:
+    """Возвращает True, если прошло достаточно времени."""
     cache = context.bot_data.setdefault("status_cache", {})
     last_ts = cache.get(task_id)
 
     if not last_ts:
         # нет кэша, значит нужно редактировать
-        cache[task_id] = time.monotonic()
+        cache[task_id] = now
         return False
 
-    now = time.monotonic()
-    if now - last_ts < EDIT_INTERVAL_SEC:
+    if now - last_ts < timedelta(seconds=EDIT_INTERVAL_SEC):
         return False
 
     cache[task_id] = now
@@ -45,18 +47,20 @@ async def safe_edit_message_text(bot, chat_id, message_id, text):
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
     bot = context.bot
-    now = datetime.utcnow()
+    now = datetime.now(MoscowTimezone)
     tasks = get_transcriptions_by_status("running")
     for task in tasks:
         if not task.operation_id:
             print(f"Task {task.id} doesn't have operation_id")
             continue
 
-        duration = int((now - task.created_at).total_seconds())
+        created_at = MoscowTimezone.localize(task.created_at)
+
+        duration = int((now - created_at).total_seconds())
         duration_str = format_duration(duration)
 
         # Редактируем сообщение только если прошло достаточно времени
-        if _need_edit(context, task.id, duration_str):
+        if _need_edit(context, task.id, now):
             await safe_edit_message_text(
                 bot,
                 task.chat_id,
