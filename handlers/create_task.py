@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
 from database.queries import (
     change_user_balance,
@@ -50,9 +51,9 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     duration_str = format_duration(0)
     status_message = await query.message.reply_text(
-        f"🧠 Задача №{task_id} в работе\n\n",
-        f"Прошло времени: {duration_str}\n\n",
-        "Отправлю результат, как только всё будет готово.",
+        f"🧠 Задача №{task_id} в работе.\n\n"
+        f"Прошло времени: {duration_str}\n\n"
+        "Отправлю результат, как только всё будет готово."
     )
 
     update_transcription(
