@@ -6,7 +6,7 @@ obtain a transcript using Yandex Cloud SpeechKit.
 ## Project structure
 
 ```
-.
+ClearTranscriptBot
 ├── main.py              # bot entry point
 ├── scheduler.py         # periodic task scheduler
 ├── handlers/            # Telegram update handlers
