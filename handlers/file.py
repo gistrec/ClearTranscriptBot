@@ -28,6 +28,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if user is None:
         user = add_user(telegram_id, message.from_user.username)
 
+    await message.reply_text(
+        "Файл получен.\n\n"
+        "Определяю длительность и стоимость перевода в текст. "
+        "Скоро попрошу подтвердить запуск.",
+    )
+
     file = None
     mime = ""
     file_name = "file"
@@ -54,12 +60,6 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not _is_supported(mime):
         await message.reply_text("Файл должен быть видео или аудио")
         return
-
-    await message.reply_text(
-        "Файл получен.\n\n"
-        "Определяю длительность и стоимость перевода в текст. "
-        "Скоро попрошу подтвердить запуск.",
-    )
 
     with tempfile.TemporaryDirectory() as workdir:
         workdir = Path(workdir)
