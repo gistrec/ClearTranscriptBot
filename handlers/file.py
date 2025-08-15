@@ -32,7 +32,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     mime = ""
     file_name = "file"
     if message.document:
-        file = await message.document.get_file()
+        file = await message.document.get_file(read_timeout=120)
         mime = message.document.mime_type or ""
         file_name = message.document.file_name or file_name
     elif message.audio:
@@ -40,11 +40,11 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         mime = message.audio.mime_type or ""
         file_name = message.audio.file_name or file_name
     elif message.video:
-        file = await message.video.get_file()
+        file = await message.video.get_file(read_timeout=120)
         mime = message.video.mime_type or ""
         file_name = message.video.file_name or file_name
     elif message.voice:
-        file = await message.voice.get_file()
+        file = await message.voice.get_file(read_timeout=120)
         mime = "audio/ogg"
         file_name = "voice.ogg"
     else:
