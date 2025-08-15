@@ -3,15 +3,31 @@
 A simple utility to convert audio/video to OGG, upload it to Yandex Cloud S3 and
 obtain a transcript using Yandex Cloud SpeechKit.
 
-## Modules
+## Project structure
 
-- `utils/ffmpeg.py` – conversion to OGG using `ffmpeg`.
-- `utils/s3.py` – upload helper for Yandex Cloud S3 (S3-compatible).
-- `utils/speechkit.py` – request transcription from SpeechKit.
-- `database/connection.py` – MySQL connection setup via SQLAlchemy.
-- `database/models.py` – SQLAlchemy models for application tables.
-- `database/queries.py` – helper functions for common database operations.
-- `main.py` – glue code tying everything together.
+```
+ClearTranscriptBot
+├── main.py              # Bot entry point
+├── scheduler.py         # Periodic task scheduler
+├── handlers/            # Telegram update handlers
+│   ├── balance.py
+│   ├── cancel_task.py
+│   ├── create_task.py
+│   ├── file.py
+│   ├── history.py
+│   ├── price.py
+│   └── text.py
+├── database/            # Data access layer
+│   ├── connection.py    # MySQL connection setup via SQLAlchemy
+│   ├── models.py        # SQLAlchemy models for application tables
+│   └── queries.py       # Helper functions for common database operations
+├── utils/               # Helper utilities
+│   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
+│   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
+│   ├── speechkit.py     # Request transcription from SpeechKit
+│   └── tg.py            # Telegram-specific helpers
+└── requirements.txt     # Python dependencies list
+```
 
 ## Environment variables
 
