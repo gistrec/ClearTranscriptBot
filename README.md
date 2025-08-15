@@ -7,8 +7,8 @@ obtain a transcript using Yandex Cloud SpeechKit.
 
 ```
 ClearTranscriptBot
-├── main.py              # bot entry point
-├── scheduler.py         # periodic task scheduler
+├── main.py              # Bot entry point
+├── scheduler.py         # Periodic task scheduler
 ├── handlers/            # Telegram update handlers
 │   ├── balance.py
 │   ├── cancel_task.py
@@ -17,14 +17,14 @@ ClearTranscriptBot
 │   ├── history.py
 │   ├── price.py
 │   └── text.py
-├── database/            # data access layer
+├── database/            # Data access layer
 │   ├── connection.py    # MySQL connection setup via SQLAlchemy
 │   ├── models.py        # SQLAlchemy models for application tables
-│   └── queries.py       # helper functions for common database operations
-├── utils/               # helper utilities
-│   ├── ffmpeg.py        # conversion to OGG using ffmpeg
-│   ├── s3.py            # upload helper for Yandex Cloud S3 (S3-compatible)
-│   ├── speechkit.py     # request transcription from SpeechKit
+│   └── queries.py       # Helper functions for common database operations
+├── utils/               # Helper utilities
+│   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
+│   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
+│   ├── speechkit.py     # Request transcription from SpeechKit
 │   └── tg.py            # Telegram-specific helpers
 └── requirements.txt     # Python dependencies list
 ```
