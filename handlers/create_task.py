@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from telegram import Update
 from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
 
 from database.queries import (
     change_user_balance,
@@ -10,9 +9,12 @@ from database.queries import (
     get_user_by_telegram_id,
     update_transcription,
 )
+
+from utils.sentry import sentry_bind_user
 from utils.speechkit import format_duration, run_transcription
 
 
+@sentry_bind_user
 async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -61,4 +63,3 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         message_id=status_message.message_id,
         chat_id=status_message.chat_id,
     )
-

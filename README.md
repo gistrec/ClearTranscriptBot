@@ -87,8 +87,8 @@ ClearTranscriptBot
 
 | Variable        | Description                                   |
 |-----------------|-----------------------------------------------|
-| `ENABLE_SENTRY` | Set to `1` to enable Sentry error reporting.   |
-| `SENTRY_DSN`    | DSN for your Sentry project.                   |
+| `ENABLE_SENTRY` | Set to `1` to enable Sentry error reporting.  |
+| `SENTRY_DSN`    | Optional, DSN for your Sentry project.        |
 
 
 ## Local Bot API server

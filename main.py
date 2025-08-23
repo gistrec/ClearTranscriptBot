@@ -1,6 +1,6 @@
 """Telegram bot for ClearTranscriptBot."""
 import os
-import sentry_sdk
+import logging
 
 from telegram import BotCommand
 from telegram.ext import (
@@ -20,11 +20,14 @@ from handlers.history import handle_history
 from handlers.price import handle_price
 from handlers.text import handle_text
 
-if os.getenv("ENABLE_SENTRY") == "1":
-    sentry_sdk.init(
-        dsn=os.getenv("SENTRY_DSN"),
-        integrations=[sentry_sdk.integrations.logging.LoggingIntegration()],
-    )
+
+logging.basicConfig(
+    level=logging.INFO,  # показывать info+ сообщения
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logging.getLogger("apscheduler.executors.default").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None

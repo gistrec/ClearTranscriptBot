@@ -1,9 +1,9 @@
 """Utility functions for working with ffmpeg."""
 import os
-import subprocess
-from pathlib import Path
-
 import sentry_sdk
+import subprocess
+
+from pathlib import Path
 
 
 def get_media_duration(source: str | Path) -> float:

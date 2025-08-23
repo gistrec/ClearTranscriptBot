@@ -3,7 +3,10 @@ from telegram.ext import ContextTypes
 
 from database.queries import get_transcription, update_transcription
 
+from utils.sentry import sentry_bind_user
 
+
+@sentry_bind_user
 async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()

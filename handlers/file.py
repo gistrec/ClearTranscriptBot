@@ -8,8 +8,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from database.queries import add_transcription, add_user, get_user_by_telegram_id
+
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
+from utils.sentry import sentry_bind_user
 from utils.speechkit import cost_yc_async_rub, format_duration
 from utils.tg import extract_local_path
 
@@ -20,6 +22,7 @@ def _is_supported(mime: str) -> bool:
     return mime.startswith("audio/") or mime.startswith("video/")
 
 
+@sentry_bind_user
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming media files."""
     message = update.message

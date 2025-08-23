@@ -1,6 +1,7 @@
 """Periodic scheduler for checking transcription statuses."""
 import os
 import pytz
+import sentry_sdk
 
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -10,8 +11,6 @@ from telegram.ext import ContextTypes
 from database.queries import get_transcriptions_by_status, update_transcription
 from utils.speechkit import fetch_transcription_result, parse_text, format_duration
 from utils.s3 import upload_file
-
-import sentry_sdk
 
 
 EDIT_INTERVAL_SEC = 5  # не редактировать чаще, чем раз в 5 сек
