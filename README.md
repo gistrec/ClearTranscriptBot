@@ -38,6 +38,7 @@ ClearTranscriptBot
 │   └── queries.py       # Helper functions for common database operations
 ├── utils/               # Helper utilities
 │   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
+│   ├── marketing.py     # Advertising/tracking: send conversion goals to Yandex Metrica
 │   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
 │   ├── sentry.py        # Sentry error reporting helpers
 │   ├── speechkit.py     # Request transcription from SpeechKit
@@ -49,12 +50,12 @@ ClearTranscriptBot
 
 ### Telegram
 
-| Variable             | Description                                                        |
-|----------------------|--------------------------------------------------------------------|
-| `TELEGRAM_BOT_TOKEN` | Token used to authenticate the bot.                                |
-| `TELEGRAM_API_ID`    | Optional, required only when using a local Bot API server.         |
-| `TELEGRAM_API_HASH`  | Optional, required only when using a local Bot API server.         |
-| `USE_LOCAL_PTB`      | Any value → use a local Bot API server at `http://127.0.0.1:8081`. |
+| Variable             | Description                                                       |
+|----------------------|-------------------------------------------------------------------|
+| `TELEGRAM_BOT_TOKEN` | Token used to authenticate the bot                                |
+| `TELEGRAM_API_ID`    | Optional, required only when using a local Bot API server         |
+| `TELEGRAM_API_HASH`  | Optional, required only when using a local Bot API server         |
+| `USE_LOCAL_PTB`      | Any value → use a local Bot API server at `http://127.0.0.1:8081` |
 
 ### MySQL
 
@@ -87,11 +88,18 @@ ClearTranscriptBot
 
 ### Sentry
 
-| Variable        | Description                                   |
-|-----------------|-----------------------------------------------|
-| `ENABLE_SENTRY` | Set to `1` to enable Sentry error reporting.  |
-| `SENTRY_DSN`    | Optional, DSN for your Sentry project.        |
+| Variable        | Description                                                |
+|-----------------|------------------------------------------------------------|
+| `ENABLE_SENTRY` | Set to `1` to enable Sentry error reporting                |
+| `SENTRY_DSN`    | DSN of your Sentry project. Required if `ENABLE_SENTRY=1`  |
 
+### Marketing (Yandex.Metrica)
+
+| Variable       | Description                                                         |
+|----------------|---------------------------------------------------------------------|
+| `COUNTER_ID`   | Yandex.Metrica counter ID                                           |
+| `MEAS_TOKEN`   | Measurement Protocol token (generated in Metrica counter settings)  |
+| `BOT_URL`      | Public URL of your bot (e.g. `https://t.me/ClearTranscriptBot`)     |
 
 ## Local Bot API server
 

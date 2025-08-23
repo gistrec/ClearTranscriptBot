@@ -5,8 +5,16 @@ from telegram.ext import ContextTypes
 
 from database.queries import add_user, get_user_by_telegram_id
 
+from utils.marketing import track_goal
 from utils.sentry import sentry_bind_user
 from utils.speechkit import available_time_by_balance
+
+
+def extract_start_payload(text: str) -> str | None:
+    if not text or not text.startswith("/start"):
+        return None
+    parts = text.split(maxsplit=1)
+    return parts[1].strip() if len(parts) > 1 else None
 
 
 @sentry_bind_user
@@ -16,6 +24,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user = get_user_by_telegram_id(telegram_id)
     if user is None:
         user = add_user(telegram_id, update.message.from_user.username)
+
+    yclid = extract_start_payload(update.message.text or "")
+    if yclid:
+        context.application.create_task(track_goal(yclid, "startbot"))
+
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
     await update.message.reply_text(
