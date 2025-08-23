@@ -1,5 +1,6 @@
 """Telegram bot for ClearTranscriptBot."""
 import os
+import sentry_sdk
 
 from telegram import BotCommand
 from telegram.ext import (
@@ -18,6 +19,12 @@ from handlers.file import handle_file
 from handlers.history import handle_history
 from handlers.price import handle_price
 from handlers.text import handle_text
+
+if os.getenv("ENABLE_SENTRY") == "1":
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        integrations=[sentry_sdk.integrations.logging.LoggingIntegration()],
+    )
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None

@@ -1,6 +1,9 @@
 """Utility functions for working with ffmpeg."""
+import os
 import subprocess
 from pathlib import Path
+
+import sentry_sdk
 
 
 def get_media_duration(source: str | Path) -> float:
@@ -33,7 +36,9 @@ def get_media_duration(source: str | Path) -> float:
     try:
         out = subprocess.check_output(command, text=True).strip()
         return float(out)
-    except Exception:
+    except Exception as e:
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
         return 0.0
 
 

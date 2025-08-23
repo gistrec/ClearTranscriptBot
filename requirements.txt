@@ -6,3 +6,4 @@ python-telegram-bot[callback-data]
 pytz
 requests
 sqlalchemy
+sentry_sdk
