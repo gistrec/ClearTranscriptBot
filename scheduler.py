@@ -1,6 +1,7 @@
 """Periodic scheduler for checking transcription statuses."""
 import os
 import pytz
+import logging
 import sentry_sdk
 
 from pathlib import Path
@@ -43,7 +44,7 @@ async def safe_edit_message_text(bot, chat_id, message_id, text):
     try:
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
     except Exception as e:
-        print(f"Failed to edit message {message_id} in chat {chat_id}: {e}")
+        logging.error(f"Failed to edit message {message_id} in chat {chat_id}: {e}")
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)
 
@@ -55,7 +56,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     tasks = get_transcriptions_by_status("running")
     for task in tasks:
         if not task.operation_id:
-            print(f"Task {task.id} doesn't have operation_id")
+            logging.error(f"Task {task.id} doesn't have operation_id")
             continue
 
         created_at = MoscowTimezone.localize(task.created_at)
@@ -114,10 +115,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             await bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))
             update_transcription(task.id, status="completed", result_s3_path=s3_uri)
         except Exception as e:
-            print("Ошибка во время отправки результата")
-            update_transcription(task.id, status="failed", result_s3_path=s3_uri)
+            logging.error(f"Failed to send result for task {task.id}: {e}")
             if os.getenv("ENABLE_SENTRY") == "1":
                 sentry_sdk.capture_exception(e)
+
+            update_transcription(task.id, status="failed", result_s3_path=s3_uri)
+
             await safe_edit_message_text(
                 bot,
                 task.chat_id,
