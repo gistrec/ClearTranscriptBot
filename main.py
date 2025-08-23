@@ -22,10 +22,11 @@ from handlers.text import handle_text
 
 
 logging.basicConfig(
-    level=logging.INFO,  # показывать info+ сообщения
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
-logging.getLogger("apscheduler.executors.default").setLevel(logging.WARNING)
+# Mute noisy loggers
+logging.getLogger("apscheduler").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 

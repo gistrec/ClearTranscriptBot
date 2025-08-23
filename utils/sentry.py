@@ -12,6 +12,7 @@ if ENABLE_SENTRY:
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         enable_logs=True,
+        send_default_pii=False,
         integrations=[LoggingIntegration(
             level=logging.INFO,
             event_level=logging.ERROR,
