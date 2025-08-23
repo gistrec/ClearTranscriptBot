@@ -1,5 +1,7 @@
 """Periodic scheduler for checking transcription statuses."""
+import os
 import pytz
+import sentry_sdk
 
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -42,6 +44,8 @@ async def safe_edit_message_text(bot, chat_id, message_id, text):
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
     except Exception as e:
         print(f"Failed to edit message {message_id} in chat {chat_id}: {e}")
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
 
 
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -109,9 +113,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         try:
             await bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))
             update_transcription(task.id, status="completed", result_s3_path=s3_uri)
-        except Exception:
+        except Exception as e:
             print("Ошибка во время отправки результата")
             update_transcription(task.id, status="failed", result_s3_path=s3_uri)
+            if os.getenv("ENABLE_SENTRY") == "1":
+                sentry_sdk.capture_exception(e)
             await safe_edit_message_text(
                 bot,
                 task.chat_id,

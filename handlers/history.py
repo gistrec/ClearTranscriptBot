@@ -5,10 +5,13 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.queries import get_recent_transcriptions
+
+from utils.sentry import sentry_bind_user
 from utils.speechkit import format_duration
 from utils.tg import STATUS_EMOJI, fmt_price
 
 
+@sentry_bind_user
 async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     telegram_id = update.effective_user.id
     items = get_recent_transcriptions(telegram_id, limit=10)

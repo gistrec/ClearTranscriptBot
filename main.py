@@ -1,5 +1,6 @@
 """Telegram bot for ClearTranscriptBot."""
 import os
+import logging
 
 from telegram import BotCommand
 from telegram.ext import (
@@ -18,6 +19,16 @@ from handlers.file import handle_file
 from handlers.history import handle_history
 from handlers.price import handle_price
 from handlers.text import handle_text
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+# Mute noisy loggers
+logging.getLogger("apscheduler").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None

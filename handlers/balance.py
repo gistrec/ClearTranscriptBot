@@ -4,9 +4,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.queries import add_user, get_user_by_telegram_id
+
+from utils.sentry import sentry_bind_user
 from utils.speechkit import available_time_by_balance
 
 
+@sentry_bind_user
 async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     telegram_id = update.effective_user.id
     user = get_user_by_telegram_id(telegram_id)

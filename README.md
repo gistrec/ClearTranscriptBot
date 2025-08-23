@@ -83,6 +83,14 @@ ClearTranscriptBot
 | `YC_FOLDER_ID`  | Folder ID   |
 
 
+### Sentry
+
+| Variable        | Description                                   |
+|-----------------|-----------------------------------------------|
+| `ENABLE_SENTRY` | Set to `1` to enable Sentry error reporting.  |
+| `SENTRY_DSN`    | Optional, DSN for your Sentry project.        |
+
+
 ## Local Bot API server
 
 To handle large files you can run a local copy of Telegram's Bot API server.
