@@ -1,9 +1,19 @@
-boto3
-mysqlclient
-python-telegram-bot
+# Core
+python-telegram-bot>=20.0
 python-telegram-bot[job-queue]
 python-telegram-bot[callback-data]
+
+# Database
+sqlalchemy>=2.0
+mysqlclient
+
+# Cloud
+boto3
+
+# Utils
 pytz
 requests
-sqlalchemy
+httpx
+
+# Monitoring / error reporting
 sentry_sdk
