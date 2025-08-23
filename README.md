@@ -16,6 +16,7 @@ Telegram bot for automatic audio/video transcription:
 - 💬 Transcription via Yandex SpeechKit
 - 💰 Balance and billing inside Telegram
 - 📜 Full request history
+- 🐞 Optional error reporting via Sentry
 
 ## Project structure
 
@@ -38,6 +39,7 @@ ClearTranscriptBot
 ├── utils/               # Helper utilities
 │   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
 │   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
+│   ├── sentry.py        # Sentry error reporting helpers
 │   ├── speechkit.py     # Request transcription from SpeechKit
 │   └── tg.py            # Telegram-specific helpers
 └── requirements.txt     # Python dependencies list
