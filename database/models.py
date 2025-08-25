@@ -80,3 +80,34 @@ class TranscriptionHistory(Base):
 
     # Timestamp when the request was created
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class Payment(Base):
+    """Payments processed via Tinkoff acquiring."""
+
+    __tablename__ = "payments"
+
+    __table_args__ = (
+        Index("idx_payments_telegram_id", "telegram_id"),
+    )
+
+    # Identifier of the payment record
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Telegram user who initiated the payment
+    telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
+
+    # Merchant order identifier
+    order_id = Column(String(64), nullable=False, unique=True)
+
+    # Identifier returned by Tinkoff
+    payment_id = Column(BigInteger, nullable=True, unique=True)
+
+    # Payment amount in rubles
+    amount = Column(Numeric(10, 2), nullable=False)
+
+    # Current payment status
+    status = Column(String(32), nullable=False)
+
+    # Timestamp when the payment was created
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())

@@ -36,6 +36,10 @@ ClearTranscriptBot
 │   ├── connection.py    # MySQL connection setup via SQLAlchemy
 │   ├── models.py        # SQLAlchemy models for application tables
 │   └── queries.py       # Helper functions for common database operations
+├── payment/             # Tinkoff acquiring API wrappers
+│   ├── init.py
+│   ├── get_state.py
+│   └── cancel.py
 ├── utils/               # Helper utilities
 │   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
 │   ├── marketing.py     # Advertising/tracking: send conversion goals to Yandex Metrica
@@ -101,6 +105,14 @@ ClearTranscriptBot
 | `MEAS_TOKEN`   | Measurement Protocol token (generated in Metrica counter settings)  |
 | `BOT_URL`      | Public URL of your bot (e.g. `https://t.me/ClearTranscriptBot`)     |
 
+### Tinkoff acquiring
+
+| Variable            | Description                                  |
+|---------------------|----------------------------------------------|
+| `TERMINAL_KEY`      | Terminal key from Tinkoff                    |
+| `TERMINAL_PASSWORD` | Terminal password from Tinkoff               |
+| `TERMINAL_ENV`      | Environment: `test` for sandbox or `prod`    |
+
 ## Local Bot API server
 
 To handle large files you can run a local copy of Telegram's Bot API server.
@@ -153,6 +165,20 @@ CREATE TABLE IF NOT EXISTS transcription_history (
 -- Index to speed up lookups by user
 CREATE INDEX idx_transcription_history_telegram_id
     ON transcription_history(telegram_id);
+
+-- Payments processed via Tinkoff acquiring
+CREATE TABLE IF NOT EXISTS payments (
+    id              BIGINT          PRIMARY KEY,
+    telegram_id     BIGINT          NOT NULL REFERENCES users(telegram_id),
+    order_id        VARCHAR(64)     NOT NULL UNIQUE,
+    payment_id      BIGINT          UNIQUE,
+    amount          DECIMAL(10,2)   NOT NULL,
+    status          VARCHAR(32)     NOT NULL,
+    created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_payments_telegram_id
+    ON payments(telegram_id);
 ```
 
 ## Installation
