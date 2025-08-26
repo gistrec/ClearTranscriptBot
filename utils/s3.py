@@ -1,4 +1,5 @@
 """Utilities for uploading files to Yandex Cloud S3."""
+import asyncio
 import os
 from pathlib import Path
 from typing import Optional
@@ -16,7 +17,7 @@ if not all([S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_BUCKET]):
     )
 
 
-def upload_file(file_path: str | Path, object_name: Optional[str] = None) -> str:
+async def upload_file(file_path: str | Path, object_name: Optional[str] = None) -> str:
     """Upload *file_path* to Yandex Cloud S3.
 
     Parameters
@@ -35,10 +36,13 @@ def upload_file(file_path: str | Path, object_name: Optional[str] = None) -> str
     if object_name is None:
         object_name = file_path.name
 
-    session = boto3.session.Session(
-        aws_access_key_id=S3_ACCESS_KEY,
-        aws_secret_access_key=S3_SECRET_KEY,
-    )
-    s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
-    s3.upload_file(str(file_path), S3_BUCKET, object_name)
-    return f"{S3_ENDPOINT}/{S3_BUCKET}/{object_name}"
+    def _upload() -> str:
+        session = boto3.session.Session(
+            aws_access_key_id=S3_ACCESS_KEY,
+            aws_secret_access_key=S3_SECRET_KEY,
+        )
+        s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
+        s3.upload_file(str(file_path), S3_BUCKET, object_name)
+        return f"{S3_ENDPOINT}/{S3_BUCKET}/{object_name}"
+
+    return await asyncio.to_thread(_upload)

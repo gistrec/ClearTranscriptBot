@@ -1,4 +1,5 @@
 """Utility functions for working with ffmpeg."""
+import asyncio
 import os
 import sentry_sdk
 import subprocess
@@ -6,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 
-def get_media_duration(source: str | Path) -> float:
+async def get_media_duration(source: str | Path) -> float:
     """Return duration of the media file in seconds.
 
     The function relies on ``ffprobe`` being available in the system PATH.
@@ -34,7 +35,13 @@ def get_media_duration(source: str | Path) -> float:
         str(src),
     ]
     try:
-        out = subprocess.check_output(command, text=True).strip()
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await process.communicate()
+        out = stdout.decode().strip()
         return float(out)
     except Exception as e:
         if os.getenv("ENABLE_SENTRY") == "1":
@@ -42,7 +49,7 @@ def get_media_duration(source: str | Path) -> float:
         return 0.0
 
 
-def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
+async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
     """Convert an audio or video file to OGG using ffmpeg.
 
     Parameters
@@ -76,5 +83,14 @@ def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
         "64k",
         str(dst),
     ]
-    subprocess.run(command, check=True)
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
+    if process.returncode != 0:
+        raise subprocess.CalledProcessError(
+            process.returncode, command, output=stdout, stderr=stderr
+        )
     return dst
