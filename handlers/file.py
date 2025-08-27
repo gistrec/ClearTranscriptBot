@@ -80,6 +80,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             await file.download_to_drive(custom_path=str(local_path))
 
         duration = await get_media_duration(local_path)
+        if not duration:
+            await message.reply_text("Не удалось определить длительность файла")
+            return
         price = cost_yc_async_rub(duration)
         price_dec = Decimal(price)
         if user.balance < price_dec:
@@ -90,10 +93,16 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         ogg_name = f"{local_path.stem}.ogg"
         ogg_path = out_dir / ogg_name
-        await convert_to_ogg(local_path, ogg_path)
+        converted = await convert_to_ogg(local_path, ogg_path)
+        if converted is None:
+            await message.reply_text("Не удалось преобразовать файл")
+            return
 
         object_name = f"source/{telegram_id}/{ogg_path.name}"
         s3_uri = await upload_file(ogg_path, object_name)
+        if s3_uri is None:
+            await message.reply_text("Не удалось загрузить файл. Попробуйте ещё раз")
+            return
 
     history = add_transcription(
         telegram_id=telegram_id,

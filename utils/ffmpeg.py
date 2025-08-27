@@ -2,7 +2,6 @@
 import asyncio
 import os
 import sentry_sdk
-import subprocess
 
 from pathlib import Path
 
@@ -40,7 +39,13 @@ async def get_media_duration(source: str | Path) -> float:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, _ = await process.communicate()
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            if os.getenv("ENABLE_SENTRY") == "1":
+                sentry_sdk.capture_message(
+                    f"ffprobe failed: {stderr.decode().strip()}"
+                )
+            return 0.0
         out = stdout.decode().strip()
         return float(out)
     except Exception as e:
@@ -49,7 +54,7 @@ async def get_media_duration(source: str | Path) -> float:
         return 0.0
 
 
-async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
+async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path | None:
     """Convert an audio or video file to OGG using ffmpeg.
 
     Parameters
@@ -62,8 +67,8 @@ async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
 
     Returns
     -------
-    Path
-        Path to the converted OGG file.
+    Path | None
+        Path to the converted OGG file. ``None`` if conversion failed.
     """
     src = Path(source)
     dst = Path(destination)
@@ -83,14 +88,21 @@ async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
         "64k",
         str(dst),
     ]
-    process = await asyncio.create_subprocess_exec(
-        *command,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await process.communicate()
-    if process.returncode != 0:
-        raise subprocess.CalledProcessError(
-            process.returncode, command, output=stdout, stderr=stderr
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-    return dst
+        _, stderr = await process.communicate()
+        if process.returncode != 0:
+            if os.getenv("ENABLE_SENTRY") == "1":
+                sentry_sdk.capture_message(
+                    f"ffmpeg failed: {stderr.decode().strip()}"
+                )
+            return None
+        return dst
+    except Exception as e:
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+        return None
