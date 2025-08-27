@@ -93,8 +93,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         ogg_name = f"{local_path.stem}.ogg"
         ogg_path = out_dir / ogg_name
-        converted = await convert_to_ogg(local_path, ogg_path)
-        if converted is None:
+        success = await convert_to_ogg(local_path, ogg_path)
+        if not success:
             await message.reply_text("Не удалось преобразовать файл")
             return
 

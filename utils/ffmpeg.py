@@ -54,7 +54,7 @@ async def get_media_duration(source: str | Path) -> float:
         return 0.0
 
 
-async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path | None:
+async def convert_to_ogg(source: str | Path, destination: str | Path) -> bool:
     """Convert an audio or video file to OGG using ffmpeg.
 
     Parameters
@@ -67,8 +67,8 @@ async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path | 
 
     Returns
     -------
-    Path | None
-        Path to the converted OGG file. ``None`` if conversion failed.
+    bool
+        ``True`` if conversion succeeded, ``False`` otherwise.
     """
     src = Path(source)
     dst = Path(destination)
@@ -100,9 +100,9 @@ async def convert_to_ogg(source: str | Path, destination: str | Path) -> Path | 
                 sentry_sdk.capture_message(
                     f"ffmpeg failed: {stderr.decode().strip()}"
                 )
-            return None
-        return dst
+            return False
+        return True
     except Exception as e:
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)
-        return None
+        return False
