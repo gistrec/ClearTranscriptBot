@@ -81,8 +81,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         duration = await get_media_duration(local_path)
         if not duration:
-            await message.reply_text("Не удалось определить длительность файла")
+            await message.reply_text(
+                "Не удалось определить длительность файла\n"
+                "Возможно, формат не поддерживается или файл повреждён"
+            )
             return
+
         price = cost_yc_async_rub(duration)
         price_dec = Decimal(price)
         if user.balance < price_dec:
@@ -95,7 +99,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         ogg_path = out_dir / ogg_name
         success = await convert_to_ogg(local_path, ogg_path)
         if not success:
-            await message.reply_text("Не удалось преобразовать файл")
+            await message.reply_text(
+                "Не удалось преобразовать файл\n"
+                "Возможно, он имеет неподдерживаемый формат"
+            )
             return
 
         object_name = f"source/{telegram_id}/{ogg_path.name}"

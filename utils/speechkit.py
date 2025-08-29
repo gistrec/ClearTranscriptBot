@@ -1,10 +1,11 @@
 """Interact with Yandex Cloud SpeechKit for transcription."""
 import os
+import httpx
+
 from math import ceil
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 
-import httpx
 
 
 API_URL = "https://transcribe.api.cloud.yandex.net/speech/stt/v2/longRunningRecognize"

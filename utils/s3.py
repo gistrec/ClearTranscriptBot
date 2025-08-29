@@ -1,11 +1,12 @@
 """Utilities for uploading files to Yandex Cloud S3."""
-import asyncio
 import os
+import boto3
+import asyncio
+import sentry_sdk
+
 from pathlib import Path
 from typing import Optional
 
-import boto3
-import sentry_sdk
 
 S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
