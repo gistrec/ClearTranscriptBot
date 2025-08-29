@@ -75,7 +75,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 "Отправлю результат, как только всё будет готово.",
             )
 
-        result = fetch_transcription_result(task.operation_id)
+        result = await fetch_transcription_result(task.operation_id)
 
         # Результата еще нет, проверим снова через секунду
         if result is None:
@@ -102,7 +102,17 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         path.write_text(text, encoding="utf-8")
 
         object_name = f"result/{task.telegram_id}/{path.name}"
-        s3_uri = upload_file(path, object_name)
+        s3_uri = await upload_file(path, object_name)
+        if s3_uri is None:
+            update_transcription(task.id, status="failed")
+            await safe_edit_message_text(
+                bot,
+                task.chat_id,
+                task.message_id,
+                f"❌ Задача №{task.id} завершилась с ошибкой. Попробуйте ещё раз.",
+            )
+            path.unlink(missing_ok=True)
+            continue
 
         await safe_edit_message_text(
             bot,

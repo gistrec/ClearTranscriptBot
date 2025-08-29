@@ -1,11 +1,11 @@
 """Interact with Yandex Cloud SpeechKit for transcription."""
 import os
-import requests
+import httpx
 
-from typing import Dict, Any, Optional
-from typing import Optional
 from math import ceil
 from decimal import Decimal
+from typing import Dict, Optional
+
 
 
 API_URL = "https://transcribe.api.cloud.yandex.net/speech/stt/v2/longRunningRecognize"
@@ -39,10 +39,13 @@ def parse_text(result: dict, separator: str = "\n") -> str:
     return separator.join(parts)
 
 
-def fetch_transcription_result(operation_id: str) -> Optional[dict]:
+async def fetch_transcription_result(operation_id: str) -> Optional[dict]:
     """Check status of *operation_id* and return result if finished."""
     headers = _auth_headers()
-    status_response = requests.get(OPERATIONS_URL.format(id=operation_id), headers=headers, timeout=10)
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        status_response = await client.get(
+            OPERATIONS_URL.format(id=operation_id), headers=headers
+        )
     status_response.raise_for_status()
     # Пример ответа:
     # {
@@ -62,7 +65,7 @@ def fetch_transcription_result(operation_id: str) -> Optional[dict]:
     return None
 
 
-def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
+async def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
     """Start transcription for *s3_uri* and return operation id."""
     headers = _auth_headers()
     payload = {
@@ -76,7 +79,8 @@ def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
         "audio": {"uri": s3_uri},
         "folderId": YC_FOLDER_ID,
     }
-    response = requests.post(API_URL, json=payload, headers=headers, timeout=10)
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(API_URL, json=payload, headers=headers)
     response.raise_for_status()
     # Пример ответа:
     # {

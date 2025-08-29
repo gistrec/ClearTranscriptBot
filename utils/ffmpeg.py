@@ -1,12 +1,12 @@
 """Utility functions for working with ffmpeg."""
+import asyncio
 import os
 import sentry_sdk
-import subprocess
 
 from pathlib import Path
 
 
-def get_media_duration(source: str | Path) -> float:
+async def get_media_duration(source: str | Path) -> float:
     """Return duration of the media file in seconds.
 
     The function relies on ``ffprobe`` being available in the system PATH.
@@ -34,7 +34,19 @@ def get_media_duration(source: str | Path) -> float:
         str(src),
     ]
     try:
-        out = subprocess.check_output(command, text=True).strip()
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            if os.getenv("ENABLE_SENTRY") == "1":
+                sentry_sdk.capture_message(
+                    f"ffprobe failed: {stderr.decode().strip()}"
+                )
+            return 0.0
+        out = stdout.decode().strip()
         return float(out)
     except Exception as e:
         if os.getenv("ENABLE_SENTRY") == "1":
@@ -42,7 +54,7 @@ def get_media_duration(source: str | Path) -> float:
         return 0.0
 
 
-def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
+async def convert_to_ogg(source: str | Path, destination: str | Path) -> bool:
     """Convert an audio or video file to OGG using ffmpeg.
 
     Parameters
@@ -55,8 +67,8 @@ def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
 
     Returns
     -------
-    Path
-        Path to the converted OGG file.
+    bool
+        ``True`` if conversion succeeded, ``False`` otherwise.
     """
     src = Path(source)
     dst = Path(destination)
@@ -76,5 +88,21 @@ def convert_to_ogg(source: str | Path, destination: str | Path) -> Path:
         "64k",
         str(dst),
     ]
-    subprocess.run(command, check=True)
-    return dst
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await process.communicate()
+        if process.returncode != 0:
+            if os.getenv("ENABLE_SENTRY") == "1":
+                sentry_sdk.capture_message(
+                    f"ffmpeg failed: {stderr.decode().strip()}"
+                )
+            return False
+        return True
+    except Exception as e:
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+        return False
