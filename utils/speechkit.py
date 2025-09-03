@@ -7,9 +7,10 @@ from decimal import Decimal
 from typing import Dict, Optional
 
 
-
 API_URL = "https://transcribe.api.cloud.yandex.net/speech/stt/v2/longRunningRecognize"
 OPERATIONS_URL = "https://operation.api.cloud.yandex.net/operations/{id}"
+
+MAX_AUDIO_DURATION = 4 * 60 * 60  # seconds, SpeechKit limit
 
 YC_API_KEY = os.environ.get("YC_API_KEY")
 YC_FOLDER_ID = os.environ.get("YC_FOLDER_ID")
