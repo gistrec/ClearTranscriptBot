@@ -2,6 +2,7 @@
 import os
 import boto3
 import asyncio
+import logging
 import sentry_sdk
 
 from pathlib import Path
@@ -48,8 +49,11 @@ async def upload_file(file_path: str | Path, object_name: Optional[str] = None) 
             s3.upload_file(str(file_path), S3_BUCKET, object_name)
             return f"{S3_ENDPOINT}/{S3_BUCKET}/{object_name}"
         except Exception as e:
+            logging.error(f"Failed to upload {file_path} to S3: {e}")
+
             if os.getenv("ENABLE_SENTRY") == "1":
                 sentry_sdk.capture_exception(e)
+
             return None
 
     return await asyncio.to_thread(_upload)

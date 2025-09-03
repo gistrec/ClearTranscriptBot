@@ -1,6 +1,7 @@
 """Utility functions for working with ffmpeg."""
-import asyncio
 import os
+import asyncio
+import logging
 import sentry_sdk
 
 from pathlib import Path
@@ -49,8 +50,11 @@ async def get_media_duration(source: str | Path) -> float:
         out = stdout.decode().strip()
         return float(out)
     except Exception as e:
+        logging.error(f"Failed to get media duration for {source}: {e}")
+
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)
+
         return 0.0
 
 
@@ -103,6 +107,9 @@ async def convert_to_ogg(source: str | Path, destination: str | Path) -> bool:
             return False
         return True
     except Exception as e:
+        logging.error(f"Failed to convert {source} to OGG: {e}")
+
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)
+
         return False

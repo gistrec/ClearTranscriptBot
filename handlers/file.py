@@ -116,7 +116,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         object_name = f"source/{telegram_id}/{ogg_path.name}"
         s3_uri = await upload_file(ogg_path, object_name)
         if s3_uri is None:
-            await message.reply_text("Не удалось загрузить файл. Попробуйте ещё раз")
+            await message.reply_text(
+                "Не удалось загрузить файл\n"
+                "Пожалуйста, попробуйте ещё раз чуть позже"
+            )
             return
 
     history = add_transcription(

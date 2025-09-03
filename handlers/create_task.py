@@ -47,6 +47,14 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     change_user_balance(telegram_id, -price)
 
     operation_id = await run_transcription(task.audio_s3_path)
+    if not operation_id:
+        change_user_balance(telegram_id, price)
+        await query.edit_message_text(
+            "Не удалось запустить распознавание\n"
+            "Пожалуйста, попробуйте ещё раз чуть позже"
+        )
+        return
+
     update_transcription(task.id, status="running", operation_id=operation_id)
 
     await query.edit_message_reply_markup(reply_markup=None)

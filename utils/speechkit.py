@@ -1,6 +1,8 @@
 """Interact with Yandex Cloud SpeechKit for transcription."""
 import os
 import httpx
+import logging
+import sentry_sdk
 
 from math import ceil
 from decimal import Decimal
@@ -66,8 +68,8 @@ async def fetch_transcription_result(operation_id: str) -> Optional[dict]:
     return None
 
 
-async def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
-    """Start transcription for *s3_uri* and return operation id."""
+async def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> Optional[str]:
+    """Start transcription for *s3_uri* and return operation id or ``None`` on error."""
     headers = _auth_headers()
     payload = {
         "config": {
@@ -80,18 +82,27 @@ async def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> str:
         "audio": {"uri": s3_uri},
         "folderId": YC_FOLDER_ID,
     }
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(API_URL, json=payload, headers=headers)
-    response.raise_for_status()
-    # Пример ответа:
-    # {
-    #     'done': False,
-    #     'id': 'e03sncdp55uvg2tfpso1',
-    #     'createdAt': '2025-08-09T20:48:53Z',
-    #     'createdBy': 'ajekbvv6h80cp2hle7rf',
-    #     'modifiedAt': '2025-08-09T20:48:53Z'
-    # }
-    return response.json()["id"]
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(API_URL, json=payload, headers=headers)
+        response.raise_for_status()
+
+        # Пример ответа:
+        # {
+        #     'done': False,
+        #     'id': 'e03sncdp55uvg2tfpso1',
+        #     'createdAt': '2025-08-09T20:48:53Z',
+        #     'createdBy': 'ajekbvv6h80cp2hle7rf',
+        #     'modifiedAt': '2025-08-09T20:48:53Z'
+        # }
+        return response.json()["id"]
+    except Exception as e:
+        logging.error(f"Failed to start transcription for {s3_uri}: {e}")
+
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+
+        return None
 
 
 def cost_yc_async_rub(duration_s: float, channels: int = 1, deferred: bool = False) -> str:
