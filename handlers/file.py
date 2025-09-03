@@ -86,9 +86,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 "Возможно, формат не поддерживается или файл повреждён"
             )
             return
+
+        duration_str = format_duration(int(duration))
         if duration > MAX_AUDIO_DURATION:
             await message.reply_text(
-                "Файл слишком длинный. Поддерживаются записи до 4 часов"
+                "Файл слишком длинный: {duration_str}\n"
+                "Максимально допустимая длительность — 4 часа"
             )
             return
 
@@ -134,7 +137,6 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         ),
     ]
 
-    duration_str = format_duration(int(duration))
     await message.reply_text(
         f"Длительность: {duration_str}\nСтоимость: {price} ₽",
         reply_markup=InlineKeyboardMarkup([buttons]),
