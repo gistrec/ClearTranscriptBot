@@ -61,7 +61,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     if not _is_supported(mime):
-        await message.reply_text("Файл должен быть видео или аудио")
+        await message.reply_text(
+            "Этот тип файла не поддерживается\n"
+            "Пожалуйста, отправьте видео или аудио"
+        )
         return
 
     with tempfile.TemporaryDirectory() as workdir:
