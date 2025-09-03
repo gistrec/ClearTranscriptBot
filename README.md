@@ -12,6 +12,7 @@ Telegram bot for automatic audio/video transcription:
 ## Features
 
 - 🎙 Supports audio and video files
+- ⏱️ Handles media up to 4 hours (SpeechKit limit)
 - 📦 Stores files in Yandex Cloud S3
 - 💬 Transcription via Yandex SpeechKit
 - 💰 Balance and billing inside Telegram

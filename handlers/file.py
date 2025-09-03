@@ -12,7 +12,7 @@ from database.queries import add_transcription, add_user, get_user_by_telegram_i
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user
-from utils.speechkit import cost_yc_async_rub, format_duration
+from utils.speechkit import cost_yc_async_rub, format_duration, MAX_AUDIO_DURATION
 from utils.tg import extract_local_path
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
@@ -84,6 +84,11 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             await message.reply_text(
                 "Не удалось определить длительность файла\n"
                 "Возможно, формат не поддерживается или файл повреждён"
+            )
+            return
+        if duration > MAX_AUDIO_DURATION:
+            await message.reply_text(
+                "Файл слишком длинный. Поддерживаются записи до 4 часов"
             )
             return
 
