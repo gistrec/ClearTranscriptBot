@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 from decimal import Decimal
@@ -16,6 +17,15 @@ from utils.speechkit import cost_yc_async_rub, format_duration, MAX_AUDIO_DURATI
 from utils.tg import extract_local_path
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
+
+
+def _sanitize_filename(name: str) -> str:
+    """Return a safe file name containing Latin/Cyrillic letters, digits and separators."""
+
+    sanitized = re.sub(r"[^0-9A-Za-zА-Яа-яЁё._-]", "_", name)
+    sanitized = re.sub(r"_+", "_", sanitized)
+    sanitized = sanitized.strip("._")
+    return sanitized or "audio"
 
 
 def _is_supported(mime: str) -> bool:
@@ -106,7 +116,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-        ogg_name = f"{local_path.stem}.ogg"
+        safe_stem = _sanitize_filename(local_path.stem)
+        ogg_name = f"{safe_stem}.ogg"
         ogg_path = out_dir / ogg_name
         success = await convert_to_ogg(local_path, ogg_path)
         if not success:
