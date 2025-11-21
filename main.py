@@ -18,6 +18,7 @@ from handlers.create_task import handle_create_task
 from handlers.file import handle_file
 from handlers.history import handle_history
 from handlers.price import handle_price
+from handlers.topup import handle_topup, handle_topup_callback
 from handlers.text import handle_text
 
 
@@ -43,6 +44,7 @@ async def register_commands(application: Application) -> None:
             BotCommand("start", "Начать работу"),
             BotCommand("history", "История распознаваний"),
             BotCommand("balance", "Текущий баланс"),
+            BotCommand("topup", "Пополнить баланс"),
             BotCommand("price", "Стоимость распознавания"),
         ]
     )
@@ -65,6 +67,7 @@ def main() -> None:
     application = builder.build()
     application.add_handler(CommandHandler("history", handle_history))
     application.add_handler(CommandHandler("balance", handle_balance))
+    application.add_handler(CommandHandler("topup", handle_topup))
     application.add_handler(CommandHandler("price", handle_price))
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
@@ -74,6 +77,9 @@ def main() -> None:
     )
     application.add_handler(
         CallbackQueryHandler(handle_cancel_task, pattern=r"^cancel_task:\d+$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_topup_callback, pattern=r"^topup:\d+$")
     )
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
     application.run_polling()

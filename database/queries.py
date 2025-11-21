@@ -5,7 +5,9 @@ from typing import Optional, Any
 from decimal import Decimal
 
 from .connection import SessionLocal
-from .models import User, TranscriptionHistory
+import json
+
+from .models import TopUp, User, TranscriptionHistory
 
 
 def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
@@ -101,3 +103,66 @@ def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
         session.commit()
         session.refresh(user)
         return user
+
+
+def create_topup(
+    telegram_id: int,
+    order_id: str,
+    amount: Decimal,
+    status: str,
+    payment_id: int | None = None,
+    payment_url: str | None = None,
+    description: str | None = None,
+    gateway_response: dict | None = None,
+) -> TopUp:
+    """Persist a top-up record."""
+
+    with SessionLocal() as session:
+        topup = TopUp(
+            telegram_id=telegram_id,
+            order_id=order_id,
+            payment_id=payment_id,
+            amount=amount,
+            status=status,
+            payment_url=payment_url,
+            description=description,
+            gateway_response=(
+                json.dumps(gateway_response, ensure_ascii=False)
+                if gateway_response is not None
+                else None
+            ),
+        )
+        session.add(topup)
+        session.commit()
+        session.refresh(topup)
+        return topup
+
+
+def update_topup(order_id: str, **fields: Any) -> Optional[TopUp]:
+    """Update fields of an existing top-up."""
+
+    if not fields:
+        return None
+
+    with SessionLocal() as session:
+        topup = session.query(TopUp).filter(TopUp.order_id == order_id).first()
+        if topup is None:
+            return None
+        for key, value in fields.items():
+            setattr(topup, key, value)
+        session.commit()
+        session.refresh(topup)
+        return topup
+
+
+def get_recent_topups(telegram_id: int, limit: int = 5) -> list[TopUp]:
+    """Return recent top-ups for *telegram_id* limited by *limit*."""
+
+    with SessionLocal() as session:
+        return (
+            session.query(TopUp)
+            .filter(TopUp.telegram_id == telegram_id)
+            .order_by(TopUp.id.desc())
+            .limit(limit)
+            .all()
+        )

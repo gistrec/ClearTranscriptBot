@@ -179,6 +179,23 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX idx_payments_telegram_id
     ON payments(telegram_id);
+
+-- Top-ups initiated from the bot
+CREATE TABLE IF NOT EXISTS topups (
+    id               BIGINT          PRIMARY KEY,
+    telegram_id      BIGINT          NOT NULL REFERENCES users(telegram_id),
+    order_id         VARCHAR(64)     NOT NULL UNIQUE,
+    payment_id       BIGINT          UNIQUE,
+    amount           DECIMAL(10,2)   NOT NULL,
+    status           VARCHAR(32)     NOT NULL,
+    payment_url      TEXT,
+    description      VARCHAR(255),
+    gateway_response TEXT,
+    created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_topups_telegram_id
+    ON topups(telegram_id);
 ```
 
 ## Installation
