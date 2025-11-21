@@ -41,5 +41,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "Доступные команды:\n"
         "• /history — история распознаваний\n"
         "• /balance — текущий баланс\n"
+        "• /topup — пополнить баланс\n"
         "• /price — стоимость"
     )
