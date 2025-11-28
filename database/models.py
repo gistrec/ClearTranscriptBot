@@ -1,5 +1,4 @@
 """SQLAlchemy models for database tables."""
-from __future__ import annotations
 from sqlalchemy import (
     BigInteger,
     Column,
@@ -97,42 +96,14 @@ class Payment(Base):
     # Telegram user who initiated the payment
     telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
 
-    # Merchant order identifier
-    order_id = Column(String(64), nullable=False, unique=True)
-
-    # Identifier returned by Tinkoff
-    payment_id = Column(BigInteger, nullable=True, unique=True)
-
-    # Payment amount in rubles
-    amount = Column(Numeric(10, 2), nullable=False)
-
-    # Current payment status
-    status = Column(String(32), nullable=False)
-
-    # Timestamp when the payment was created
-    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
-
-
-class TopUp(Base):
-    """User balance top-ups."""
-
-    __tablename__ = "topups"
-
-    __table_args__ = (
-        Index("idx_topups_telegram_id", "telegram_id"),
-    )
-
-    # Identifier of the top-up record
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    # Telegram user who initiated the top-up
-    telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
+    # Identifier of the Telegram message with payment info
+    message_id = Column(Integer, nullable=True)
 
     # Merchant order identifier
     order_id = Column(String(64), nullable=False, unique=True)
 
     # Identifier returned by Tinkoff
-    payment_id = Column(BigInteger, nullable=True, unique=True)
+    payment_id = Column(BigInteger, nullable=False, unique=True)
 
     # Payment amount in rubles
     amount = Column(Numeric(10, 2), nullable=False)
@@ -141,13 +112,13 @@ class TopUp(Base):
     status = Column(String(32), nullable=False)
 
     # URL for completing the payment
-    payment_url = Column(Text, nullable=True)
+    payment_url = Column(Text, nullable=False)
 
     # Optional description for the payment
-    description = Column(String(255), nullable=True)
+    description = Column(String(255), nullable=False)
 
-    # Raw gateway response for debugging
-    gateway_response = Column(Text, nullable=True)
+    # Raw tinkoff response for debugging
+    tinkoff_response = Column(Text, nullable=False)
 
-    # Timestamp when the top-up was created
+    # Timestamp when the payment was created
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())

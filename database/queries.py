@@ -1,13 +1,10 @@
-"""Helper functions for common database operations."""
-from __future__ import annotations
+import json
 
 from typing import Optional, Any
 from decimal import Decimal
 
 from .connection import SessionLocal
-import json
-
-from .models import TopUp, User, TranscriptionHistory
+from .models import User, TranscriptionHistory, Payment
 
 
 def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
@@ -23,7 +20,19 @@ def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
 def get_user_by_telegram_id(telegram_id: int) -> Optional[User]:
     """Fetch a user by their Telegram identifier."""
     with SessionLocal() as session:
-        return session.get(User, telegram_id)
+        return session.query(User).filter(User.telegram_id == telegram_id).one_or_none()
+
+
+def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
+    """Add *delta* to user's balance and return updated user."""
+    with SessionLocal() as session:
+        user = session.get(User, telegram_id)
+        if user is None:
+            return None
+        user.balance = (user.balance or Decimal("0")) + delta
+        session.commit()
+        session.refresh(user)
+        return user
 
 
 def add_transcription(
@@ -93,32 +102,18 @@ def get_recent_transcriptions(telegram_id: int, limit: int = 10) -> list[Transcr
         )
 
 
-def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
-    """Add *delta* to user's balance and return updated user."""
-    with SessionLocal() as session:
-        user = session.get(User, telegram_id)
-        if user is None:
-            return None
-        user.balance = (user.balance or Decimal("0")) + delta
-        session.commit()
-        session.refresh(user)
-        return user
-
-
-def create_topup(
+def create_payment(
     telegram_id: int,
     order_id: str,
     amount: Decimal,
     status: str,
-    payment_id: int | None = None,
-    payment_url: str | None = None,
-    description: str | None = None,
-    gateway_response: dict | None = None,
-) -> TopUp:
-    """Persist a top-up record."""
-
+    payment_id: int,
+    payment_url: str,
+    description: str,
+    tinkoff_response: dict,
+) -> Payment:
     with SessionLocal() as session:
-        topup = TopUp(
+        topup = Payment(
             telegram_id=telegram_id,
             order_id=order_id,
             payment_id=payment_id,
@@ -126,11 +121,7 @@ def create_topup(
             status=status,
             payment_url=payment_url,
             description=description,
-            gateway_response=(
-                json.dumps(gateway_response, ensure_ascii=False)
-                if gateway_response is not None
-                else None
-            ),
+            tinkoff_response=json.dumps(tinkoff_response, ensure_ascii=False),
         )
         session.add(topup)
         session.commit()
@@ -138,14 +129,28 @@ def create_topup(
         return topup
 
 
-def update_topup(order_id: str, **fields: Any) -> Optional[TopUp]:
-    """Update fields of an existing top-up."""
+def get_recent_payments(telegram_id: int, limit: int = 5) -> list[Payment]:
+    with SessionLocal() as session:
+        return (
+            session.query(Payment)
+            .filter(Payment.telegram_id == telegram_id)
+            .order_by(Payment.id.desc())
+            .limit(limit)
+            .all()
+        )
 
+
+def get_payment_by_order_id(order_id: str) -> Optional[Payment]:
+    with SessionLocal() as session:
+        return session.query(Payment).filter(Payment.order_id == order_id).one_or_none()
+
+
+def update_payment(order_id: str, **fields: Any) -> Optional[Payment]:
     if not fields:
         return None
 
     with SessionLocal() as session:
-        topup = session.query(TopUp).filter(TopUp.order_id == order_id).first()
+        topup = session.query(Payment).filter(Payment.order_id == order_id).first()
         if topup is None:
             return None
         for key, value in fields.items():
@@ -153,16 +158,3 @@ def update_topup(order_id: str, **fields: Any) -> Optional[TopUp]:
         session.commit()
         session.refresh(topup)
         return topup
-
-
-def get_recent_topups(telegram_id: int, limit: int = 5) -> list[TopUp]:
-    """Return recent top-ups for *telegram_id* limited by *limit*."""
-
-    with SessionLocal() as session:
-        return (
-            session.query(TopUp)
-            .filter(TopUp.telegram_id == telegram_id)
-            .order_by(TopUp.id.desc())
-            .limit(limit)
-            .all()
-        )

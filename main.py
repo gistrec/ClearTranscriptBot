@@ -18,8 +18,8 @@ from handlers.create_task import handle_create_task
 from handlers.file import handle_file
 from handlers.history import handle_history
 from handlers.price import handle_price
-from handlers.topup import handle_topup, handle_topup_callback
 from handlers.text import handle_text
+from handlers.topup import handle_topup, handle_topup_callback, handle_check_payment, handle_cancel_payment
 
 
 logging.basicConfig(
@@ -79,7 +79,13 @@ def main() -> None:
         CallbackQueryHandler(handle_cancel_task, pattern=r"^cancel_task:\d+$")
     )
     application.add_handler(
-        CallbackQueryHandler(handle_topup_callback, pattern=r"^topup:\d+$")
+        CallbackQueryHandler(handle_topup_callback, pattern=r"^topup:(cancel|\d+)$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_check_payment, pattern=r"^payment:check:.+$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_cancel_payment, pattern=r"^payment:cancel:.+$")
     )
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
     application.run_polling()
