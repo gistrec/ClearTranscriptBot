@@ -1,11 +1,10 @@
-"""Helper functions for common database operations."""
-from __future__ import annotations
+import json
 
 from typing import Optional, Any
 from decimal import Decimal
 
 from .connection import SessionLocal
-from .models import User, TranscriptionHistory
+from .models import User, TranscriptionHistory, Payment
 
 
 def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
@@ -21,7 +20,19 @@ def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
 def get_user_by_telegram_id(telegram_id: int) -> Optional[User]:
     """Fetch a user by their Telegram identifier."""
     with SessionLocal() as session:
-        return session.get(User, telegram_id)
+        return session.query(User).filter(User.telegram_id == telegram_id).one_or_none()
+
+
+def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
+    """Add *delta* to user's balance and return updated user."""
+    with SessionLocal() as session:
+        user = session.get(User, telegram_id)
+        if user is None:
+            return None
+        user.balance = (user.balance or Decimal("0")) + delta
+        session.commit()
+        session.refresh(user)
+        return user
 
 
 def add_transcription(
@@ -91,13 +102,59 @@ def get_recent_transcriptions(telegram_id: int, limit: int = 10) -> list[Transcr
         )
 
 
-def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
-    """Add *delta* to user's balance and return updated user."""
+def create_payment(
+    telegram_id: int,
+    order_id: str,
+    amount: Decimal,
+    status: str,
+    payment_id: int,
+    payment_url: str,
+    description: str,
+    tinkoff_response: dict,
+) -> Payment:
     with SessionLocal() as session:
-        user = session.get(User, telegram_id)
-        if user is None:
-            return None
-        user.balance = (user.balance or Decimal("0")) + delta
+        topup = Payment(
+            telegram_id=telegram_id,
+            order_id=order_id,
+            payment_id=payment_id,
+            amount=amount,
+            status=status,
+            payment_url=payment_url,
+            description=description,
+            tinkoff_response=json.dumps(tinkoff_response, ensure_ascii=False),
+        )
+        session.add(topup)
         session.commit()
-        session.refresh(user)
-        return user
+        session.refresh(topup)
+        return topup
+
+
+def get_recent_payments(telegram_id: int, limit: int = 5) -> list[Payment]:
+    with SessionLocal() as session:
+        return (
+            session.query(Payment)
+            .filter(Payment.telegram_id == telegram_id)
+            .order_by(Payment.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+
+def get_payment_by_order_id(order_id: str) -> Optional[Payment]:
+    with SessionLocal() as session:
+        return session.query(Payment).filter(Payment.order_id == order_id).one_or_none()
+
+
+def update_payment(order_id: str, **fields: Any) -> Optional[Payment]:
+    if not fields:
+        return None
+
+    with SessionLocal() as session:
+        topup = session.query(Payment).filter(Payment.order_id == order_id).first()
+        if topup is None:
+            return None
+        for key, value in fields.items():
+            setattr(topup, key, value)
+        session.commit()
+        session.refresh(topup)
+        return topup
