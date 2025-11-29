@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- History of transcription requests made by users
 CREATE TABLE IF NOT EXISTS transcription_history (
-    id               BIGINT          PRIMARY KEY,
+    id               INTEGER         PRIMARY KEY AUTO_INCREMENT,
     telegram_id      BIGINT          NOT NULL REFERENCES users(telegram_id),
     status           VARCHAR(32)     NOT NULL,
     audio_s3_path    TEXT            NOT NULL,
@@ -168,34 +168,21 @@ CREATE INDEX idx_transcription_history_telegram_id
 
 -- Payments processed via Tinkoff acquiring
 CREATE TABLE IF NOT EXISTS payments (
-    id              BIGINT          PRIMARY KEY,
-    telegram_id     BIGINT          NOT NULL REFERENCES users(telegram_id),
-    order_id        VARCHAR(64)     NOT NULL UNIQUE,
-    payment_id      BIGINT          UNIQUE,
-    amount          DECIMAL(10,2)   NOT NULL,
-    status          VARCHAR(32)     NOT NULL,
-    created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id               INTEGER         PRIMARY KEY AUTO_INCREMENT,
+    telegram_id      BIGINT          NOT NULL REFERENCES users(telegram_id),
+    message_id       INTEGER,
+    order_id         VARCHAR(64)     NOT NULL UNIQUE,
+    payment_id       BIGINT          NOT NULL UNIQUE,
+    amount           DECIMAL(10,2)   NOT NULL,
+    status           VARCHAR(32)     NOT NULL,
+    payment_url      TEXT            NOT NULL,
+    description      VARCHAR(255)    NOT NULL,
+    tinkoff_response TEXT            NOT NULL,
+    created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_payments_telegram_id
     ON payments(telegram_id);
-
--- Top-ups initiated from the bot
-CREATE TABLE IF NOT EXISTS topups (
-    id               BIGINT          PRIMARY KEY,
-    telegram_id      BIGINT          NOT NULL REFERENCES users(telegram_id),
-    order_id         VARCHAR(64)     NOT NULL UNIQUE,
-    payment_id       BIGINT          UNIQUE,
-    amount           DECIMAL(10,2)   NOT NULL,
-    status           VARCHAR(32)     NOT NULL,
-    payment_url      TEXT,
-    description      VARCHAR(255),
-    gateway_response TEXT,
-    created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_topups_telegram_id
-    ON topups(telegram_id);
 ```
 
 ## Installation
