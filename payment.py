@@ -14,6 +14,10 @@ BASE_URL = (
 )
 # Список тестовых карт Тинькофф:
 # https://developer.tbank.ru/eacq/intro/errors/test
+#
+# 4300 0000 0000 0777
+# 12/30
+# 111
 
 
 PAYMENT_STATUSES = {

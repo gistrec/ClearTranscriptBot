@@ -4,6 +4,7 @@ import sentry_sdk
 
 from decimal import Decimal
 
+from handlers import balance
 from payment import init_payment, get_payment_state, cancel_payment, PAYMENT_STATUSES
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -215,11 +216,8 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         user = change_user_balance(payment.telegram_id, payment.amount)
         update_payment(order_id, status=payment_status)
 
-        balance = Decimal(user.balance or 0) if user else Decimal("0")
-        balance_str = escape_markdown(f"{balance}", version=2)
-        duration_str = escape_markdown(
-            available_time_by_balance(balance), version=2
-        )
+        balance = Decimal(user.balance or 0)
+        duration_str = available_time_by_balance(balance)
 
         # Изменяем сообщение со ссылкой для оплаты
         await query.message.edit_text(
@@ -235,17 +233,13 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         )
 
         await query.message.reply_text(
-            f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n"
-            f"Баланс: {balance_str} ₽\n"
+            f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
+            f"Баланс: {balance} ₽\n"
             f"Хватит на распознавание: {duration_str}",
-            parse_mode="MarkdownV2",
         )
         return
     else:
-        await query.message.reply_text(
-            f"❌ Платёж не завершён",
-            parse_mode="MarkdownV2"
-        )
+        await query.message.reply_text(f"❌ Платёж не завершён")
 
 
 @sentry_bind_user
