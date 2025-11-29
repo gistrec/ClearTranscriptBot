@@ -14,6 +14,7 @@ from database.queries import add_user, get_user_by_telegram_id, change_user_bala
     create_payment, get_payment_by_order_id, update_payment
 
 from utils.sentry import sentry_bind_user
+from utils.speechkit import available_time_by_balance
 
 
 TOPUP_AMOUNTS = (50, 100, 250, 500)
@@ -211,8 +212,14 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     payment_status = tinkoff_response.get("Status", "unknown")
 
     if payment_status == "CONFIRMED" or payment_status == "AUTHORIZED":
-        change_user_balance(payment.telegram_id, payment.amount)
+        user = change_user_balance(payment.telegram_id, payment.amount)
         update_payment(order_id, status=payment_status)
+
+        balance = Decimal(user.balance or 0) if user else Decimal("0")
+        balance_str = escape_markdown(f"{balance}", version=2)
+        duration_str = escape_markdown(
+            available_time_by_balance(balance), version=2
+        )
 
         # Изменяем сообщение со ссылкой для оплаты
         await query.message.edit_text(
@@ -229,7 +236,8 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
 
         await query.message.reply_text(
             f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n"
-            f"Ваш баланс пополнен",
+            f"Баланс: {balance_str} ₽\n"
+            f"Хватит на распознавание: {duration_str}",
             parse_mode="MarkdownV2",
         )
         return
