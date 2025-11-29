@@ -77,6 +77,9 @@ class TranscriptionHistory(Base):
     # Telegram chat where the status message was sent
     chat_id = Column(BigInteger, nullable=True)
 
+    # Timestamp when the task was created and sent to the user for approval (before execution)
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
     # Timestamp when the Yandex SpeechKit operation was created
     started_at = Column(DateTime, nullable=True)
 

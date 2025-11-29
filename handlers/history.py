@@ -18,7 +18,8 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if not items:
         await update.message.reply_text(
-            "История пуста. Пришлите видео или аудио — вернём текст."
+            "История пуста\n\n"
+            "Пришлите видео или аудио — вернём текст"
         )
         return
 

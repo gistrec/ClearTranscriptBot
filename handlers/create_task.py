@@ -34,22 +34,29 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     task = get_transcription(task_id)
     telegram_id = query.from_user.id
+
     if task is None or task.telegram_id != telegram_id:
         await query.edit_message_text("Задача не найдена")
         return
+
     if task.status != "pending":
         await query.edit_message_text("Задача уже запущена")
         return
+
     user = get_user_by_telegram_id(telegram_id)
     if user is None:
         await query.edit_message_text("Пользователь не найден")
         return
+
     price = Decimal(task.price_rub or 0)
     if user.balance < price:
         await query.edit_message_text(
-            f"Недостаточно средств. Баланс: {user.balance} ₽, требуется: {price} ₽"
+            f"Недостаточно средств\n"
+            f"Баланс: {user.balance} ₽, требуется: {price} ₽\n\n"
+            f"Для пополнения баланса используйте команду /topup"
         )
         return
+
     change_user_balance(telegram_id, -price)
 
     operation_id = await run_transcription(task.audio_s3_path)
@@ -65,9 +72,9 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     duration_str = format_duration(0)
     status_message = await query.message.reply_text(
-        f"🧠 Задача №{task_id} в работе.\n\n"
+        f"🧠 Задача №{task_id} в работе\n\n"
         f"Прошло времени: {duration_str}\n\n"
-        "Отправлю результат, как только всё будет готово."
+        "Отправлю результат, как только всё будет готово"
     )
 
     now = datetime.now(MoscowTimezone)

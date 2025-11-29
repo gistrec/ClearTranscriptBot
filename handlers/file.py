@@ -13,23 +13,12 @@ from database.queries import add_transcription, add_user, get_user_by_telegram_i
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user
+from utils.tg import is_supported_mime, sanitize_filename
 from utils.speechkit import cost_yc_async_rub, format_duration, MAX_AUDIO_DURATION
 from utils.tg import extract_local_path
 
+
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
-
-
-def _sanitize_filename(name: str) -> str:
-    """Return a safe file name containing Latin/Cyrillic letters, digits and separators."""
-
-    sanitized = re.sub(r"[^0-9A-Za-zА-Яа-яЁё._-]", "_", name)
-    sanitized = re.sub(r"_+", "_", sanitized)
-    sanitized = sanitized.strip("._")
-    return sanitized or "audio"
-
-
-def _is_supported(mime: str) -> bool:
-    return mime.startswith("audio/") or mime.startswith("video/")
 
 
 @sentry_bind_user
@@ -42,9 +31,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         user = add_user(telegram_id, message.from_user.username)
 
     await message.reply_text(
-        "Файл получен.\n\n"
-        "Определяю длительность и стоимость перевода в текст. "
-        "Скоро попрошу подтвердить запуск.",
+        "Файл получен\n\n"
+        "Определяю длительность и стоимость перевода в текст\n"
+        "Скоро попрошу подтвердить запуск задачи...",
     )
 
     file = None
@@ -70,7 +59,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await message.reply_text("Файл не поддерживается")
         return
 
-    if not _is_supported(mime):
+    if not is_supported_mime(mime):
         await message.reply_text(
             "Этот тип файла не поддерживается\n"
             "Пожалуйста, отправьте видео или аудио"
@@ -112,11 +101,13 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         price_dec = Decimal(price)
         if user.balance < price_dec:
             await message.reply_text(
-                f"Недостаточно средств. Баланс: {user.balance} ₽, требуется: {price} ₽"
+                f"Недостаточно средств\n"
+                f"Баланс: {user.balance} ₽, требуется: {price} ₽\n\n"
+                f"Для пополнения баланса используйте команду /topup"
             )
             return
 
-        safe_stem = _sanitize_filename(local_path.stem)
+        safe_stem = sanitize_filename(local_path.stem)
         ogg_name = f"{safe_stem}.ogg"
         ogg_path = out_dir / ogg_name
         success = await convert_to_ogg(local_path, ogg_path)

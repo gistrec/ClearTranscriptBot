@@ -11,6 +11,7 @@ from telegram.ext import ContextTypes
 
 from database.queries import get_transcriptions_by_status, update_transcription
 from utils.speechkit import fetch_transcription_result, parse_text, format_duration
+from utils.tg import safe_edit_message_text
 from utils.s3 import upload_file
 
 
@@ -37,19 +38,6 @@ def _need_edit(context, task_id: int, now: datetime) -> bool:
     return True
 
 
-async def safe_edit_message_text(bot, chat_id, message_id, text):
-    """Safely edit a message text, catching exceptions."""
-    if not chat_id or not message_id:
-        return
-    try:
-        await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
-    except Exception as e:
-        logging.error(f"Failed to edit message {message_id} in chat {chat_id}: {e}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
-
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
     now = datetime.now(MoscowTimezone)
@@ -70,9 +58,9 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 context.bot,
                 task.chat_id,
                 task.message_id,
-                f"🧠 Задача №{task.id} в работе.\n\n"
+                f"🧠 Задача №{task.id} в работе\n\n"
                 f"Прошло времени: {duration_str}\n\n"
-                "Отправлю результат, как только всё будет готово.",
+                "Отправлю результат, как только всё будет готово",
             )
 
         result = await fetch_transcription_result(task.operation_id)
@@ -93,7 +81,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 context.bot,
                 task.chat_id,
                 task.message_id,
-                f"❌ Задача №{task.id} завершилась с ошибкой. Попробуйте ещё раз.",
+                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )
             continue
 
@@ -113,7 +101,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 context.bot,
                 task.chat_id,
                 task.message_id,
-                f"❌ Задача №{task.id} завершилась с ошибкой. Попробуйте ещё раз.",
+                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )
             path.unlink(missing_ok=True)
             continue
@@ -141,7 +129,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 context.bot,
                 task.chat_id,
                 task.message_id,
-                f"❌ Задача №{task.id} завершилась с ошибкой. Попробуйте ещё раз.",
+                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )
         finally:
             path.unlink(missing_ok=True)

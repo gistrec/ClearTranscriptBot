@@ -153,7 +153,10 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)
 
-        await query.message.reply_text("Не удалось создать форму оплаты. Попробуйте ещё раз чуть позже.")
+        await query.message.reply_text(
+            "Не удалось создать форму оплаты\n"
+            "Попробуйте ещё раз чуть позже"
+        )
         return
 
     payment_status = tinkoff_response.get("Status", "unknown")

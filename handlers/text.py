@@ -32,7 +32,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
     await update.message.reply_text(
-        "Отправьте видео или аудио — вернём текст.\n"
+        "Отправьте видео или аудио — вернём текст\n\n"
         "Поддерживаем все популярные форматы:\n"
         "• Видео: mp4, mov, mkv, webm и другие\n"
         "• Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
