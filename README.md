@@ -159,7 +159,8 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     operation_id     VARCHAR(128),
     message_id       INTEGER,
     chat_id          BIGINT,
-    created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+    started_at       TIMESTAMP,
+    finished_at      TIMESTAMP
 );
 
 -- Index to speed up lookups by user

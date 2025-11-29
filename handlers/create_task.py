@@ -1,4 +1,7 @@
+import pytz
+
 from decimal import Decimal
+from datetime import datetime
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -12,6 +15,9 @@ from database.queries import (
 
 from utils.sentry import sentry_bind_user
 from utils.speechkit import format_duration, run_transcription
+
+
+MoscowTimezone = pytz.timezone('Europe/Moscow')
 
 
 @sentry_bind_user
@@ -55,8 +61,6 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
-    update_transcription(task.id, status="running", operation_id=operation_id)
-
     await query.edit_message_reply_markup(reply_markup=None)
 
     duration_str = format_duration(0)
@@ -66,8 +70,12 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "Отправлю результат, как только всё будет готово."
     )
 
+    now = datetime.now(MoscowTimezone)
     update_transcription(
         task.id,
+        status="running",
+        operation_id=operation_id,
         message_id=status_message.message_id,
         chat_id=status_message.chat_id,
+        started_at=now,
     )

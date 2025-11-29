@@ -52,23 +52,22 @@ async def safe_edit_message_text(bot, chat_id, message_id, text):
 
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
-    bot = context.bot
     now = datetime.now(MoscowTimezone)
-    tasks = get_transcriptions_by_status("running")
-    for task in tasks:
+
+    for task in get_transcriptions_by_status("running"):
         if not task.operation_id:
             logging.error(f"Task {task.id} doesn't have operation_id")
             continue
 
-        created_at = MoscowTimezone.localize(task.created_at)
+        started_at = MoscowTimezone.localize(task.started_at)
 
-        duration = int((now - created_at).total_seconds())
+        duration = int((now - started_at).total_seconds())
         duration_str = format_duration(duration)
 
         # Редактируем сообщение только если прошло достаточно времени
         if _need_edit(context, task.id, now):
             await safe_edit_message_text(
-                bot,
+                context.bot,
                 task.chat_id,
                 task.message_id,
                 f"🧠 Задача №{task.id} в работе.\n\n"
@@ -82,12 +81,16 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if result is None:
             continue
 
-        update_transcription(task.id, result_json=result)
+        update_transcription(
+            task.id,
+            result_json=result,
+            finished_at=now,
+        )
 
         if "response" not in result:
             update_transcription(task.id, status="failed")
             await safe_edit_message_text(
-                bot,
+                context.bot,
                 task.chat_id,
                 task.message_id,
                 f"❌ Задача №{task.id} завершилась с ошибкой. Попробуйте ещё раз.",
@@ -107,7 +110,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if s3_uri is None:
             update_transcription(task.id, status="failed")
             await safe_edit_message_text(
-                bot,
+                context.bot,
                 task.chat_id,
                 task.message_id,
                 f"❌ Задача №{task.id} завершилась с ошибкой. Попробуйте ещё раз.",
@@ -116,7 +119,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             continue
 
         await safe_edit_message_text(
-            bot,
+            context.bot,
             task.chat_id,
             task.message_id,
             f"✅ Задача №{task.id} готова!\n\n"
@@ -125,7 +128,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
         try:
-            await bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))
+            await context.bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))
             update_transcription(task.id, status="completed", result_s3_path=s3_uri)
         except Exception as e:
             logging.error(f"Failed to send result for task {task.id}: {e}")
@@ -135,7 +138,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             update_transcription(task.id, status="failed", result_s3_path=s3_uri)
 
             await safe_edit_message_text(
-                bot,
+                context.bot,
                 task.chat_id,
                 task.message_id,
                 f"❌ Задача №{task.id} завершилась с ошибкой. Попробуйте ещё раз.",
