@@ -55,7 +55,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         mime = message.document.mime_type or ""
         file_name = message.document.file_name or file_name
     elif message.audio:
-        file = await message.audio.get_file()
+        file = await message.audio.get_file(read_timeout=120)
         mime = message.audio.mime_type or ""
         file_name = message.audio.file_name or file_name
     elif message.video:
