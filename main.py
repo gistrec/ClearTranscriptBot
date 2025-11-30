@@ -11,7 +11,8 @@ from telegram.ext import (
     filters,
 )
 
-from scheduler import check_running_tasks
+from schedulers.transcription import check_running_tasks
+
 from handlers.balance import handle_balance
 from handlers.cancel_task import handle_cancel_task
 from handlers.create_task import handle_create_task

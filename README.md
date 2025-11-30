@@ -23,7 +23,9 @@ Telegram bot for automatic audio/video transcription:
 ```
 ClearTranscriptBot
 ├── main.py              # Bot entry point
-├── scheduler.py         # Periodic task scheduler
+├── schedulers/          # Periodic task scheduler
+│   ├── ffmpeg.py
+│   └── transcription.py
 ├── handlers/            # Telegram update handlers
 │   ├── balance.py
 │   ├── cancel_task.py

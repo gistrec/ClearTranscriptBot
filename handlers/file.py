@@ -1,7 +1,7 @@
 import os
-import re
 import shutil
 import tempfile
+
 from decimal import Decimal
 from pathlib import Path
 
@@ -35,6 +35,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "Определяю длительность и стоимость перевода в текст\n"
         "Скоро попрошу подтвердить запуск задачи...",
     )
+
 
     file = None
     mime = ""
