@@ -108,9 +108,14 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
         safe_stem = sanitize_filename(local_path.stem)
+
         ogg_name = f"{safe_stem}.ogg"
         ogg_path = out_dir / ogg_name
-        success = await convert_to_ogg(local_path, ogg_path)
+
+        progress_name = f"{safe_stem}.progress"
+        progress_path = out_dir / progress_name
+
+        success = await convert_to_ogg(local_path, ogg_path, progress_path)
         if not success:
             await message.reply_text(
                 "Не удалось преобразовать файл\n"
