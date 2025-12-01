@@ -9,7 +9,7 @@ from typing import Tuple
 from pathlib import Path
 
 
-def get_conversion_progress(
+async def get_conversion_progress(
     progress_file: str | Path,
     duration_seconds: float,
     started_at: float

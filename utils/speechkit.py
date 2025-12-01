@@ -140,8 +140,17 @@ def cost_yc_async_rub(duration_s: float, channels: int = 1, deferred: bool = Fal
 
 
 def format_duration(duration_sec: int) -> str:
-    """Format duration in seconds as '{min} мин. {sec} сек.' or '{sec} сек.' if minutes are zero."""
-    minutes, seconds = divmod(int(duration_sec), 60)
+    """Format duration in seconds as:
+    * '{h} ч. {m} мин. {s} сек.'
+    * '{m} мин. {s} сек.'
+    * '{s} сек.'
+    """
+    total = int(duration_sec)
+    hours, r = divmod(total, 3600)
+    minutes, seconds = divmod(r, 60)
+
+    if hours > 0:
+        return f"{hours} ч. {minutes} мин. {seconds} сек."
     if minutes > 0:
         return f"{minutes} мин. {seconds} сек."
     return f"{seconds} сек."
