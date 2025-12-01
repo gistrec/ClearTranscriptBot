@@ -24,9 +24,9 @@ MoscowTimezone = pytz.timezone('Europe/Moscow')
 async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    data = query.data
+
     try:
-        _, id_str = data.split(":", 1)
+        _, id_str = query.data.split(":", 1)
         task_id = int(id_str)
     except ValueError:
         await query.edit_message_text("Некорректная задача")
