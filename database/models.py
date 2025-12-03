@@ -128,3 +128,24 @@ class Payment(Base):
 
     # Timestamp when the payment was created
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class VkClick(Base):
+    """VK Ads click identifiers mapped to compact tokens."""
+
+    __tablename__ = "vk_clicks"
+
+    __table_args__ = (
+        Index("idx_vk_clicks_token", "token", unique=True),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Compact token that can be passed to Telegram as start payload
+    token = Column(String(32), nullable=False, unique=True)
+
+    # Original rb_clickid received from VK Ads
+    rb_clickid = Column(Text, nullable=False)
+
+    # Timestamp when the click was registered
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())

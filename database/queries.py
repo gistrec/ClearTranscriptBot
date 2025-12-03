@@ -1,10 +1,17 @@
 import json
+import secrets
 
 from typing import Optional, Any
 from decimal import Decimal
 
-from .connection import SessionLocal
-from .models import User, TranscriptionHistory, Payment
+from sqlalchemy.exc import IntegrityError
+
+from .connection import SessionLocal, engine
+from .models import Base, User, TranscriptionHistory, Payment, VkClick
+
+
+# Ensure all tables (including newly added ones) are present.
+Base.metadata.create_all(bind=engine)
 
 
 def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
@@ -158,3 +165,26 @@ def update_payment(order_id: str, **fields: Any) -> Optional[Payment]:
         session.commit()
         session.refresh(topup)
         return topup
+
+
+def create_vk_click(rb_clickid: str) -> VkClick:
+    """Persist a VK Ads click and return the created object."""
+
+    with SessionLocal() as session:
+        for _ in range(5):
+            click = VkClick(token=secrets.token_hex(16), rb_clickid=rb_clickid)
+            session.add(click)
+            try:
+                session.commit()
+                session.refresh(click)
+                return click
+            except IntegrityError:
+                session.rollback()
+        raise RuntimeError("Failed to generate unique token for VK Ads click")
+
+
+def get_vk_click(token: str) -> Optional[VkClick]:
+    """Fetch a VK Ads click entry by its token."""
+
+    with SessionLocal() as session:
+        return session.query(VkClick).filter(VkClick.token == token).one_or_none()
