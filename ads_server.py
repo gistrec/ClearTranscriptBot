@@ -22,7 +22,7 @@ LISTEN_PORT = int(os.getenv("VK_SERVER_PORT", "8080"))
 app = FastAPI(title="VK Ads landing")
 
 
-@app.get("/vk-ads", response_class=HTMLResponse)
+@app.get("/vk-ads/", response_class=HTMLResponse)
 def vk_ads_landing(rb_clickid: str | None = None) -> HTMLResponse:
     if not rb_clickid:
         raise HTTPException(status_code=400, detail="rb_clickid is required")
@@ -45,10 +45,8 @@ def vk_ads_landing(rb_clickid: str | None = None) -> HTMLResponse:
 </head>
 <body>
 <script type=\"text/javascript\">
-  const clickToken = {token_json};
-  const redirectTarget = {redirect_json};
   var _tmr = window._tmr || (window._tmr = []);
-  _tmr.push({{id: {counter_json}, type: "pageView", start: (new Date()).getTime(), pid: clickToken}});
+  _tmr.push({{id: {counter_json}, type: "pageView", start: (new Date()).getTime()}});
   (function (d, w, id) {{
     if (d.getElementById(id)) return;
     var ts = d.createElement("script"); ts.type = "text/javascript"; ts.async = true; ts.id = id;
@@ -56,7 +54,7 @@ def vk_ads_landing(rb_clickid: str | None = None) -> HTMLResponse:
     var f = function () {{var s = d.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ts, s);}};
     if (w.opera == "[object Opera]") {{ d.addEventListener("DOMContentLoaded", f, false); }} else {{ f(); }}
   }})(document, window, "tmr-code");
-  setTimeout(() => {{ window.location.href = redirectTarget; }}, {REDIRECT_DELAY_MS});
+  setTimeout(() => {{ window.location.href = {redirect_json}; }}, {REDIRECT_DELAY_MS});
 </script>
 <noscript><div><img src=\"https://top-fwz1.mail.ru/counter?id={VK_COUNTER_ID};js=na\" style=\"position:absolute;left:-9999px;\" alt=\"Top.Mail.Ru\" /></div></noscript>
 </body>

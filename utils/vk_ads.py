@@ -14,31 +14,50 @@ HTTP_TIMEOUT = 5.0
 
 
 async def track_vk_goal(token: str, goal: str = "startBot") -> bool:
-    """Send conversion event for a VK Ads click token.
+    """
+    Send conversion event for a VK Ads click token via Top.Mail.ru tracker.
 
-    The *token* refers to the compact identifier returned to the user and mapped
-    to the original ``rb_clickid`` stored in the database.
+    *token* — короткий токен, под которым хранится реальный rb_clickid.
     """
 
+    # 1. Достаём запись по токену
     click = get_vk_click(token)
     if click is None:
-        logging.info("VK Ads token not found: %s", token)
+        logging.info("VK Ads: token not found: %s", token)
         return False
 
-    params = {
-        "id": VK_COUNTER_ID,
-        "e": f"RG%3A0/{goal}",
-        "rb_clickid": click.rb_clickid,
-    }
+    rb_clickid = click.rb_clickid
+    logging.info("VK Ads: resolved token=%s → rb_clickid=%s", token, rb_clickid)
 
+    # 2. Формируем правильный формат цели (НЕ URL-энкодить!)
+    # e=RG:0/startBot
+    e_param = f"RG:0/{goal}"
+
+    # 3. Собираем URL вручную — params нельзя использовать
+    url = (
+        f"{TRACKER_URL}"
+        f"?id={VK_COUNTER_ID};"
+        f"e={e_param};"
+        f"rb_clickid={rb_clickid}"
+    )
+
+    logging.info("VK Ads: final tracker URL: %s", url)
+
+    # 4. Выполняем запрос
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            response = await client.get(TRACKER_URL, params=params)
+            response = await client.get(url)
             response.raise_for_status()
-        logging.info("VK Ads goal sent: token=%s goal=%s", token, goal)
+
+        logging.info(
+            "VK Ads: goal sent successfully: goal=%s, rb_clickid=%s, status=%s",
+            goal, rb_clickid, response.status_code
+        )
         return True
+
     except Exception as exc:  # noqa: BLE001
         logging.warning(
-            "VK Ads goal failed: token=%s goal=%s error=%s", token, goal, exc
+            "VK Ads: goal send FAILED: goal=%s rb_clickid=%s error=%r url=%s",
+            goal, rb_clickid, exc, url
         )
         return False

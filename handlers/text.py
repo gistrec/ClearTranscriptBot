@@ -27,11 +27,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         user = add_user(telegram_id, update.message.from_user.username)
 
     start_payload = extract_start_payload(update.message.text or "")
-    if start_payload:
-        if get_vk_click(start_payload):
-            context.application.create_task(track_vk_goal(start_payload, "startBot"))
-        else:
-            context.application.create_task(track_goal(start_payload, "startbot"))
+    if start_payload and get_vk_click(start_payload):
+        context.application.create_task(track_vk_goal(start_payload, "startBot"))
 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
