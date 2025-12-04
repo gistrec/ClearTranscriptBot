@@ -29,7 +29,7 @@ class User(Base):
     telegram_login = Column(String(32), nullable=True)
 
     # Account balance
-    balance = Column(Numeric(10, 2), nullable=False, default=250.00)
+    balance = Column(Numeric(10, 2), nullable=False, default=150.00)
 
     # Registration timestamp
     registered_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
