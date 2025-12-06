@@ -12,6 +12,7 @@ from telegram.ext import (
 )
 
 from schedulers.transcription import check_running_tasks
+from schedulers.ffmpeg import update_ffmpeg_messages
 
 from handlers.balance import handle_balance
 from handlers.cancel_task import handle_cancel_task
@@ -89,6 +90,7 @@ def main() -> None:
         CallbackQueryHandler(handle_cancel_payment, pattern=r"^payment:cancel:.+$")
     )
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
+    application.job_queue.run_repeating(update_ffmpeg_messages, interval=1.0)
     application.run_polling()
 
 

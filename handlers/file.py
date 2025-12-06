@@ -16,6 +16,13 @@ from utils.sentry import sentry_bind_user
 from utils.tg import is_supported_mime, sanitize_filename
 from utils.speechkit import cost_yc_async_rub, format_duration, MAX_AUDIO_DURATION
 from utils.tg import extract_local_path
+from schedulers.ffmpeg import (
+    BASE_MESSAGE,
+    start_tracking,
+    start_conversion,
+    stop_tracking,
+    update_download,
+)
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
@@ -30,128 +37,143 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if user is None:
         user = add_user(telegram_id, message.from_user.username)
 
-    await message.reply_text(
-        "Файл получен\n\n"
-        "Определяю длительность и стоимость перевода в текст\n"
-        "Скоро попрошу подтвердить запуск задачи...",
-    )
-
+    status_message = await message.reply_text(BASE_MESSAGE)
 
     file = None
     mime = ""
     file_name = "file"
-    if message.document:
-        file = await message.document.get_file(read_timeout=120)
-        mime = message.document.mime_type or ""
-        file_name = message.document.file_name or file_name
-    elif message.audio:
-        file = await message.audio.get_file(read_timeout=120)
-        mime = message.audio.mime_type or ""
-        file_name = message.audio.file_name or file_name
-    elif message.video:
-        file = await message.video.get_file(read_timeout=120)
-        mime = message.video.mime_type or ""
-        file_name = message.video.file_name or file_name
-    elif message.voice:
-        file = await message.voice.get_file(read_timeout=120)
-        mime = "audio/ogg"
-        file_name = "voice.ogg"
-    else:
-        await message.reply_text("Файл не поддерживается")
-        return
+    tracking_key = start_tracking(
+        context.bot_data, message.chat_id, status_message.message_id
+    )
 
-    if not is_supported_mime(mime):
-        await message.reply_text(
-            "Этот тип файла не поддерживается\n"
-            "Пожалуйста, отправьте видео или аудио"
-        )
-        return
+    def on_download_progress(current: int, total: int, bot_data, key):
+        percent = int(current / total * 100) if total else 0
+        update_download(bot_data, key, percent)
 
-    with tempfile.TemporaryDirectory() as workdir:
-        workdir = Path(workdir)
-        in_dir = workdir / "in"
-        out_dir = workdir / "out"
-        in_dir.mkdir()
-        out_dir.mkdir()
-
-        local_path = in_dir / Path(file_name).name
-
-        if USE_LOCAL_PTB:
-            file_path = extract_local_path(file.file_path)
-            shutil.copy(file_path, local_path)  # читаем напрямую
+    try:
+        if message.document:
+            file = await message.document.get_file(read_timeout=120)
+            mime = message.document.mime_type or ""
+            file_name = message.document.file_name or file_name
+        elif message.audio:
+            file = await message.audio.get_file(read_timeout=120)
+            mime = message.audio.mime_type or ""
+            file_name = message.audio.file_name or file_name
+        elif message.video:
+            file = await message.video.get_file(read_timeout=120)
+            mime = message.video.mime_type or ""
+            file_name = message.video.file_name or file_name
+        elif message.voice:
+            file = await message.voice.get_file(read_timeout=120)
+            mime = "audio/ogg"
+            file_name = "voice.ogg"
         else:
-            await file.download_to_drive(custom_path=str(local_path))
+            await message.reply_text("Файл не поддерживается")
+            return
 
-        duration = await get_media_duration(local_path)
-        if not duration:
+        if not is_supported_mime(mime):
             await message.reply_text(
-                "Не удалось определить длительность файла\n"
-                "Возможно, формат не поддерживается или файл повреждён"
+                "Этот тип файла не поддерживается\n"
+                "Пожалуйста, отправьте видео или аудио"
             )
             return
 
-        duration_str = format_duration(int(duration))
-        if duration > MAX_AUDIO_DURATION:
-            await message.reply_text(
-                "Файл слишком длинный: {duration_str}\n"
-                "Максимально допустимая длительность — 4 часа"
-            )
-            return
+        with tempfile.TemporaryDirectory() as workdir:
+            workdir = Path(workdir)
+            in_dir = workdir / "in"
+            out_dir = workdir / "out"
+            in_dir.mkdir()
+            out_dir.mkdir()
 
-        price = cost_yc_async_rub(duration)
-        price_dec = Decimal(price)
-        if user.balance < price_dec:
-            await message.reply_text(
-                f"Недостаточно средств\n"
-                f"Баланс: {user.balance} ₽, требуется: {price} ₽\n\n"
-                f"Для пополнения баланса используйте команду /topup"
-            )
-            return
+            local_path = in_dir / Path(file_name).name
 
-        safe_stem = sanitize_filename(local_path.stem)
+            update_download(context.bot_data, tracking_key, 0)
 
-        ogg_name = f"{safe_stem}.ogg"
-        ogg_path = out_dir / ogg_name
+            if USE_LOCAL_PTB:
+                file_path = extract_local_path(file.file_path)
+                shutil.copy(file_path, local_path)  # читаем напрямую
+                update_download(context.bot_data, tracking_key, 100)
+            else:
+                await file.download_to_drive(
+                    custom_path=str(local_path),
+                    progress=on_download_progress,
+                    progress_args=(context.bot_data, tracking_key),
+                )
+                update_download(context.bot_data, tracking_key, 100)
 
-        progress_name = f"{safe_stem}.progress"
-        progress_path = out_dir / progress_name
+            duration = await get_media_duration(local_path)
+            if not duration:
+                await message.reply_text(
+                    "Не удалось определить длительность файла\n"
+                    "Возможно, формат не поддерживается или файл повреждён"
+                )
+                return
 
-        success = await convert_to_ogg(local_path, ogg_path, progress_path)
-        if not success:
-            await message.reply_text(
-                "Не удалось преобразовать файл\n"
-                "Возможно, он имеет неподдерживаемый формат"
-            )
-            return
+            duration_str = format_duration(int(duration))
+            if duration > MAX_AUDIO_DURATION:
+                await message.reply_text(
+                    "Файл слишком длинный: {duration_str}\n"
+                    "Максимально допустимая длительность — 4 часа"
+                )
+                return
 
-        object_name = f"source/{telegram_id}/{ogg_path.name}"
-        s3_uri = await upload_file(ogg_path, object_name)
-        if s3_uri is None:
-            await message.reply_text(
-                "Не удалось загрузить файл\n"
-                "Пожалуйста, попробуйте ещё раз чуть позже"
-            )
-            return
+            price = cost_yc_async_rub(duration)
+            price_dec = Decimal(price)
+            if user.balance < price_dec:
+                await message.reply_text(
+                    f"Недостаточно средств\n"
+                    f"Баланс: {user.balance} ₽, требуется: {price} ₽\n\n"
+                    f"Для пополнения баланса используйте команду /topup"
+                )
+                return
 
-    history = add_transcription(
-        telegram_id=telegram_id,
-        status="pending",
-        audio_s3_path=s3_uri,
-        duration_seconds=int(duration),
-        price_rub=price_dec,
-        result_s3_path=None,
-    )
+            safe_stem = sanitize_filename(local_path.stem)
 
-    buttons = [
-        InlineKeyboardButton(
-            "Распознать", callback_data=f"create_task:{history.id}"
-        ),
-        InlineKeyboardButton(
-            "Отменить", callback_data=f"cancel_task:{history.id}"
-        ),
-    ]
+            ogg_name = f"{safe_stem}.ogg"
+            ogg_path = out_dir / ogg_name
 
-    await message.reply_text(
-        f"Длительность: {duration_str}\nСтоимость: {price} ₽",
-        reply_markup=InlineKeyboardMarkup([buttons]),
-    )
+            progress_name = f"{safe_stem}.progress"
+            progress_path = out_dir / progress_name
+
+            start_conversion(context.bot_data, tracking_key, progress_path, duration)
+            success = await convert_to_ogg(local_path, ogg_path, progress_path)
+            if not success:
+                await message.reply_text(
+                    "Не удалось преобразовать файл\n"
+                    "Возможно, он имеет неподдерживаемый формат"
+                )
+                return
+
+            object_name = f"source/{telegram_id}/{ogg_path.name}"
+            s3_uri = await upload_file(ogg_path, object_name)
+            if s3_uri is None:
+                await message.reply_text(
+                    "Не удалось загрузить файл\n"
+                    "Пожалуйста, попробуйте ещё раз чуть позже"
+                )
+                return
+
+        history = add_transcription(
+            telegram_id=telegram_id,
+            status="pending",
+            audio_s3_path=s3_uri,
+            duration_seconds=int(duration),
+            price_rub=price_dec,
+            result_s3_path=None,
+        )
+
+        buttons = [
+            InlineKeyboardButton(
+                "Распознать", callback_data=f"create_task:{history.id}"
+            ),
+            InlineKeyboardButton(
+                "Отменить", callback_data=f"cancel_task:{history.id}"
+            ),
+        ]
+
+        await message.reply_text(
+            f"Длительность: {duration_str}\nСтоимость: {price} ₽",
+            reply_markup=InlineKeyboardMarkup([buttons]),
+        )
+    finally:
+        stop_tracking(context.bot_data, tracking_key)
