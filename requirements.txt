@@ -14,6 +14,8 @@ boto3
 pytz
 requests
 httpx
+fastapi
+uvicorn
 
 # Monitoring / error reporting
 sentry_sdk

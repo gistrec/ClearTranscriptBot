@@ -107,6 +107,15 @@ ClearTranscriptBot
 | `MEAS_TOKEN`   | Measurement Protocol token (generated in Metrica counter settings)  |
 | `BOT_URL`      | Public URL of your bot (e.g. `https://t.me/ClearTranscriptBot`)     |
 
+### VK Ads landing page
+
+| Variable              | Description                                                                      |
+|-----------------------|----------------------------------------------------------------------------------|
+| `VK_COUNTER_ID`       | VK Ads counter ID (used in the Mail.ru tracking script, defaults to `3723500`)   |
+| `BOT_URL`             | Base URL of your bot (used for redirect, defaults to `http://t.me/ClearTranscriptBot`) |
+| `VK_SERVER_PORT`      | Port for the VK Ads landing page server (defaults to `8080`)                      |
+| `VK_REDIRECT_DELAY_MS`| Delay before redirecting to Telegram after firing `pageView` (defaults to `500`) |
+
 ### Tinkoff acquiring
 
 | Variable            | Description                                  |
@@ -114,6 +123,15 @@ ClearTranscriptBot
 | `TERMINAL_KEY`      | Terminal key from Tinkoff                    |
 | `TERMINAL_PASSWORD` | Terminal password from Tinkoff               |
 | `TERMINAL_ENV`      | Environment: `test` for sandbox or `prod`    |
+
+## VK Ads flow
+
+1. Start the landing page server: `uvicorn ads_server:app --host 0.0.0.0 --port 8080` (defaults to port `8080`).
+2. Send traffic to `http://<host>:8080/vk-ads?rb_clickid=<value>`. The handler saves `rb_clickid`,
+   fires a `pageView` to Mail.ru with a compact token as `pid`, and then redirects the user to
+   `http://t.me/ClearTranscriptBot?start=<token>`.
+3. When the user clicks **Start** in Telegram, the bot resolves the token back to `rb_clickid` and
+   triggers `https://top-fwz1.mail.ru/tracker?id=3723500;e=RG%3A0/startBot;rb_clickid=<rb_clickid>`.
 
 ## Local Bot API server
 
@@ -186,6 +204,16 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX idx_payments_telegram_id
     ON payments(telegram_id);
+
+-- VK Ads click tokens mapped to original rb_clickid values
+CREATE TABLE IF NOT EXISTS vk_clicks (
+    id          INTEGER         PRIMARY KEY AUTO_INCREMENT,
+    token       VARCHAR(32)     NOT NULL UNIQUE,
+    rb_clickid  TEXT            NOT NULL,
+    created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_vk_clicks_token ON vk_clicks(token);
 ```
 
 ## Installation
