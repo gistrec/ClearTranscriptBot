@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     price_rub        DECIMAL(10,2),
     result_s3_path   TEXT,
     result_json      TEXT,
+    llm_tokens_by_model   JSON,
     operation_id     VARCHAR(128),
     message_id       INTEGER,
     chat_id          BIGINT,

@@ -5,6 +5,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -58,6 +59,9 @@ class TranscriptionHistory(Base):
 
     # Raw recognition result returned by SpeechKit
     result_json = Column(Text, nullable=True)
+
+    # Token counts for transcribed text by model
+    llm_tokens_by_model = Column(JSON, nullable=True)
 
     # Duration of the audio in seconds
     duration_seconds = Column(Integer, nullable=True)

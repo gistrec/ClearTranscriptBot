@@ -13,6 +13,7 @@ from database.queries import get_transcriptions_by_status, update_transcription
 from utils.speechkit import fetch_transcription_result, parse_text, format_duration
 from utils.tg import safe_edit_message_text
 from utils.s3 import upload_file
+from utils.tokens import tokens_by_model
 
 
 EDIT_INTERVAL_SEC = 5  # не редактировать чаще, чем раз в 5 сек
@@ -85,7 +86,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             )
             continue
 
-        text = parse_text(result)
+        raw_text = parse_text(result)
+        token_counts = tokens_by_model(raw_text)
+
+        text = raw_text
         if not text.strip():
             text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
 
@@ -117,13 +121,23 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         try:
             await context.bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))
-            update_transcription(task.id, status="completed", result_s3_path=s3_uri)
+            update_transcription(
+                task.id,
+                status="completed",
+                result_s3_path=s3_uri,
+                llm_tokens_by_model=token_counts,
+            )
         except Exception as e:
             logging.error(f"Failed to send result for task {task.id}: {e}")
             if os.getenv("ENABLE_SENTRY") == "1":
                 sentry_sdk.capture_exception(e)
 
-            update_transcription(task.id, status="failed", result_s3_path=s3_uri)
+            update_transcription(
+                task.id,
+                status="failed",
+                result_s3_path=s3_uri,
+                llm_tokens_by_model=token_counts,
+            )
 
             await safe_edit_message_text(
                 context.bot,
