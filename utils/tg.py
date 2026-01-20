@@ -46,10 +46,14 @@ def is_supported_mime(mime: str) -> bool:
     return mime.startswith("audio/") or mime.startswith("video/")
 
 
-async def safe_edit_message_text(bot, chat_id, message_id, text):
+async def safe_edit_message_text(bot, chat_id, message_id, *text_parts):
     """Safely edit a message text, catching exceptions."""
+
     if not chat_id or not message_id:
         return
+
+    text = "".join(text_parts)
+
     try:
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
     except Exception as e:
