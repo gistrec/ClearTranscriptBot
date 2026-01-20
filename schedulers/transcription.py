@@ -86,11 +86,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             )
             continue
 
-        raw_text = parse_text(result)
-        token_counts = tokens_by_model(raw_text)
+        text = parse_text(result).strip()
+        token_counts = tokens_by_model(text)
 
-        text = raw_text
-        if not text.strip():
+        if not text:
             text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
 
         source_stem = Path(task.audio_s3_path).stem

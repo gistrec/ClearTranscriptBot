@@ -150,20 +150,20 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- History of transcription requests made by users
 CREATE TABLE IF NOT EXISTS transcription_history (
-    id               INTEGER         PRIMARY KEY AUTO_INCREMENT,
-    telegram_id      BIGINT          NOT NULL REFERENCES users(telegram_id),
-    status           VARCHAR(32)     NOT NULL,
-    audio_s3_path    TEXT            NOT NULL,
-    duration_seconds INTEGER,
-    price_rub        DECIMAL(10,2),
-    result_s3_path   TEXT,
-    result_json      TEXT,
+    id                    INTEGER         PRIMARY KEY AUTO_INCREMENT,
+    telegram_id           BIGINT          NOT NULL REFERENCES users(telegram_id),
+    status                VARCHAR(32)     NOT NULL,
+    audio_s3_path         TEXT            NOT NULL,
+    duration_seconds      INTEGER,
+    price_rub             DECIMAL(10,2),
+    result_s3_path        TEXT,
+    result_json           TEXT,
     llm_tokens_by_model   JSON,
-    operation_id     VARCHAR(128),
-    message_id       INTEGER,
-    chat_id          BIGINT,
-    started_at       TIMESTAMP,
-    finished_at      TIMESTAMP
+    operation_id          VARCHAR(128),
+    message_id            INTEGER,
+    chat_id               BIGINT,
+    started_at            TIMESTAMP,
+    finished_at           TIMESTAMP
 );
 
 -- Index to speed up lookups by user
@@ -264,8 +264,8 @@ In that case install libmysqlclient-dev: `sudo apt install libmysqlclient-dev` o
 
 ## References
 
-- [Yandex Cloud SpeechKit docs][2]  
-- [Telegram Bot API][3]  
+- [Yandex Cloud SpeechKit docs][2]
+- [Telegram Bot API][3]
 
 [1]: https://t.me/ClearTranscriptBot
 [2]: https://cloud.yandex.com/docs/speechkit/

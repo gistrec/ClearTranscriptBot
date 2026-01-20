@@ -1,6 +1,8 @@
 """Utilities for counting LLM tokens."""
 import tiktoken
 
+from typing import Optional
+
 
 LLM_TOKEN_MODELS = [
     "gpt-5.2",
@@ -12,16 +14,16 @@ LLM_TOKEN_MODELS = [
 DEFAULT_ENCODING = "o200k_base"
 
 
-def count_tokens(text: str, model: str = LLM_TOKEN_MODELS[0]) -> int:
+def count_tokens(text: str, model: str = LLM_TOKEN_MODELS[0]) -> Optional[int]:
     """Count tokens in *text* using tiktoken encoding for *model*."""
     try:
         encoding = tiktoken.encoding_for_model(model)
+        return len(encoding.encode(text))
     except KeyError:
-        encoding = tiktoken.get_encoding(DEFAULT_ENCODING)
-    return len(encoding.encode(text))
+        return None
 
 
-def tokens_by_model(text: str) -> dict[str, int]:
+def tokens_by_model(text: str) -> dict[str, Optional[int]]:
     """Return token counts for *text* across supported models."""
     if not text.strip():
         return {model: 0 for model in LLM_TOKEN_MODELS}
