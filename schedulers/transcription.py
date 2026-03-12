@@ -125,7 +125,13 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         try:
             with path.open("rb") as f:
-                await context.bot.send_document(chat_id=task.telegram_id, document=f, time)
+                await context.bot.send_document(
+                    chat_id=task.telegram_id,
+                    document=f,
+                    connect_timeout=20,
+                    write_timeout=60,
+                )
+
             update_transcription(
                 task.id,
                 status="completed",
