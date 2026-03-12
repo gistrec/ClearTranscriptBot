@@ -29,7 +29,7 @@ def _need_edit(context, task_id: int, now: datetime) -> bool:
     if not last_ts:
         # нет кэша, значит нужно редактировать
         cache[task_id] = now
-        return False
+        return True
 
     if now - last_ts < timedelta(seconds=EDIT_INTERVAL_SEC):
         return False
@@ -45,6 +45,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     for task in get_transcriptions_by_status("running"):
         if not task.operation_id:
             logging.error(f"Task {task.id} doesn't have operation_id")
+            continue
+
+        if not task.started_at:
+            logging.error(f"Task {task.id} doesn't have started_at")
             continue
 
         started_at = MoscowTimezone.localize(task.started_at)
