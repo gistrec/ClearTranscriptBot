@@ -6,14 +6,14 @@ Telegram bot for automatic audio/video transcription:
 1. Accepts files from a user
 2. Converts them to OGG (via ffmpeg)
 3. Uploads to Yandex Cloud S3
-4. Requests transcription from Yandex SpeechKit
+4. Requests transcription from Yandex SpeechKit or Replicate WhisperX
 5. Sends the transcript back in Telegram
 
 ## Features
 
 - 🎙 Supports audio and video files (up to 4 hours)
 - 📦 Stores files in Yandex Cloud S3
-- 💬 Transcription via Yandex SpeechKit
+- 💬 Transcription via Yandex SpeechKit or Replicate WhisperX (auto-picks the A40 model for files longer than 2 hours)
 - 💰 Balance and billing inside Telegram
 - 📜 Full request history
 - 🐞 Optional error reporting via Sentry
@@ -48,6 +48,7 @@ ClearTranscriptBot
 │   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
 │   ├── sentry.py        # Sentry error reporting helpers
 │   ├── speechkit.py     # Request transcription from SpeechKit
+│   ├── transcription.py # Unified wrapper for SpeechKit and Replicate providers
 │   └── tg.py            # Telegram-specific helpers
 └── requirements.txt     # Python dependencies list
 ```
@@ -91,6 +92,14 @@ ClearTranscriptBot
 | `YC_API_KEY`    | API key     |
 | `YC_FOLDER_ID`  | Folder ID   |
 
+### Transcription providers
+
+| Variable                  | Description                                                                                             |
+|---------------------------|---------------------------------------------------------------------------------------------------------|
+| `TRANSCRIPTION_PROVIDER`  | `speechkit` (default) or `replicate` to choose the backend                                               |
+| `REPLICATE_API_TOKEN`     | API token for [Replicate](https://replicate.com) when using WhisperX                                     |
+| `REPLICATE_MODEL_SMALL`   | Optional override for the short-audio WhisperX version (defaults to `victor-upmeet/whisperx`)           |
+| `REPLICATE_MODEL_LARGE`   | Optional override for the long-audio WhisperX version (defaults to `victor-upmeet/whisperx-a40-large`) |
 
 ### Sentry
 

@@ -15,6 +15,7 @@ pytz
 requests
 httpx
 tiktoken
+replicate
 
 # Monitoring / error reporting
 sentry_sdk

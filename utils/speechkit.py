@@ -17,11 +17,10 @@ MAX_AUDIO_DURATION = 4 * 60 * 60  # seconds, SpeechKit limit
 YC_API_KEY = os.environ.get("YC_API_KEY")
 YC_FOLDER_ID = os.environ.get("YC_FOLDER_ID")
 
-if not YC_API_KEY or not YC_FOLDER_ID:
-    raise RuntimeError("YC_API_KEY and YC_FOLDER_ID must be set")
-
 
 def _auth_headers() -> Dict[str, str]:
+    if not YC_API_KEY or not YC_FOLDER_ID:
+        raise RuntimeError("YC_API_KEY and YC_FOLDER_ID must be set")
     return {"Authorization": f"Api-Key {YC_API_KEY}"}
 
 

@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 from telegram.ext import ContextTypes
 
 from database.queries import get_transcriptions_by_status, update_transcription
-from utils.speechkit import fetch_transcription_result, parse_text, format_duration
+from utils.speechkit import format_duration
+from utils.transcription import check_transcription, get_result
 from utils.tg import safe_edit_message_text
 from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
@@ -69,19 +70,19 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 "Отправлю результат, как только всё будет готово",
             )
 
-        result = await fetch_transcription_result(task.operation_id)
+        result_info = await check_transcription(task.operation_id)
 
         # Результата еще нет, проверим снова через секунду
-        if result is None:
+        if result_info is None:
             continue
 
         update_transcription(
             task.id,
-            result_json=result,
+            result_json=result_info.get("payload"),
             finished_at=now,
         )
 
-        if "response" not in result:
+        if not result_info.get("success"):
             update_transcription(task.id, status="failed")
             await safe_edit_message_text(
                 context.bot,
@@ -91,7 +92,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             )
             continue
 
-        text = parse_text(result)
+        text = get_result(result_info)
         token_counts = tokens_by_model(text)
 
         if not text:

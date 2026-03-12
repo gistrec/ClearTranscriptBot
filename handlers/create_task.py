@@ -14,7 +14,8 @@ from database.queries import (
 )
 
 from utils.sentry import sentry_bind_user
-from utils.speechkit import format_duration, run_transcription
+from utils.speechkit import format_duration
+from utils.transcription import start_transcription
 
 
 MoscowTimezone = pytz.timezone('Europe/Moscow')
@@ -59,7 +60,9 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     change_user_balance(telegram_id, -price)
 
-    operation_id = await run_transcription(task.audio_s3_path)
+    operation_id = await start_transcription(
+        task.audio_s3_path, duration_seconds=task.duration_seconds
+    )
     if not operation_id:
         change_user_balance(telegram_id, price)
         await query.edit_message_text(
