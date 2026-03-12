@@ -124,7 +124,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 task.id,
                 status="completed",
                 result_s3_path=s3_uri,
-                llm_tokens_by_model=token_counts,
+                llm_tokens_by_encoding=token_counts,
             )
         except Exception as e:
             logging.error(f"Failed to send result for task {task.id}: {e}")
@@ -135,7 +135,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 task.id,
                 status="failed",
                 result_s3_path=s3_uri,
-                llm_tokens_by_model=token_counts,
+                llm_tokens_by_encoding=token_counts,
             )
 
             await safe_edit_message_text(
