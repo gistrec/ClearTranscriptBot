@@ -110,16 +110,16 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         _, amount_str = (query.data or "").split(":", 1)
         amount = int(amount_str)
     except (ValueError, AttributeError) as e:
-        logging.error("Invalid topup callback data: %s", query.data)
+        logging.exception(f"Invalid topup callback data: {query.data}")
 
         if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_message(f"Invalid topup callback data: {query.data}")
+            sentry_sdk.capture_exception(e)
 
         await query.edit_message_text("Некорректная сумма пополнения")
         return
 
     if amount not in TOPUP_AMOUNTS:
-        logging.error("Unavailable topup amount selected: %d", amount)
+        logging.error(f"Unavailable topup amount selected: {amount}")
 
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_message(f"Unavailable topup amount selected: {amount}")
@@ -159,7 +159,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
             raise Exception(f"Payment response missing PaymentURL or PaymentId: {tinkoff_response}")
 
     except Exception as e:
-        logging.error("Payment initialization failed: %s", e)
+        logging.exception(f"Payment initialization failed for order_id: {order_id}")
 
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)

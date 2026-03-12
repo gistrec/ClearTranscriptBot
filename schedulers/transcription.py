@@ -28,9 +28,10 @@ def _need_edit(context, task_id: int, now: datetime) -> bool:
     last_ts = cache.get(task_id)
 
     if not last_ts:
-        # нет кэша, значит нужно редактировать
+        # Если нет кэша, значит не нужно редактировать
+        # Скорее всего новый текст будет таким же, как предыдущий
         cache[task_id] = now
-        return True
+        return False
 
     if now - last_ts < timedelta(seconds=EDIT_INTERVAL_SEC):
         return False
@@ -123,7 +124,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
         try:
-            await context.bot.send_document(chat_id=task.telegram_id, document=path.open("rb"))
+            with path.open("rb") as f:
+                await context.bot.send_document(chat_id=task.telegram_id, document=f, time)
             update_transcription(
                 task.id,
                 status="completed",
@@ -131,7 +133,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 llm_tokens_by_encoding=token_counts,
             )
         except Exception as e:
-            logging.error(f"Failed to send result for task {task.id}: {e}")
+            logging.exception(f"Failed to send result for task {task.id}")
+
             if os.getenv("ENABLE_SENTRY") == "1":
                 sentry_sdk.capture_exception(e)
 
