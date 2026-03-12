@@ -86,7 +86,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             )
             continue
 
-        text = parse_text(result).strip()
+        text = parse_text(result)
         token_counts = tokens_by_model(text)
 
         if not text:
