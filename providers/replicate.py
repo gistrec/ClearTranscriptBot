@@ -1,9 +1,8 @@
 """Interact with Replicate for transcription."""
+import os
 import asyncio
 import logging
 import replicate
-import os
-
 import sentry_sdk
 
 from typing import Any, Dict, Optional
@@ -18,46 +17,53 @@ if not REPLICATE_API_TOKEN:
 
 
 async def start_transcription(audio_url: str) -> Optional[str]:
-    """Start a Replicate prediction and return its ID."""
+    """Start a Replicate transcription and return its ID."""
     try:
         client = replicate.Client(api_token=REPLICATE_API_TOKEN)
-        prediction = await asyncio.to_thread(
+        transcription = await asyncio.to_thread(
             client.predictions.create,
             version=MODEL,
             input={"audio_file": audio_url},
         )
-        return prediction.id
-    except Exception as exc:  # pragma: no cover - network call
-        logging.error(f"Failed to start Replicate prediction: {exc}")
+        return transcription.id
+    except Exception as e:
+        logging.exception(f"Failed to start Replicate transcription for {audio_url}")
+
         if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(exc)
+            sentry_sdk.capture_exception(e)
+
         return None
 
 
 async def check_transcription(operation_id: str) -> Optional[Dict[str, Any]]:
-    """Return prediction result if finished, otherwise ``None``."""
+    """Return transcription result if finished, otherwise ``None``."""
     try:
         client = replicate.Client(api_token=REPLICATE_API_TOKEN)
-        prediction = await asyncio.to_thread(client.predictions.get, operation_id)
-    except Exception as exc:  # pragma: no cover - network call
-        logging.error(f"Failed to fetch Replicate prediction {operation_id}: {exc}")
+        transcription = await asyncio.to_thread(client.predictions.get, operation_id)
+    except Exception as e:
+        logging.exception(f"Failed to fetch Replicate transcription {operation_id}")
+
         if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(exc)
+            sentry_sdk.capture_exception(e)
+
         return None
 
-    if prediction.status not in {"succeeded", "failed", "canceled"}:
+    if transcription.status not in {"succeeded", "failed", "canceled"}:
         return None
+
+    metrics = getattr(transcription, "metrics", None) or {}
 
     return {
-        "id": prediction.id,
-        "status": prediction.status,
-        "output": prediction.output,
-        "error": getattr(prediction, "error", None),
+        "id": transcription.id,
+        "status": transcription.status,
+        "output": transcription.output,
+        "error": getattr(transcription, "error", None),
+        "predict_time": metrics.get("predict_time"),
     }
 
 
 def get_text(payload: Dict[str, Any]) -> str:
-    """Extract transcription text from a Replicate prediction result."""
+    """Extract transcription text from a Replicate transcription result."""
     output = payload.get("output")
     if isinstance(output, dict):
         segments = output.get("segments") or []

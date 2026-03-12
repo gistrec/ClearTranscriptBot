@@ -44,16 +44,16 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text("Пользователь не найден")
         return
 
-    price = Decimal(task.price_rub or 0)
-    if user.balance < price:
+    price_for_user = Decimal(task.price_for_user or 0)
+    if user.balance < price_for_user:
         await query.edit_message_text(
             f"Недостаточно средств\n"
-            f"Баланс: {user.balance} ₽, требуется: {price} ₽\n\n"
+            f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
             f"Для пополнения баланса используйте команду /topup"
         )
         return
 
-    change_user_balance(telegram_id, -price)
+    change_user_balance(telegram_id, -price_for_user)
 
     operation_id = await start_transcription(
         task.audio_s3_path,
@@ -61,7 +61,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         duration_seconds=task.duration_seconds,
     )
     if not operation_id:
-        change_user_balance(telegram_id, price)
+        change_user_balance(telegram_id, price_for_user)
         await query.edit_message_text(
             "Не удалось запустить распознавание\n"
             "Пожалуйста, попробуйте ещё раз чуть позже"

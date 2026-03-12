@@ -5,6 +5,8 @@ from math import ceil
 
 MoscowTimezone = ZoneInfo("Europe/Moscow")
 
+USD_TO_RUB = Decimal("80")
+
 
 def format_duration(duration_sec: int) -> str:
     """Format duration in seconds as:
@@ -31,6 +33,16 @@ def available_time_by_balance(
     blocks = int(balance_rub / price_per_block)
     total_seconds = blocks * 15
     return format_duration(total_seconds)
+
+
+def cost_replicate_rub(predict_time_sec: float) -> Decimal:
+    """
+    Стоимость предсказания Replicate в рублях.
+
+    Тарификация: $0.000975 за секунду (Nvidia L40S GPU), конвертация по курсу 80 ₽/$.
+    """
+    usd = Decimal(str(predict_time_sec)) * Decimal("0.000975")
+    return (usd * USD_TO_RUB).quantize(Decimal("0.01"))
 
 
 def cost_yc_async_rub(duration_s: float, channels: int = 1, deferred: bool = False) -> str:

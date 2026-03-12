@@ -31,8 +31,8 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         dt = dt.astimezone(MoscowTimezone)
         dt_str = dt.strftime("%Y-%m-%d %H:%M")
         dur = format_duration(r.duration_seconds)
-        price = fmt_price(r.price_rub)
-        lines.append(f"{emoji} #{r.id} • {dt_str} МСК • {dur} • {price}")
+        price_for_user = fmt_price(r.price_for_user)
+        lines.append(f"{emoji} #{r.id} • {dt_str} МСК • {dur} • {price_for_user}")
 
     msg = (
         "Последние 10 распознаваний:\n"
