@@ -4,7 +4,6 @@ import sentry_sdk
 
 from decimal import Decimal
 
-from handlers import balance
 from payment import init_payment, get_payment_state, cancel_payment, PAYMENT_STATUSES
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -137,15 +136,27 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     order_id = f"topup-{query.from_user.id}-{query.message.message_id}"
+
+    if get_payment_by_order_id(order_id) is not None:
+        logging.warning("Duplicate topup callback for order_id: %s", order_id)
+        return
+
     description = f"Пополнение баланса на {amount} ₽"
     amount_kopeks = int(Decimal(amount) * 100)
 
     try:
         tinkoff_response = await init_payment(order_id, amount_kopeks, description)
-        logging.debug(tinkoff_response)
+        logging.info(f"Payment initialized: {tinkoff_response}")
 
-        if not tinkoff_response.get("Success", False) or tinkoff_response.get("ErrorCode", "0") != "0":
+        payment_status = tinkoff_response.get("Status", None)
+        payment_error = tinkoff_response.get("ErrorCode", "0")
+        if not payment_status or payment_error != "0":
             raise Exception(f"Payment initialization failed: {tinkoff_response}")
+
+        payment_url = tinkoff_response.get("PaymentURL")
+        payment_id = tinkoff_response.get("PaymentId")
+        if not payment_url or not payment_id:
+            raise Exception(f"Payment response missing PaymentURL or PaymentId: {tinkoff_response}")
 
     except Exception as e:
         logging.error("Payment initialization failed: %s", e)
@@ -158,12 +169,6 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "Попробуйте ещё раз чуть позже"
         )
         return
-
-    payment_status = tinkoff_response.get("Status", "unknown")
-    payment_url = tinkoff_response.get("PaymentURL")
-    payment_id = tinkoff_response.get("PaymentId")
-
-    logging.info(f"Payment initialized: {tinkoff_response}")
 
     create_payment(
         telegram_id=query.from_user.id,
@@ -213,9 +218,9 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     tinkoff_response = await get_payment_state(payment.payment_id)
     logging.info(f"Tinkoff response: {tinkoff_response}")
 
-    payment_status = tinkoff_response.get("Status", "unknown")
+    payment_status = tinkoff_response.get("Status", None)
 
-    if payment_status == "CONFIRMED" or payment_status == "AUTHORIZED":
+    if payment_status in ("CONFIRMED", "AUTHORIZED"):
         user = change_user_balance(payment.telegram_id, payment.amount)
         update_payment(order_id, status=payment_status)
 

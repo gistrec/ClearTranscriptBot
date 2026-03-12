@@ -92,9 +92,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         duration_str = format_duration(int(duration))
         if duration > MAX_AUDIO_DURATION:
+            max_duration_str = format_duration(MAX_AUDIO_DURATION)
             await message.reply_text(
-                "Файл слишком длинный: {duration_str}\n"
-                "Максимально допустимая длительность — 4 часа"
+                f"Файл слишком длинный: {duration_str}\n"
+                f"Максимально допустимая длительность — {max_duration_str}"
             )
             return
 
