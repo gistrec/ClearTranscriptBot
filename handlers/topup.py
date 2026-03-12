@@ -14,7 +14,7 @@ from database.queries import add_user, get_user_by_telegram_id, change_user_bala
     create_payment, get_payment_by_order_id, update_payment
 
 from utils.sentry import sentry_bind_user
-from utils.speechkit import available_time_by_balance
+from utils.utils import available_time_by_balance
 
 
 TOPUP_AMOUNTS = (50, 100, 250, 500)
@@ -196,7 +196,17 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
 
-    order_id = query.data.split(":", 2)[2]
+    try:
+        order_id = query.data.split(":", 2)[2]
+    except (IndexError, AttributeError) as e:
+        logging.exception(f"Invalid payment check callback data: {query.data}")
+
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+
+        await query.message.edit_text("Некорректные данные платежа", reply_markup=None)
+        return
+
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.telegram_id != query.from_user.id:
         logging.error(f"Payment not found for order_id: {order_id}")
@@ -205,9 +215,6 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if payment.status in ("CONFIRMED", "AUTHORIZED"):
         logging.info(f"Payment already completed for order_id: {order_id}")
-
-        # Удаляем у сообщения кнопки для проверки платежа и отмены
-        await query.edit_message_reply_markup(reply_markup=None)
 
         await query.message.edit_text(
             "Платёж уже завершён ранее",
@@ -255,7 +262,17 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
 
-    order_id = query.data.split(":", 2)[2]
+    try:
+        order_id = query.data.split(":", 2)[2]
+    except (IndexError, AttributeError) as e:
+        logging.exception(f"Invalid payment cancel callback data: {query.data}")
+
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+
+        await query.message.edit_text("Некорректные данные платежа", reply_markup=None)
+        return
+
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.telegram_id != query.from_user.id:
         await query.message.edit_text("Платёж не найден", reply_markup=None)

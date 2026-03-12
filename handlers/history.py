@@ -1,13 +1,11 @@
 from datetime import timezone
-from zoneinfo import ZoneInfo
-
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.queries import get_recent_transcriptions
 
 from utils.sentry import sentry_bind_user
-from utils.speechkit import format_duration
+from utils.utils import format_duration, MoscowTimezone
 from utils.tg import STATUS_EMOJI, fmt_price
 
 
@@ -23,14 +21,14 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
-    msk = ZoneInfo("Europe/Moscow")
+
     lines: list[str] = []
     for r in items:
         emoji = STATUS_EMOJI.get(r.status, "•")
         dt = r.created_at
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        dt = dt.astimezone(msk)
+        dt = dt.astimezone(MoscowTimezone)
         dt_str = dt.strftime("%Y-%m-%d %H:%M")
         dur = format_duration(r.duration_seconds)
         price = fmt_price(r.price_rub)

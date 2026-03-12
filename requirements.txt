@@ -11,10 +11,10 @@ mysqlclient
 boto3
 
 # Utils
-pytz
 requests
 httpx
 tiktoken
+replicate
 
 # Monitoring / error reporting
 sentry_sdk

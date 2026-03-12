@@ -1,8 +1,9 @@
 """Periodic scheduler for checking transcription statuses."""
 import os
-import pytz
 import logging
 import sentry_sdk
+
+import tempfile
 
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -10,16 +11,14 @@ from datetime import datetime, timedelta
 from telegram.ext import ContextTypes
 
 from database.queries import get_transcriptions_by_status, update_transcription
-from utils.speechkit import fetch_transcription_result, parse_text, format_duration
+from utils.utils import format_duration, MoscowTimezone
+from utils.transcription import check_transcription, get_result
 from utils.tg import safe_edit_message_text
 from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
 
 
 EDIT_INTERVAL_SEC = 5  # не редактировать чаще, чем раз в 5 сек
-
-
-MoscowTimezone = pytz.timezone('Europe/Moscow')
 
 
 def _need_edit(context, task_id: int, now: datetime) -> bool:
@@ -53,7 +52,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             logging.error(f"Task {task.id} doesn't have started_at")
             continue
 
-        started_at = MoscowTimezone.localize(task.started_at)
+        started_at = task.started_at.replace(tzinfo=MoscowTimezone)
 
         duration = int((now - started_at).total_seconds())
         duration_str = format_duration(duration)
@@ -69,19 +68,19 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 "Отправлю результат, как только всё будет готово",
             )
 
-        result = await fetch_transcription_result(task.operation_id)
+        result_info = await check_transcription(task.operation_id)
 
         # Результата еще нет, проверим снова через секунду
-        if result is None:
+        if result_info is None:
             continue
 
         update_transcription(
             task.id,
-            result_json=result,
+            result_json=result_info.get("payload"),
             finished_at=now,
         )
 
-        if "response" not in result:
+        if not result_info.get("success"):
             update_transcription(task.id, status="failed")
             await safe_edit_message_text(
                 context.bot,
@@ -91,19 +90,20 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             )
             continue
 
-        text = parse_text(result)
+        text = get_result(result_info)
         token_counts = tokens_by_model(text)
 
         if not text:
             text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
 
         source_stem = Path(task.audio_s3_path).stem
-        path = Path(f"{source_stem}.txt")
+        tmp_dir = Path(tempfile.mkdtemp())
+        path = tmp_dir / f"{source_stem}.txt"
         path.write_text(text, encoding="utf-8")
 
         object_name = f"result/{task.telegram_id}/{path.name}"
-        s3_uri = await upload_file(path, object_name)
-        if s3_uri is None:
+        s3_url, s3_signed_url = await upload_file(path, object_name)
+        if not s3_url or not s3_signed_url:
             update_transcription(task.id, status="failed")
             await safe_edit_message_text(
                 context.bot,
@@ -112,6 +112,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )
             path.unlink(missing_ok=True)
+            tmp_dir.rmdir()
             continue
 
         await safe_edit_message_text(
@@ -135,7 +136,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             update_transcription(
                 task.id,
                 status="completed",
-                result_s3_path=s3_uri,
+                result_s3_path=s3_url,
                 llm_tokens_by_encoding=token_counts,
             )
         except Exception as e:
@@ -147,7 +148,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             update_transcription(
                 task.id,
                 status="failed",
-                result_s3_path=s3_uri,
+                result_s3_path=s3_url,
                 llm_tokens_by_encoding=token_counts,
             )
 
@@ -159,3 +160,4 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             )
         finally:
             path.unlink(missing_ok=True)
+            tmp_dir.rmdir()
