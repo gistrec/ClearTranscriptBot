@@ -97,7 +97,7 @@ async def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> Option
         # }
         return response.json()["id"]
     except Exception as e:
-        logging.error(f"Failed to start transcription for {s3_uri}: {e}")
+        logging.exception(f"Failed to start transcription for {s3_uri}")
 
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)

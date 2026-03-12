@@ -33,7 +33,11 @@ async def get_conversion_progress(
     try:
         content = path.read_text()
     except Exception as e:
-        logging.error(f"Failed to read progress file {path}: {e}")
+        logging.exception(f"Failed to read progress file {path}")
+
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+
         return 0, elapsed, duration_seconds
 
     out_time_ms = None
@@ -106,7 +110,7 @@ async def get_media_duration(source: str | Path) -> float:
         out = stdout.decode().strip()
         return float(out)
     except Exception as e:
-        logging.error(f"Failed to get media duration for {source}: {e}")
+        logging.exception(f"Failed to get media duration for {source}")
 
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)
@@ -173,7 +177,7 @@ async def convert_to_ogg(
             return False
         return True
     except Exception as e:
-        logging.error(f"Failed to convert {source} to OGG: {e}")
+        logging.exception(f"Failed to convert {source} to OGG")
 
         if os.getenv("ENABLE_SENTRY") == "1":
             sentry_sdk.capture_exception(e)
