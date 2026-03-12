@@ -102,8 +102,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
         price_for_user = cost_yc_async_rub(duration)
-        price_dec = Decimal(price_for_user)
-        if user.balance < price_dec:
+        price_for_user_dec = Decimal(price_for_user)
+        if user.balance < price_for_user_dec:
             await message.reply_text(
                 f"Недостаточно средств\n"
                 f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
@@ -142,7 +142,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         audio_s3_path=s3_url,
         provider=user.default_provider,
         duration_seconds=int(duration),
-        price_for_user=price_dec,
+        price_for_user=price_for_user_dec,
         result_s3_path=None,
     )
 
