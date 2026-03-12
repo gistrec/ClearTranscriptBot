@@ -13,7 +13,7 @@ Telegram bot for automatic audio/video transcription:
 
 - 🎙 Supports audio and video files (up to 4 hours)
 - 📦 Stores files in Yandex Cloud S3
-- 💬 Transcription via Yandex SpeechKit or Replicate WhisperX (auto-picks the A40 model for files longer than 2 hours)
+- 💬 Transcription via Yandex SpeechKit or Replicate WhisperX
 - 💰 Balance and billing inside Telegram
 - 📜 Full request history
 - 🐞 Optional error reporting via Sentry
@@ -23,7 +23,8 @@ Telegram bot for automatic audio/video transcription:
 ```
 ClearTranscriptBot
 ├── main.py              # Bot entry point
-├── schedulers/          # Periodic task scheduler
+├── payment.py           # Tinkoff acquiring API wrappers
+├── schedulers/          # Periodic task schedulers
 │   ├── ffmpeg.py
 │   └── transcription.py
 ├── handlers/            # Telegram update handlers
@@ -33,23 +34,25 @@ ClearTranscriptBot
 │   ├── file.py
 │   ├── history.py
 │   ├── price.py
-│   └── text.py
+│   ├── text.py
+│   └── topup.py
+├── providers/           # Transcription provider implementations
+│   ├── replicate.py     # Replicate WhisperX integration
+│   └── speechkit.py     # Yandex SpeechKit integration
 ├── database/            # Data access layer
 │   ├── connection.py    # MySQL connection setup via SQLAlchemy
 │   ├── models.py        # SQLAlchemy models for application tables
 │   └── queries.py       # Helper functions for common database operations
-├── payment/             # Tinkoff acquiring API wrappers
-│   ├── init.py
-│   ├── get_state.py
-│   └── cancel.py
 ├── utils/               # Helper utilities
 │   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
 │   ├── marketing.py     # Advertising/tracking: send conversion goals to Yandex Metrica
 │   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
 │   ├── sentry.py        # Sentry error reporting helpers
-│   ├── speechkit.py     # Request transcription from SpeechKit
-│   ├── transcription.py # Unified wrapper for SpeechKit and Replicate providers
-│   └── tg.py            # Telegram-specific helpers
+│   ├── tokens.py        # LLM token counting helpers
+│   ├── transcription.py # Unified entry point routing to provider implementations
+│   ├── tg.py            # Telegram-specific helpers
+│   └── utils.py         # Shared utility functions
+├── docs/                # GitHub Pages legal documents
 └── requirements.txt     # Python dependencies list
 ```
 
@@ -85,21 +88,14 @@ ClearTranscriptBot
 | `S3_ENDPOINT`    | S3-compatible URL |
 | `S3_BUCKET`      | Bucket name       |
 
-#### SpeechKit
-
-| Variable        | Description |
-|-----------------|-------------|
-| `YC_API_KEY`    | API key     |
-| `YC_FOLDER_ID`  | Folder ID   |
 
 ### Transcription providers
 
-| Variable                  | Description                                                                                             |
-|---------------------------|---------------------------------------------------------------------------------------------------------|
-| `TRANSCRIPTION_PROVIDER`  | `speechkit` (default) or `replicate` to choose the backend                                               |
-| `REPLICATE_API_TOKEN`     | API token for [Replicate](https://replicate.com) when using WhisperX                                     |
-| `REPLICATE_MODEL_SMALL`   | Optional override for the short-audio WhisperX version (defaults to `victor-upmeet/whisperx`)           |
-| `REPLICATE_MODEL_LARGE`   | Optional override for the long-audio WhisperX version (defaults to `victor-upmeet/whisperx-a40-large`) |
+| Variable              | Description                |
+|-----------------------|----------------------------|
+| `YC_API_KEY`          | Yandex SpeechKit API key   |
+| `YC_FOLDER_ID`        | Yandex SpeechKit Folder ID |
+| `REPLICATE_API_TOKEN` | Replicate API token        |
 
 ### Sentry
 
@@ -154,6 +150,7 @@ CREATE TABLE IF NOT EXISTS users (
     telegram_id      BIGINT          PRIMARY KEY,
     telegram_login   VARCHAR(32),
     balance          DECIMAL(10,2)   NOT NULL DEFAULT 150.00,
+    default_provider VARCHAR(16)     NOT NULL DEFAULT 'speechkit',
     registered_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -163,14 +160,16 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     telegram_id            BIGINT          NOT NULL REFERENCES users(telegram_id),
     status                 VARCHAR(32)     NOT NULL,
     audio_s3_path          TEXT            NOT NULL,
+    result_json            TEXT,
+    llm_tokens_by_encoding JSON,
     duration_seconds       INTEGER,
     price_rub              DECIMAL(10,2),
     result_s3_path         TEXT,
-    result_json            TEXT,
-    llm_tokens_by_encoding JSON,
+    provider               VARCHAR(16),
     operation_id           VARCHAR(128),
     message_id             INTEGER,
     chat_id                BIGINT,
+    created_at             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP
 );
@@ -274,8 +273,10 @@ In that case install libmysqlclient-dev: `sudo apt install libmysqlclient-dev` o
 ## References
 
 - [Yandex Cloud SpeechKit docs][2]
-- [Telegram Bot API][3]
+- [Replicate WhisperX examples][3]
+- [Telegram Bot API][4]
 
 [1]: https://t.me/ClearTranscriptBot
 [2]: https://cloud.yandex.com/docs/speechkit/
-[3]: https://core.telegram.org/bots/api
+[3]: https://replicate.com/victor-upmeet/whisperx-a40-large/examples
+[4]: https://core.telegram.org/bots/api

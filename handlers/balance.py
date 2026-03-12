@@ -8,7 +8,7 @@ from database.queries import add_user, get_recent_payments, get_user_by_telegram
 from payment import PAYMENT_STATUSES
 
 from utils.sentry import sentry_bind_user
-from utils.speechkit import available_time_by_balance
+from utils.utils import available_time_by_balance
 
 
 @sentry_bind_user

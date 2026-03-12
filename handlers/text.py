@@ -7,7 +7,7 @@ from database.queries import add_user, get_user_by_telegram_id
 
 from utils.marketing import track_goal
 from utils.sentry import sentry_bind_user
-from utils.speechkit import available_time_by_balance
+from utils.utils import available_time_by_balance
 
 
 def extract_start_payload(text: str) -> str | None:

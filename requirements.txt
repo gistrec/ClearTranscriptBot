@@ -11,7 +11,6 @@ mysqlclient
 boto3
 
 # Utils
-pytz
 requests
 httpx
 tiktoken

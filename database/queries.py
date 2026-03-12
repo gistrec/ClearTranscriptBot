@@ -23,12 +23,10 @@ def get_user_by_telegram_id(telegram_id: int) -> Optional[User]:
         return session.query(User).filter(User.telegram_id == telegram_id).one_or_none()
 
 
-def change_user_balance(telegram_id: int, delta: Decimal) -> Optional[User]:
+def change_user_balance(telegram_id: int, delta: Decimal) -> User:
     """Add *delta* to user's balance and return updated user."""
     with SessionLocal() as session:
         user = session.get(User, telegram_id)
-        if user is None:
-            return None
         user.balance = (user.balance or Decimal("0")) + delta
         session.commit()
         session.refresh(user)
@@ -39,6 +37,7 @@ def add_transcription(
     telegram_id: int,
     status: str,
     audio_s3_path: str,
+    provider: str | None = None,
     duration_seconds: int | None = None,
     price_rub: Decimal | None = None,
     result_s3_path: str | None = None,
@@ -49,6 +48,7 @@ def add_transcription(
             telegram_id=telegram_id,
             status=status,
             audio_s3_path=audio_s3_path,
+            provider=provider,
             duration_seconds=duration_seconds,
             price_rub=price_rub,
             result_s3_path=result_s3_path,

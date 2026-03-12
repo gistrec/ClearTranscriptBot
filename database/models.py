@@ -32,6 +32,9 @@ class User(Base):
     # Account balance
     balance = Column(Numeric(10, 2), nullable=False, default=150.00)
 
+    # Preferred transcription provider: "speechkit" or "replicate"
+    default_provider = Column(String(16), nullable=False, default="speechkit")
+
     # Registration timestamp
     registered_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -57,7 +60,7 @@ class TranscriptionHistory(Base):
     # Path to the audio file in S3
     audio_s3_path = Column(Text, nullable=False)
 
-    # Raw recognition result returned by SpeechKit
+    # Raw recognition result returned by the provider
     result_json = Column(Text, nullable=True)
 
     # Token counts for transcribed text by encoding
@@ -72,7 +75,10 @@ class TranscriptionHistory(Base):
     # Path to the transcription result in S3
     result_s3_path = Column(Text, nullable=True)
 
-    # Identifier of Yandex Cloud operation
+    # Transcription provider used: "speechkit" or "replicate"
+    provider = Column(String(16), nullable=True)
+
+    # Identifier of the transcription operation (provider-aware prefix stored separately)
     operation_id = Column(String(128), nullable=True)
 
     # Identifier of the Telegram message with task status
@@ -84,10 +90,10 @@ class TranscriptionHistory(Base):
     # Timestamp when the task was created and sent to the user for approval (before execution)
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 
-    # Timestamp when the Yandex SpeechKit operation was created
+    # Timestamp when the transcription operation was started
     started_at = Column(DateTime, nullable=True)
 
-    # Timestamp when the Yandex SpeechKit operation finished
+    # Timestamp when the transcription operation finished
     finished_at = Column(DateTime, nullable=True)
 
 

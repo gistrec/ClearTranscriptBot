@@ -14,11 +14,13 @@ from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user
 from utils.tg import is_supported_mime, sanitize_filename
-from utils.speechkit import cost_yc_async_rub, format_duration, MAX_AUDIO_DURATION
+from utils.utils import format_duration, cost_yc_async_rub
 from utils.tg import extract_local_path
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
+
+MAX_AUDIO_DURATION = 4 * 60 * 60  # seconds, SpeechKit limit
 
 
 @sentry_bind_user
@@ -126,8 +128,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
         object_name = f"source/{telegram_id}/{ogg_path.name}"
-        s3_uri = await upload_file(ogg_path, object_name)
-        if s3_uri is None:
+        s3_url, s3_signed_url = await upload_file(ogg_path, object_name)
+        if not s3_url or not s3_signed_url:
             await message.reply_text(
                 "Не удалось загрузить файл\n"
                 "Пожалуйста, попробуйте ещё раз чуть позже"
@@ -137,7 +139,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     history = add_transcription(
         telegram_id=telegram_id,
         status="pending",
-        audio_s3_path=s3_uri,
+        audio_s3_path=s3_url,
+        provider=user.default_provider,
         duration_seconds=int(duration),
         price_rub=price_dec,
         result_s3_path=None,
