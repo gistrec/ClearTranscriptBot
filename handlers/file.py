@@ -101,12 +101,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-        price = cost_yc_async_rub(duration)
-        price_dec = Decimal(price)
+        price_for_user = cost_yc_async_rub(duration)
+        price_dec = Decimal(price_for_user)
         if user.balance < price_dec:
             await message.reply_text(
                 f"Недостаточно средств\n"
-                f"Баланс: {user.balance} ₽, требуется: {price} ₽\n\n"
+                f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
                 f"Для пополнения баланса используйте команду /topup"
             )
             return
@@ -142,7 +142,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         audio_s3_path=s3_url,
         provider=user.default_provider,
         duration_seconds=int(duration),
-        price_rub=price_dec,
+        price_for_user=price_dec,
         result_s3_path=None,
     )
 
@@ -156,6 +156,6 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     ]
 
     await message.reply_text(
-        f"Длительность: {duration_str}\nСтоимость: {price} ₽",
+        f"Длительность: {duration_str}\nСтоимость: {price_for_user} ₽",
         reply_markup=InlineKeyboardMarkup([buttons]),
     )

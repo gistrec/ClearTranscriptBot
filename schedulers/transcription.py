@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from telegram.ext import ContextTypes
 
 from database.queries import get_transcriptions_by_status, update_transcription
-from utils.utils import format_duration, MoscowTimezone
+from utils.utils import format_duration, MoscowTimezone, cost_replicate_rub
 from utils.transcription import check_transcription, get_result
 from utils.tg import safe_edit_message_text
 from utils.s3 import upload_file
@@ -74,10 +74,18 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if result_info is None:
             continue
 
+        payload = result_info.get("payload") or {}
+        predict_time = payload.get("predict_time")
+        if result_info.get("provider") == "replicate" and predict_time:
+            actual_price = cost_replicate_rub(predict_time)
+        else:
+            actual_price = task.price_for_user
+
         update_transcription(
             task.id,
-            result_json=result_info.get("payload"),
+            result_json=payload,
             finished_at=now,
+            actual_price=actual_price,
         )
 
         if not result_info.get("success"):
