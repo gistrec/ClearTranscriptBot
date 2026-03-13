@@ -30,10 +30,16 @@ def sentry_bind_user(func):
     async def wrapper(update, context, *args, **kwargs):
         if ENABLE_SENTRY and getattr(update, "effective_user", None):
             user = update.effective_user
-            sentry_sdk.set_user({
-                "id": user.id,
-                "username": user.username,
-                "first_name": user.first_name,
-            })
+
+            with sentry_sdk.new_scope() as scope:
+                scope.set_user({
+                    "id": user.id,
+                    "username": user.username,
+                    "first_name": user.first_name,
+                })
+
+                return await func(update, context, *args, **kwargs)
+
         return await func(update, context, *args, **kwargs)
+
     return wrapper
