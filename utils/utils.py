@@ -14,7 +14,7 @@ def format_duration(duration_sec: int) -> str:
     * '{m} мин. {s} сек.'
     * '{s} сек.'
     """
-    total = int(duration_sec)
+    total = int(duration_sec or 0)
     hours, r = divmod(total, 3600)
     minutes, seconds = divmod(r, 60)
 

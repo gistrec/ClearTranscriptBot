@@ -287,7 +287,7 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=None,
     )
 
+    update_payment(order_id, status="CANCELED")
+
     tinkoff_response = await cancel_payment(payment.payment_id)
     logging.info(f"Tinkoff response: {tinkoff_response}")
-
-    update_payment(order_id, status="CANCELED")
