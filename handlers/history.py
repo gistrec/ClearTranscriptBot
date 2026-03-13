@@ -1,4 +1,3 @@
-from datetime import timezone
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -27,8 +26,7 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         emoji = STATUS_EMOJI.get(r.status, "•")
         dt = r.created_at
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        dt = dt.astimezone(MoscowTimezone)
+            dt = dt.replace(tzinfo=MoscowTimezone)
         dt_str = dt.strftime("%Y-%m-%d %H:%M")
         dur = format_duration(r.duration_seconds)
         price_for_user = fmt_price(r.price_for_user)
