@@ -20,13 +20,15 @@ async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
 
-    topups = get_recent_payments(telegram_id, limit=5)
     topup_lines = []
-    for topup in topups:
-        created = topup.created_at.strftime("%d.%m %H:%M") if topup.created_at else "—"
+    for topup in get_recent_payments(telegram_id, limit=5):
+        created = topup.created_at.strftime("%d.%m %H:%M") if topup.created_at is not None else "—"
+        payment_status = PAYMENT_STATUSES.get(topup.status) or "неизвестно"
+
         topup_lines.append(
-            f"{created} — {topup.amount} ₽ — {PAYMENT_STATUSES[topup.status]}"
+            f"{created} — {topup.amount} ₽ — {payment_status}"
         )
+
     topups_text = "\n".join(topup_lines) if topup_lines else "Пополнений пока нет"
 
     await update.message.reply_text(
