@@ -28,7 +28,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 # Mute noisy loggers
-logging.getLogger("apscheduler").setLevel(logging.WARNING)
+logging.getLogger("apscheduler").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
