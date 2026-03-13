@@ -3,7 +3,6 @@ import os
 import boto3
 import asyncio
 import logging
-import sentry_sdk
 
 from pathlib import Path
 from typing import Optional
@@ -51,12 +50,8 @@ async def upload_file(
             )
 
             return plain_url, signed_url
-        except Exception as e:
+        except Exception:
             logging.exception(f"Failed to upload {file_path} to S3")
-
-            if os.getenv("ENABLE_SENTRY") == "1":
-                sentry_sdk.capture_exception(e)
-
             return None, None
 
     return await asyncio.to_thread(_upload)
@@ -77,12 +72,8 @@ async def get_signed_url(object_name: str, expires_in: int = 3600) -> Optional[s
                 Params={"Bucket": S3_BUCKET, "Key": object_name},
                 ExpiresIn=expires_in,
             )
-        except Exception as e:
+        except Exception:
             logging.exception(f"Failed to generate signed URL for {object_name}")
-
-            if os.getenv("ENABLE_SENTRY") == "1":
-                sentry_sdk.capture_exception(e)
-
             return None
 
     return await asyncio.to_thread(_sign)

@@ -1,7 +1,5 @@
 """Periodic scheduler for checking transcription statuses."""
-import os
 import logging
-import sentry_sdk
 
 import tempfile
 
@@ -142,12 +140,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 result_s3_path=s3_url,
                 llm_tokens_by_encoding=token_counts,
             )
-        except Exception as e:
+        except Exception:
             logging.exception(f"Failed to send result for task {task.id}")
-
-            if os.getenv("ENABLE_SENTRY") == "1":
-                sentry_sdk.capture_exception(e)
-
             update_transcription(
                 task.id,
                 status="failed",

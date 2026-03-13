@@ -1,6 +1,4 @@
-import os
 import logging
-import sentry_sdk
 
 from decimal import Decimal
 
@@ -109,21 +107,13 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         _, amount_str = (query.data or "").split(":", 1)
         amount = int(amount_str)
-    except (ValueError, AttributeError) as e:
+    except (ValueError, AttributeError):
         logging.exception(f"Invalid topup callback data: {query.data}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         await query.edit_message_text("Некорректная сумма пополнения")
         return
 
     if amount not in TOPUP_AMOUNTS:
         logging.error(f"Unavailable topup amount selected: {amount}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_message(f"Unavailable topup amount selected: {amount}")
-
         await query.edit_message_text("Сумма пополнения недоступна")
         return
 
@@ -158,12 +148,8 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if not payment_url or not payment_id:
             raise Exception(f"Payment response missing PaymentURL or PaymentId: {tinkoff_response}")
 
-    except Exception as e:
+    except Exception:
         logging.exception(f"Payment initialization failed for order_id: {order_id}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         await query.message.reply_text(
             "Не удалось создать форму оплаты\n"
             "Попробуйте ещё раз чуть позже"
@@ -198,22 +184,14 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
 
     try:
         order_id = query.data.split(":", 2)[2]
-    except (IndexError, AttributeError) as e:
+    except (IndexError, AttributeError):
         logging.exception(f"Invalid payment check callback data: {query.data}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         await query.message.edit_text("Некорректные данные платежа", reply_markup=None)
         return
 
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.telegram_id != query.from_user.id:
         logging.error(f"Payment not found for order_id: {order_id}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_message(f"Payment not found for order_id: {order_id}")
-
         await query.message.edit_text("Платёж не найден", reply_markup=None)
         return
 
@@ -229,12 +207,8 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         tinkoff_response = await get_payment_state(payment.payment_id)
         logging.info(f"Tinkoff response: {tinkoff_response}")
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to get payment state for order_id: {order_id}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         await query.message.reply_text("Не удалось проверить статус платежа\nПопробуйте ещё раз")
         return
 
@@ -267,7 +241,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return
     else:
-        await query.message.reply_text(f"❌ Платёж не завершён")
+        await query.message.reply_text("❌ Платёж не завершён")
 
 
 @sentry_bind_user
@@ -277,12 +251,8 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
 
     try:
         order_id = query.data.split(":", 2)[2]
-    except (IndexError, AttributeError) as e:
+    except (IndexError, AttributeError):
         logging.exception(f"Invalid payment cancel callback data: {query.data}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         await query.message.edit_text("Некорректные данные платежа", reply_markup=None)
         return
 
@@ -301,11 +271,8 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         tinkoff_response = await cancel_payment(payment.payment_id)
         logging.info(f"Tinkoff response: {tinkoff_response}")
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to cancel payment for order_id: {order_id}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
 
         # No need to notify user about cancellation failure,
         # since we already updated the status in our system and UI

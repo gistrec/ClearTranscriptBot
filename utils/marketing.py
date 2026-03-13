@@ -64,6 +64,6 @@ async def track_goal(yclid: str, goal: str) -> bool:
 
         logging.info("Metrica OK: yclid=%s goal=%s", yclid, goal)
         return True
-    except Exception as e:
-        logging.warning("Metrica failed: yclid=%s goal=%s err=%s", yclid, goal, e)
+    except Exception:
+        logging.exception("Metrica failed: yclid=%s goal=%s", yclid, goal)
         return False

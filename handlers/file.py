@@ -1,7 +1,6 @@
 import os
 import logging
 import tempfile
-import sentry_sdk
 
 from decimal import Decimal
 from pathlib import Path
@@ -65,12 +64,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 "Пожалуйста, отправьте видео или аудио"
             )
             return
-    except Exception as e:
+    except Exception:
         logging.exception("Failed to get file from Telegram")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         await message.reply_text(
             "Не удалось загрузить файл от Telegram\n"
             "Пожалуйста, попробуйте ещё раз"
@@ -99,12 +94,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 local_path.symlink_to(file_path)
             else:
                 await file.download_to_drive(custom_path=str(local_path))
-        except Exception as e:
+        except Exception:
             logging.exception("Failed to download file to disk")
-
-            if os.getenv("ENABLE_SENTRY") == "1":
-                sentry_sdk.capture_exception(e)
-
             await message.reply_text(
                 "Не удалось скачать файл\n"
                 "Пожалуйста, попробуйте ещё раз"

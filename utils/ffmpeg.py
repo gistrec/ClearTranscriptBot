@@ -1,9 +1,7 @@
 """Utility functions for working with ffmpeg."""
-import os
 import time
 import asyncio
 import logging
-import sentry_sdk
 
 from typing import Tuple
 from pathlib import Path
@@ -32,12 +30,8 @@ async def get_conversion_progress(
 
     try:
         content = path.read_text()
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to read progress file {path}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         return 0, elapsed, duration_seconds
 
     out_time_ms = None
@@ -102,19 +96,12 @@ async def get_media_duration(source: str | Path) -> float:
         )
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
-            if os.getenv("ENABLE_SENTRY") == "1":
-                sentry_sdk.capture_message(
-                    f"ffprobe failed: {stderr.decode().strip()}"
-                )
+            logging.error(f"ffmpeg failed: {stderr.decode().strip()}")
             return 0.0
         out = stdout.decode().strip()
         return float(out)
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to get media duration for {source}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         return 0.0
 
 
@@ -170,16 +157,9 @@ async def convert_to_ogg(
         )
         _, stderr = await process.communicate()
         if process.returncode != 0:
-            if os.getenv("ENABLE_SENTRY") == "1":
-                sentry_sdk.capture_message(
-                    f"ffmpeg failed: {stderr.decode().strip()}"
-                )
+            logging.error(f"ffmpeg failed: {stderr.decode().strip()}")
             return False
         return True
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to convert {source} to OGG")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         return False

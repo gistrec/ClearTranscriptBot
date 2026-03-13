@@ -2,7 +2,6 @@
 import os
 import httpx
 import logging
-import sentry_sdk
 
 from typing import Dict, Optional
 
@@ -63,12 +62,8 @@ async def check_transcription(operation_id: str) -> Optional[dict]:
             return data
 
         return None
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to fetch transcription result for {operation_id}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         return None
 
 
@@ -100,10 +95,6 @@ async def start_transcription(s3_uri: str, language_code: str = "ru-RU") -> Opti
         #     'modifiedAt': '2025-08-09T20:48:53Z'
         # }
         return response.json()["id"]
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to start transcription for {s3_uri}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         return None

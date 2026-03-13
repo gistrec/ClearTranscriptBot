@@ -3,7 +3,6 @@ import os
 import asyncio
 import logging
 import replicate
-import sentry_sdk
 
 from typing import Any, Dict, Optional
 
@@ -26,12 +25,8 @@ async def start_transcription(audio_url: str) -> Optional[str]:
             input={"audio_file": audio_url},
         )
         return transcription.id
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to start Replicate transcription for {audio_url}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         return None
 
 
@@ -40,12 +35,8 @@ async def check_transcription(operation_id: str) -> Optional[Dict[str, Any]]:
     try:
         client = replicate.Client(api_token=REPLICATE_API_TOKEN)
         transcription = await asyncio.to_thread(client.predictions.get, operation_id)
-    except Exception as e:
+    except Exception:
         logging.exception(f"Failed to fetch Replicate transcription {operation_id}")
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
-
         return None
 
     if transcription.status not in {"succeeded", "failed", "canceled"}:

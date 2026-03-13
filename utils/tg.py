@@ -1,7 +1,5 @@
-import os
 import re
 import logging
-import sentry_sdk
 
 from decimal import Decimal
 
@@ -52,11 +50,8 @@ async def safe_edit_message_text(bot, chat_id, message_id, text):
         return
     try:
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
-    except Exception as e:
+    except Exception:
         logging.exception(
             f"Failed to edit message {message_id} in chat {chat_id}. "
             f"text={repr(text[:30])}"
         )
-
-        if os.getenv("ENABLE_SENTRY") == "1":
-            sentry_sdk.capture_exception(e)
