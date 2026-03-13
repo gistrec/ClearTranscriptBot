@@ -127,7 +127,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-        object_name = f"source/{telegram_id}/{ogg_path.name}"
+        object_name = f"source/{telegram_id}/{message.message_id}_{ogg_path.name}"
         s3_url, s3_signed_url = await upload_file(ogg_path, object_name)
         if not s3_url or not s3_signed_url:
             await message.reply_text(
