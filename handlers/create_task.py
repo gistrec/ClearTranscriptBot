@@ -82,6 +82,5 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         status="running",
         operation_id=operation_id,
         message_id=status_message.message_id,
-        chat_id=status_message.chat_id,
         started_at=now,
     )

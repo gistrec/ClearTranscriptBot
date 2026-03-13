@@ -53,7 +53,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if _need_edit(context, task.id, now):
             await safe_edit_message_text(
                 context.bot,
-                task.chat_id,
+                task.telegram_id,
                 task.message_id,
                 f"⏳ Задача №{task.id} в работе\n\n"
                 f"Прошло времени: {duration_str}\n\n"
@@ -85,7 +85,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             change_user_balance(task.telegram_id, task.price_for_user)  # Refund if failed
             await safe_edit_message_text(
                 context.bot,
-                task.chat_id,
+                task.telegram_id,
                 task.message_id,
                 f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )
@@ -109,7 +109,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             change_user_balance(task.telegram_id, task.price_for_user)  # Refund if upload failed
             await safe_edit_message_text(
                 context.bot,
-                task.chat_id,
+                task.telegram_id,
                 task.message_id,
                 f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )
@@ -119,7 +119,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         await safe_edit_message_text(
             context.bot,
-            task.chat_id,
+            task.telegram_id,
             task.message_id,
             f"✅ Задача №{task.id} готова!\n\n"
             f"Прошло времени: {duration_str}\n\n"
@@ -158,7 +158,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
             await safe_edit_message_text(
                 context.bot,
-                task.chat_id,
+                task.telegram_id,
                 task.message_id,
                 f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )

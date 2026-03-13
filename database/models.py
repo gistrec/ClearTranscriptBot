@@ -87,9 +87,6 @@ class TranscriptionHistory(Base):
     # Identifier of the Telegram message with task status
     message_id = Column(Integer, nullable=True)
 
-    # Telegram chat where the status message was sent
-    chat_id = Column(BigInteger, nullable=True)
-
     # Timestamp when the task was created and sent to the user for approval (before execution)
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 
