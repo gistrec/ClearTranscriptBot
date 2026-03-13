@@ -1,6 +1,7 @@
 import os
-import shutil
+import logging
 import tempfile
+import sentry_sdk
 
 from decimal import Decimal
 from pathlib import Path
@@ -38,28 +39,42 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "Скоро попрошу подтвердить запуск задачи...",
     )
 
+    try:
+        file = None
+        mime = ""
+        file_name = "file"
+        if message.document:
+            file = await message.document.get_file(read_timeout=120)
+            mime = message.document.mime_type or ""
+            file_name = message.document.file_name or file_name
+        elif message.audio:
+            file = await message.audio.get_file(read_timeout=120)
+            mime = message.audio.mime_type or ""
+            file_name = message.audio.file_name or file_name
+        elif message.video:
+            file = await message.video.get_file(read_timeout=120)
+            mime = message.video.mime_type or ""
+            file_name = message.video.file_name or file_name
+        elif message.voice:
+            file = await message.voice.get_file(read_timeout=120)
+            mime = "audio/ogg"
+            file_name = "voice.ogg"
+        else:
+            await message.reply_text(
+                "Этот тип файла не поддерживается\n"
+                "Пожалуйста, отправьте видео или аудио"
+            )
+            return
+    except Exception as e:
+        logging.exception("Failed to get file from Telegram")
 
-    file = None
-    mime = ""
-    file_name = "file"
-    if message.document:
-        file = await message.document.get_file(read_timeout=120)
-        mime = message.document.mime_type or ""
-        file_name = message.document.file_name or file_name
-    elif message.audio:
-        file = await message.audio.get_file(read_timeout=120)
-        mime = message.audio.mime_type or ""
-        file_name = message.audio.file_name or file_name
-    elif message.video:
-        file = await message.video.get_file(read_timeout=120)
-        mime = message.video.mime_type or ""
-        file_name = message.video.file_name or file_name
-    elif message.voice:
-        file = await message.voice.get_file(read_timeout=120)
-        mime = "audio/ogg"
-        file_name = "voice.ogg"
-    else:
-        await message.reply_text("Файл не поддерживается")
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+
+        await message.reply_text(
+            "Не удалось загрузить файл от Telegram\n"
+            "Пожалуйста, попробуйте ещё раз"
+        )
         return
 
     if not is_supported_mime(mime):
@@ -78,11 +93,23 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         local_path = in_dir / Path(file_name).name
 
-        if USE_LOCAL_PTB:
-            file_path = extract_local_path(file.file_path)
-            shutil.copy(file_path, local_path)  # читаем напрямую
-        else:
-            await file.download_to_drive(custom_path=str(local_path))
+        try:
+            if USE_LOCAL_PTB:
+                file_path = extract_local_path(file.file_path)
+                local_path.symlink_to(file_path)
+            else:
+                await file.download_to_drive(custom_path=str(local_path))
+        except Exception as e:
+            logging.exception("Failed to download file to disk")
+
+            if os.getenv("ENABLE_SENTRY") == "1":
+                sentry_sdk.capture_exception(e)
+
+            await message.reply_text(
+                "Не удалось скачать файл\n"
+                "Пожалуйста, попробуйте ещё раз"
+            )
+            return
 
         duration = await get_media_duration(local_path)
         if not duration:
