@@ -57,8 +57,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     operation_id = await start_transcription(
         task.audio_s3_path,
-        provider=task.provider or "speechkit",
-        duration_seconds=task.duration_seconds,
+        provider=task.provider,
     )
     if not operation_id:
         change_user_balance(telegram_id, price_for_user)

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 from telegram.ext import ContextTypes
 
-from database.queries import get_transcriptions_by_status, update_transcription
+from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
 from utils.utils import format_duration, MoscowTimezone, cost_replicate_rub
 from utils.transcription import check_transcription, get_result
 from utils.tg import safe_edit_message_text
@@ -44,14 +44,6 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     now = datetime.now(MoscowTimezone)
 
     for task in get_transcriptions_by_status("running"):
-        if not task.operation_id:
-            logging.error(f"Task {task.id} doesn't have operation_id")
-            continue
-
-        if not task.started_at:
-            logging.error(f"Task {task.id} doesn't have started_at")
-            continue
-
         started_at = task.started_at.replace(tzinfo=MoscowTimezone)
 
         duration = int((now - started_at).total_seconds())
@@ -68,7 +60,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 "Отправлю результат, как только всё будет готово",
             )
 
-        result_info = await check_transcription(task.operation_id)
+        result_info = await check_transcription(task.operation_id, provider=task.provider)
 
         # Результата еще нет, проверим снова через секунду
         if result_info is None:
@@ -90,6 +82,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if not result_info.get("success"):
             update_transcription(task.id, status="failed")
+            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if failed
             await safe_edit_message_text(
                 context.bot,
                 task.chat_id,
@@ -113,6 +106,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         s3_url, s3_signed_url = await upload_file(path, object_name)
         if not s3_url or not s3_signed_url:
             update_transcription(task.id, status="failed")
+            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if upload failed
             await safe_edit_message_text(
                 context.bot,
                 task.chat_id,
@@ -160,6 +154,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 result_s3_path=s3_url,
                 llm_tokens_by_encoding=token_counts,
             )
+            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if sending failed
 
             await safe_edit_message_text(
                 context.bot,

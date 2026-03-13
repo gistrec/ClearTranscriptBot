@@ -81,7 +81,7 @@ class TranscriptionHistory(Base):
     # Transcription provider used: "speechkit" or "replicate"
     provider = Column(String(16), nullable=True)
 
-    # Identifier of the transcription operation (provider-aware prefix stored separately)
+    # Identifier of the transcription operation returned by the provider
     operation_id = Column(String(128), nullable=True)
 
     # Identifier of the Telegram message with task status

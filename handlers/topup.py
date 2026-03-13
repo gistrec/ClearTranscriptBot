@@ -210,6 +210,10 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.telegram_id != query.from_user.id:
         logging.error(f"Payment not found for order_id: {order_id}")
+
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_message(f"Payment not found for order_id: {order_id}")
+
         await query.message.edit_text("Платёж не найден", reply_markup=None)
         return
 

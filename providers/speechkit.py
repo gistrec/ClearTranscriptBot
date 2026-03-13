@@ -21,7 +21,7 @@ def _auth_headers() -> Dict[str, str]:
     return {"Authorization": f"Api-Key {YC_API_KEY}"}
 
 
-def parse_text(result: dict, separator: str = "\n") -> str:
+def get_text(result: dict, separator: str = "\n") -> str:
     """
     Склеивает тексты из chunks, беря alternatives[0].text
     """
@@ -38,7 +38,7 @@ def parse_text(result: dict, separator: str = "\n") -> str:
     return separator.join(parts)
 
 
-async def fetch_transcription_result(operation_id: str) -> Optional[dict]:
+async def check_transcription(operation_id: str) -> Optional[dict]:
     """Check status of *operation_id* and return result if finished."""
     headers = _auth_headers()
     try:
@@ -72,7 +72,7 @@ async def fetch_transcription_result(operation_id: str) -> Optional[dict]:
         return None
 
 
-async def run_transcription(s3_uri: str, language_code: str = "ru-RU") -> Optional[str]:
+async def start_transcription(s3_uri: str, language_code: str = "ru-RU") -> Optional[str]:
     """Start transcription for *s3_uri* and return operation id or ``None`` on error."""
     headers = _auth_headers()
     payload = {
