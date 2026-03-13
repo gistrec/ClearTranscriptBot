@@ -226,8 +226,17 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return
 
-    tinkoff_response = await get_payment_state(payment.payment_id)
-    logging.info(f"Tinkoff response: {tinkoff_response}")
+    try:
+        tinkoff_response = await get_payment_state(payment.payment_id)
+        logging.info(f"Tinkoff response: {tinkoff_response}")
+    except Exception as e:
+        logging.exception(f"Failed to get payment state for order_id: {order_id}")
+
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+
+        await query.message.reply_text("Не удалось проверить статус платежа\nПопробуйте ещё раз")
+        return
 
     payment_status = tinkoff_response.get("Status", None)
 
@@ -289,5 +298,14 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
 
     update_payment(order_id, status="CANCELED")
 
-    tinkoff_response = await cancel_payment(payment.payment_id)
-    logging.info(f"Tinkoff response: {tinkoff_response}")
+    try:
+        tinkoff_response = await cancel_payment(payment.payment_id)
+        logging.info(f"Tinkoff response: {tinkoff_response}")
+    except Exception as e:
+        logging.exception(f"Failed to cancel payment for order_id: {order_id}")
+
+        if os.getenv("ENABLE_SENTRY") == "1":
+            sentry_sdk.capture_exception(e)
+
+        # No need to notify user about cancellation failure,
+        # since we already updated the status in our system and UI
