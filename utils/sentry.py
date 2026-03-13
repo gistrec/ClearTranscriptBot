@@ -13,6 +13,7 @@ if ENABLE_SENTRY:
         dsn=os.getenv("SENTRY_DSN"),
         enable_logs=True,
         send_default_pii=False,
+        traces_sample_rate=1.0,
         integrations=[LoggingIntegration(
             level=logging.INFO,
             event_level=logging.ERROR,
