@@ -63,7 +63,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 context.bot,
                 task.chat_id,
                 task.message_id,
-                f"🧠 Задача №{task.id} в работе\n\n"
+                f"⏳ Задача №{task.id} в работе\n\n"
                 f"Прошло времени: {duration_str}\n\n"
                 "Отправлю результат, как только всё будет готово",
             )
@@ -136,6 +136,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             with path.open("rb") as f:
                 await context.bot.send_document(
                     chat_id=task.telegram_id,
+                    reply_to_message_id=task.message_id,
                     document=f,
                     connect_timeout=20,
                     write_timeout=60,
