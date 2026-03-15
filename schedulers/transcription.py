@@ -50,13 +50,15 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         # Редактируем сообщение только если прошло достаточно времени
         if _need_edit(context, task.id, now):
+            audio_duration_str = format_duration(task.duration_seconds)
             await safe_edit_message_text(
                 context.bot,
                 task.telegram_id,
                 task.message_id,
                 f"⏳ Задача №{task.id} в работе\n\n"
-                f"Прошло времени: {duration_str}\n\n"
-                "Отправлю результат, как только всё будет готово",
+                f"Длительность: {audio_duration_str}\n"
+                f"Стоимость: {task.price_for_user} ₽\n\n"
+                f"Время обработки: {duration_str}\n\n"
             )
 
         result_info = await check_transcription(task.operation_id, provider=task.provider)
@@ -116,13 +118,15 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             tmp_dir.rmdir()
             continue
 
+        audio_duration_str = format_duration(task.duration_seconds)
         await safe_edit_message_text(
             context.bot,
             task.telegram_id,
             task.message_id,
             f"✅ Задача №{task.id} готова!\n\n"
-            f"Прошло времени: {duration_str}\n\n"
-            "Отправляю результат…",
+            f"Длительность: {audio_duration_str}\n"
+            f"Стоимость: {task.price_for_user} ₽\n\n"
+            f"Время обработки: {duration_str}\n\n"
         )
 
         try:
@@ -133,8 +137,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     document=f,
                     caption=RATING_PROMPT,
                     reply_markup=make_rating_keyboard(task.id),
-                    connect_timeout=20,
-                    write_timeout=60,
+                    connect_timeout=15,
+                    write_timeout=30,
                 )
 
             update_transcription(

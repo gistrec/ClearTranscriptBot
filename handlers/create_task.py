@@ -67,13 +67,13 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
-    await query.edit_message_reply_markup(reply_markup=None)
-
-    duration_str = format_duration(0)
-    status_message = await query.message.reply_text(
+    audio_duration_str = format_duration(task.duration_seconds)
+    elapsed_str = format_duration(0)
+    await query.edit_message_text(
         f"⏳ Задача №{task_id} в работе\n\n"
-        f"Прошло времени: {duration_str}\n\n"
-        "Отправлю результат, как только всё будет готово"
+        f"Длительность: {audio_duration_str}\n"
+        f"Стоимость: {task.price_for_user} ₽\n\n"
+        f"Время обработки: {elapsed_str}\n\n"
     )
 
     now = datetime.now(MoscowTimezone)
@@ -81,6 +81,6 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         task.id,
         status="running",
         operation_id=operation_id,
-        message_id=status_message.message_id,
+        message_id=query.message.message_id,
         started_at=now,
     )

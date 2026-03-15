@@ -2,19 +2,24 @@ from zoneinfo import ZoneInfo
 from decimal import Decimal
 from math import ceil
 
+from typing import Optional
+
 
 MoscowTimezone = ZoneInfo("Europe/Moscow")
 
 USD_TO_RUB = Decimal("80")
 
 
-def format_duration(duration_sec: int) -> str:
+def format_duration(duration_sec: Optional[int]) -> str:
     """Format duration in seconds as:
     * '{h} ч. {m} мин. {s} сек.'
     * '{m} мин. {s} сек.'
     * '{s} сек.'
     """
     total = int(duration_sec or 0)
+    if total < 1:
+        return "<1 сек."
+
     hours, r = divmod(total, 3600)
     minutes, seconds = divmod(r, 60)
 
