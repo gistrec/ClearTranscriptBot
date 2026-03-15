@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 from database.queries import get_transcription, update_transcription
 
 from utils.sentry import sentry_bind_user
+from utils.utils import format_duration
 
 
 @sentry_bind_user
@@ -29,5 +30,9 @@ async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     update_transcription(task.id, status="cancelled")
 
-    await query.edit_message_reply_markup(reply_markup=None)
-    await query.message.reply_text("Задача отменена")
+    duration_str = format_duration(task.duration_seconds)
+    await query.edit_message_text(
+        f"❌ Задача отменена\n\n"
+        f"Длительность: {duration_str}\n"
+        f"Стоимость: {task.price_for_user} ₽"
+    )

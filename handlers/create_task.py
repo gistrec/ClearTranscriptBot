@@ -13,7 +13,7 @@ from database.queries import (
 
 from utils.sentry import sentry_bind_user
 from utils.utils import format_duration, MoscowTimezone
-from utils.transcription import start_transcription
+from utils.transcription import start_transcription, get_model_name
 
 
 @sentry_bind_user
@@ -58,6 +58,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     operation_id = await start_transcription(
         task.audio_s3_path,
         provider=task.provider,
+        duration_seconds=task.duration_seconds,
     )
     if not operation_id:
         change_user_balance(telegram_id, price_for_user)
@@ -77,10 +78,13 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
     now = datetime.now(MoscowTimezone)
+    model = get_model_name(task.provider, task.duration_seconds)
+
     update_transcription(
         task.id,
         status="running",
         operation_id=operation_id,
         message_id=query.message.message_id,
+        model=model,
         started_at=now,
     )

@@ -20,6 +20,10 @@ def _auth_headers() -> Dict[str, str]:
     return {"Authorization": f"Api-Key {YC_API_KEY}"}
 
 
+def get_model_name(duration_seconds: int) -> str:
+    return "Standard"  # В SpeechKit нет разных моделей
+
+
 def get_text(result: dict, separator: str = "\n") -> str:
     """
     Склеивает тексты из chunks, беря alternatives[0].text
@@ -67,13 +71,13 @@ async def check_transcription(operation_id: str) -> Optional[dict]:
         return None
 
 
-async def start_transcription(s3_uri: str, language_code: str = "ru-RU") -> Optional[str]:
+async def start_transcription(s3_uri: str, duration_seconds: int) -> Optional[str]:
     """Start transcription for *s3_uri* and return operation id or ``None`` on error."""
     headers = _auth_headers()
     payload = {
         "config": {
             "specification": {
-                "languageCode": language_code,
+                "languageCode": "ru-RU",
                 "audioEncoding": "OGG_OPUS",
                 "literature_text": True,  # Включает режим нормализации
             },

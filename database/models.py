@@ -81,8 +81,11 @@ class TranscriptionHistory(Base):
     # Transcription provider used: "speechkit" or "replicate"
     provider = Column(String(16), nullable=True)
 
+    # Model used for transcription (e.g. "victor-upmeet/whisperx" or "victor-upmeet/whisperx-a40-large")
+    model = Column(String(64), nullable=True)
+
     # Identifier of the transcription operation returned by the provider
-    operation_id = Column(String(128), nullable=True)
+    operation_id = Column(String(64), nullable=True)
 
     # Identifier of the Telegram message with task status
     message_id = Column(Integer, nullable=True)

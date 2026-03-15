@@ -1,16 +1,25 @@
 """Unified interface for transcription providers."""
+from providers import replicate as replicate_provider
+from providers import speechkit as speechkit_provider
+
+from utils.s3 import get_signed_url, object_name_from_url
 
 from typing import Any, Dict, Optional
 
-from providers import replicate as replicate_provider
-from providers import speechkit as speechkit_provider
-from utils.s3 import get_signed_url, object_name_from_url
+
+def get_model_name(provider: str, duration_seconds: int) -> str:
+    if provider == "replicate":
+        return replicate_provider.get_model_name(duration_seconds)
+    elif provider == "speechkit":
+        return speechkit_provider.get_model_name(duration_seconds)
+    else:
+        return "Unknown Provider"
 
 
 async def start_transcription(
     audio_url: str,
-    provider: str = "speechkit",
-    language_code: str = "ru-RU",
+    provider: str,
+    duration_seconds: int
 ) -> Optional[str]:
     """Start transcription and return the operation id."""
 
@@ -18,9 +27,9 @@ async def start_transcription(
         signed_url = await get_signed_url(object_name_from_url(audio_url))
         if not signed_url:
             return None
-        return await replicate_provider.start_transcription(signed_url)
+        return await replicate_provider.start_transcription(signed_url, duration_seconds)
 
-    return await speechkit_provider.start_transcription(audio_url, language_code)
+    return await speechkit_provider.start_transcription(audio_url, duration_seconds)
 
 
 async def check_transcription(operation_id: str, provider: str = "speechkit") -> Optional[Dict[str, Any]]:
