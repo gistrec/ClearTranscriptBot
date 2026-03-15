@@ -87,6 +87,9 @@ class TranscriptionHistory(Base):
     # Identifier of the Telegram message with task status
     message_id = Column(Integer, nullable=True)
 
+    # User rating of the transcription quality (1–5 stars)
+    rating = Column(Integer, nullable=True)
+
     # Timestamp when the task was created and sent to the user for approval (before execution)
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 

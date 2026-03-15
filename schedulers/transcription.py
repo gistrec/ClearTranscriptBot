@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from telegram.ext import ContextTypes
 
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
+from handlers.rate_transcription import make_rating_keyboard, RATING_PROMPT
 from utils.utils import format_duration, MoscowTimezone, cost_replicate_rub
 from utils.transcription import check_transcription, get_result
 from utils.tg import safe_edit_message_text
@@ -130,6 +131,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     chat_id=task.telegram_id,
                     reply_to_message_id=task.message_id,
                     document=f,
+                    caption=RATING_PROMPT,
+                    reply_markup=make_rating_keyboard(task.id),
                     connect_timeout=20,
                     write_timeout=60,
                 )

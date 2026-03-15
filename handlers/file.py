@@ -33,9 +33,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         user = add_user(telegram_id, message.from_user.username)
 
     await message.reply_text(
-        "Файл получен\n\n"
-        "Определяю длительность и стоимость перевода в текст\n"
-        "Скоро попрошу подтвердить запуск задачи...",
+        "📥 Файл получен\n\n"
+        "Подготавливаю аудио и считаю стоимость\n"
+        "Это может занять до 1 минуты",
     )
 
     try:
@@ -174,6 +174,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     ]
 
     await message.reply_text(
-        f"Длительность: {duration_str}\nСтоимость: {price_for_user} ₽",
+        "🎧 Аудио подготовлено\n\n"
+        f"Длительность: {duration_str}\n"
+        f"Стоимость: {price_for_user} ₽",
         reply_markup=InlineKeyboardMarkup([buttons]),
     )
