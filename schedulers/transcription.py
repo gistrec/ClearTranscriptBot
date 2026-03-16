@@ -101,7 +101,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         source_stem = Path(task.audio_s3_path).stem
         tmp_dir = Path(tempfile.mkdtemp())
-        path = tmp_dir / f"{source_stem}.txt"
+        file_stem = f"{source_stem}_shadow" if task.shadow else source_stem
+        path = tmp_dir / f"{file_stem}.txt"
         path.write_text(text, encoding="utf-8")
 
         object_name = f"result/{task.telegram_id}/{path.name}"
