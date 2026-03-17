@@ -40,13 +40,20 @@ def available_time_by_balance(
     return format_duration(total_seconds)
 
 
-def cost_replicate_rub(predict_time_sec: float) -> Decimal:
+def cost_replicate_rub(predict_time_sec: float, model: str = "") -> Decimal:
     """
     Стоимость предсказания Replicate в рублях.
 
-    Тарификация: $0.000975 за секунду (Nvidia L40S GPU), конвертация по курсу 80 ₽/$.
+    Тарификация:
+    - victor-upmeet/whisperx (A100 80GB): $0.001400/сек
+    - victor-upmeet/whisperx-a40-large (L40S): $0.000975/сек
+    Конвертация по курсу 80 ₽/$.
     """
-    usd = Decimal(str(predict_time_sec)) * Decimal("0.000975")
+    if "whisperx-a40-large" in model:
+        rate = Decimal("0.000975")
+    else:
+        rate = Decimal("0.001400")
+    usd = Decimal(str(predict_time_sec)) * rate
     return (usd * USD_TO_RUB).quantize(Decimal("0.01"))
 
 

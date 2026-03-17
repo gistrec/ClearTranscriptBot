@@ -70,7 +70,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         payload = result_info.get("payload") or {}
         predict_time = payload.get("predict_time")
         if result_info.get("provider") == "replicate" and predict_time:
-            actual_price = cost_replicate_rub(predict_time)
+            actual_price = cost_replicate_rub(predict_time, task.model)
         else:
             actual_price = task.price_for_user
 
