@@ -33,9 +33,6 @@ class User(Base):
     # Account balance
     balance = Column(Numeric(10, 2), nullable=False, default=150.00)
 
-    # Preferred transcription provider: "speechkit" or "replicate"
-    default_provider = Column(String(16), nullable=False, default="speechkit")
-
     # Registration timestamp
     registered_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 

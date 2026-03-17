@@ -21,6 +21,7 @@ from utils.tg import extract_local_path
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
 
 MAX_AUDIO_DURATION = 4 * 60 * 60  # seconds, SpeechKit limit
+LONG_AUDIO_THRESHOLD = 600  # seconds; files longer than this use Replicate
 
 
 @sentry_bind_user
@@ -154,11 +155,13 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
+    provider = "replicate" if duration > LONG_AUDIO_THRESHOLD else "speechkit"
+
     history = add_transcription(
         telegram_id=telegram_id,
         status="pending",
         audio_s3_path=s3_url,
-        provider=user.default_provider,
+        provider=provider,
         duration_seconds=int(duration),
         price_for_user=price_for_user_dec,
         result_s3_path=None,

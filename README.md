@@ -151,7 +151,6 @@ CREATE TABLE IF NOT EXISTS users (
     telegram_id      BIGINT          PRIMARY KEY,
     telegram_login   VARCHAR(32),
     balance          DECIMAL(10,2)   NOT NULL DEFAULT 150.00,
-    default_provider VARCHAR(16)     NOT NULL DEFAULT 'speechkit',
     registered_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
