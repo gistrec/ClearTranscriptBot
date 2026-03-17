@@ -34,6 +34,7 @@ ClearTranscriptBot
 │   ├── file.py
 │   ├── history.py
 │   ├── price.py
+│   ├── rate_transcription.py
 │   ├── text.py
 │   └── topup.py
 ├── providers/           # Transcription provider implementations
@@ -167,9 +168,11 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     actual_price           DECIMAL(10,2),
     result_s3_path         TEXT,
     provider               VARCHAR(16),
-    operation_id           VARCHAR(128),
+    model                  VARCHAR(64),
+    operation_id           VARCHAR(64),
     message_id             INTEGER,
-    chat_id                BIGINT,
+    rating                 INTEGER,
+    shadow                 BOOLEAN         NOT NULL DEFAULT FALSE,
     created_at             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP
