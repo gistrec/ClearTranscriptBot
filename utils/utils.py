@@ -1,13 +1,10 @@
 from zoneinfo import ZoneInfo
 from decimal import Decimal
-from math import ceil
 
 from typing import Optional
 
 
 MoscowTimezone = ZoneInfo("Europe/Moscow")
-
-USD_TO_RUB = Decimal("80")
 
 
 def format_duration(duration_sec: Optional[int]) -> str:
@@ -40,52 +37,3 @@ def available_time_by_balance(
     return format_duration(total_seconds)
 
 
-def cost_replicate_rub(predict_time_sec: float, model: str = "") -> Decimal:
-    """
-    Стоимость предсказания Replicate в рублях.
-
-    Тарификация:
-    - victor-upmeet/whisperx (A100 80GB): $0.001400/сек
-    - victor-upmeet/whisperx-a40-large (L40S): $0.000975/сек
-    Конвертация по курсу 80 ₽/$.
-    """
-    if "whisperx-a40-large" in model:
-        rate = Decimal("0.000975")
-    else:
-        rate = Decimal("0.001400")
-    usd = Decimal(str(predict_time_sec)) * rate
-    return (usd * USD_TO_RUB).quantize(Decimal("0.01"))
-
-
-def cost_yc_async_rub(duration_s: float, channels: int = 1, deferred: bool = False) -> str:
-    """
-    Стоимость асинхронного распознавания Yandex SpeechKit в рублях.
-
-    Правила биллинга:
-      - длительность округляется вверх до целых секунд;
-      - число каналов округляется вверх до чётного;
-      - минимум 15 секунд на КАЖДУЮ пару каналов (2 канала);
-      - тарификация ведётся за блоки по 15 секунд ДВУХКАНАЛЬНОГО аудио.
-
-    По умолчанию:
-      - обычный async:     0.15 ₽ за 15 секунд;
-      - отложенный режим:  0.0375 ₽ за 15 секунд.
-
-    Возвращает строку с ценой в рублях (с 2 знаками после запятой).
-    """
-    # Округляем секунды и каналы по правилам
-    seconds_rounded = ceil(max(0.0, duration_s))
-    ch_even = max(1, channels)
-    if ch_even % 2 == 1:
-        ch_even += 1
-    pairs = ch_even // 2
-
-    # Минимум 15 секунд на пару каналов
-    seconds_per_pair = max(seconds_rounded, 15)
-
-    # Считаем 15-секундные блоки двухканального аудио
-    total_seconds = seconds_per_pair * pairs
-    blocks_15s = (total_seconds + 14) // 15  # ceil(total_seconds / 15)
-
-    cost_rub = blocks_15s * (0.0375 if deferred else 0.15)
-    return f"{cost_rub:.2f}"

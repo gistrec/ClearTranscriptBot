@@ -4,6 +4,7 @@ import asyncio
 import logging
 import replicate
 
+from decimal import Decimal
 from typing import Any, Dict, Optional
 
 
@@ -11,6 +12,7 @@ MODEL_SMALL = "victor-upmeet/whisperx:84d2ad2d6194fe98a17d2b60bef1c7f910c46b2f6f
 MODEL_LARGE = "victor-upmeet/whisperx-a40-large:1395a1d7aa48a01094887250475f384d4bae08fd0616f9c405bb81d4174597ea"
 
 ONE_HOUR = 3600
+USD_TO_RUB = Decimal("80")
 
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 
@@ -24,6 +26,23 @@ def get_model(duration_seconds: int) -> str:
 
 def get_model_name(duration_seconds: int) -> str:
     return get_model(duration_seconds).split(":")[0]
+
+
+def cost_in_rub(predict_time_sec: float, model: str = "") -> Decimal:
+    """
+    Стоимость предсказания Replicate в рублях.
+
+    Тарификация:
+    - victor-upmeet/whisperx (A100 80GB): $0.001400/сек
+    - victor-upmeet/whisperx-a40-large (L40S): $0.000975/сек
+    Конвертация по курсу 80 ₽/$.
+    """
+    if "whisperx-a40-large" in model:
+        rate = Decimal("0.000975")
+    else:
+        rate = Decimal("0.001400")
+    usd = Decimal(str(predict_time_sec)) * rate
+    return (usd * USD_TO_RUB).quantize(Decimal("0.01"))
 
 
 async def start_transcription(audio_url: str, duration_seconds: int) -> Optional[str]:

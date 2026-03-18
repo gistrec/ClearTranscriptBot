@@ -1,7 +1,9 @@
 """Periodic scheduler for checking transcription statuses."""
 import logging
-
 import tempfile
+
+import providers.replicate as replicate_provider
+import providers.speechkit as speechkit_provider
 
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -10,7 +12,8 @@ from telegram.ext import ContextTypes
 
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
 from handlers.rate_transcription import make_rating_keyboard, RATING_PROMPT
-from utils.utils import format_duration, MoscowTimezone, cost_replicate_rub
+from utils.utils import format_duration, MoscowTimezone
+
 from utils.transcription import check_transcription, get_result
 from utils.tg import safe_edit_message_text
 from utils.s3 import upload_file
@@ -70,9 +73,9 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         payload = result_info.get("payload") or {}
         predict_time = payload.get("predict_time")
         if result_info.get("provider") == "replicate" and predict_time:
-            actual_price = cost_replicate_rub(predict_time, task.model)
+            actual_price = replicate_provider.cost_in_rub(predict_time, task.model)
         else:
-            actual_price = task.price_for_user
+            actual_price = speechkit_provider.cost_in_rub(task.duration_seconds)
 
         update_transcription(
             task.id,

@@ -2,7 +2,8 @@ import os
 import logging
 import tempfile
 
-from decimal import Decimal
+import providers.speechkit as speechkit_provider
+
 from pathlib import Path
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -13,9 +14,8 @@ from database.queries import add_transcription, add_user, get_user_by_telegram_i
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user
-from utils.tg import is_supported_mime, sanitize_filename
-from utils.utils import format_duration, cost_yc_async_rub
-from utils.tg import extract_local_path
+from utils.tg import is_supported_mime, sanitize_filename, extract_local_path
+from utils.utils import format_duration
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
@@ -120,9 +120,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-        price_for_user = cost_yc_async_rub(duration)
-        price_for_user_dec = Decimal(price_for_user)
-        if user.balance < price_for_user_dec:
+        price_for_user = speechkit_provider.cost_in_rub(duration)
+        if user.balance < price_for_user:
             await message.reply_text(
                 f"❌ Недостаточно средств\n"
                 f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
@@ -169,7 +168,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         audio_s3_path=s3_url,
         provider=provider,
         duration_seconds=int(duration),
-        price_for_user=price_for_user_dec,
+        price_for_user=price_for_user,
         result_s3_path=None,
     )
 
