@@ -109,7 +109,7 @@ async def convert_to_ogg(
     source: str | Path,
     destination: str | Path,
     progress_file: str | Path
-) -> bool:
+) -> str | None:
     """Convert an audio or video file to OGG using ffmpeg.
 
     Parameters
@@ -124,8 +124,10 @@ async def convert_to_ogg(
 
     Returns
     -------
-    bool
-        ``True`` if conversion succeeded, ``False`` otherwise.
+    str | None
+        ``None`` if conversion succeeded, or an error kind string on failure:
+        ``"no_audio_stream"`` if the file contains no audio,
+        ``"conversion_failed"`` for any other ffmpeg error.
     """
     src = Path(source)
     dst = Path(destination)
@@ -157,9 +159,12 @@ async def convert_to_ogg(
         )
         _, stderr = await process.communicate()
         if process.returncode != 0:
-            logging.error(f"ffmpeg failed: {stderr.decode().strip()}")
-            return False
-        return True
+            stderr_text = stderr.decode().strip()
+            logging.error(f"ffmpeg failed: {stderr_text}")
+            if "Output file #0 does not contain any stream" in stderr_text:
+                return "no_audio_stream"
+            return "conversion_failed"
+        return None
     except Exception:
         logging.exception(f"Failed to convert {source} to OGG")
-        return False
+        return "conversion_failed"

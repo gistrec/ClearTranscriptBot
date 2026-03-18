@@ -138,8 +138,14 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         progress_name = f"{safe_stem}.progress"
         progress_path = out_dir / progress_name
 
-        success = await convert_to_ogg(local_path, ogg_path, progress_path)
-        if not success:
+        convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
+        if convert_error == "no_audio_stream":
+            await message.reply_text(
+                "В этом файле не обнаружено аудио\n"
+                "Пожалуйста, отправьте файл со звуком"
+            )
+            return
+        elif convert_error:
             await message.reply_text(
                 "Не удалось преобразовать файл\n"
                 "Возможно, он имеет неподдерживаемый формат"
