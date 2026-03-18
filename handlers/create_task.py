@@ -90,7 +90,9 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         started_at=now,
     )
 
-    shadow_provider = "speechkit" if task.provider == "replicate" else "replicate"
+    shadow_provider = "replicate" if task.provider == "speechkit" else None
+    if shadow_provider is None:
+        return
     shadow_task = add_transcription(
         telegram_id=telegram_id,
         status="pending",
