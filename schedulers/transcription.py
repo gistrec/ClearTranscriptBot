@@ -11,9 +11,10 @@ from datetime import datetime, timedelta
 from telegram.ext import ContextTypes
 
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
-from handlers.rate_transcription import make_rating_keyboard, RATING_PROMPT
-from utils.utils import format_duration, MoscowTimezone
 
+from handlers.rate_transcription import make_rating_keyboard, RATING_PROMPT
+
+from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import check_transcription, get_result
 from utils.tg import safe_edit_message_text
 from utils.s3 import upload_file
