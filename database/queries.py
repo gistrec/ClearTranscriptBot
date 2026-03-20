@@ -41,7 +41,6 @@ def add_transcription(
     duration_seconds: int | None = None,
     price_for_user: Decimal | None = None,
     result_s3_path: str | None = None,
-    shadow: bool = False,
 ) -> TranscriptionHistory:
     """Persist a new transcription history record."""
     with SessionLocal() as session:
@@ -53,7 +52,6 @@ def add_transcription(
             duration_seconds=duration_seconds,
             price_for_user=price_for_user,
             result_s3_path=result_s3_path,
-            shadow=shadow,
         )
         session.add(history)
         session.commit()

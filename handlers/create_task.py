@@ -5,7 +5,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.queries import (
-    add_transcription,
     change_user_balance,
     get_transcription,
     get_user_by_telegram_id,
@@ -89,32 +88,3 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         model=model,
         started_at=now,
     )
-
-    shadow_provider = "replicate" if task.provider == "speechkit" else None
-    if shadow_provider is None:
-        return
-    shadow_task = add_transcription(
-        telegram_id=telegram_id,
-        status="pending",
-        audio_s3_path=task.audio_s3_path,
-        provider=shadow_provider,
-        duration_seconds=task.duration_seconds,
-        price_for_user=Decimal("0"),
-        shadow=True,
-    )
-    shadow_operation_id = await start_transcription(
-        task.audio_s3_path,
-        provider=shadow_provider,
-        duration_seconds=task.duration_seconds,
-    )
-    if shadow_operation_id:
-        shadow_model = get_model_name(shadow_provider, task.duration_seconds)
-        update_transcription(
-            shadow_task.id,
-            status="running",
-            operation_id=shadow_operation_id,
-            model=shadow_model,
-            started_at=now,
-        )
-    else:
-        update_transcription(shadow_task.id, status="failed")

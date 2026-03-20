@@ -53,7 +53,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         duration_str = format_duration(duration)
 
         # Редактируем сообщение только если прошло достаточно времени
-        if not task.shadow and _need_edit(context, task.id, now):
+        if _need_edit(context, task.id, now):
             audio_duration_str = format_duration(task.duration_seconds)
             await safe_edit_message_text(
                 context.bot,
@@ -87,14 +87,13 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if not result_info.get("success"):
             update_transcription(task.id, status="failed")
-            if not task.shadow:
-                change_user_balance(task.telegram_id, task.price_for_user)  # Refund if failed
-                await safe_edit_message_text(
-                    context.bot,
-                    task.telegram_id,
-                    task.message_id,
-                    f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
-                )
+            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if failed
+            await safe_edit_message_text(
+                context.bot,
+                task.telegram_id,
+                task.message_id,
+                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
+            )
             continue
 
         text = get_result(result_info)
@@ -105,50 +104,46 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         source_stem = Path(task.audio_s3_path).stem
         tmp_dir = Path(tempfile.mkdtemp())
-        file_stem = f"{source_stem}_shadow" if task.shadow else source_stem
-        path = tmp_dir / f"{file_stem}.txt"
+        path = tmp_dir / f"{source_stem}.txt"
         path.write_text(text, encoding="utf-8")
 
         object_name = f"result/{task.telegram_id}/{path.name}"
         s3_url, s3_signed_url = await upload_file(path, object_name)
         if not s3_url or not s3_signed_url:
             update_transcription(task.id, status="failed")
-            if not task.shadow:
-                change_user_balance(task.telegram_id, task.price_for_user)  # Refund if upload failed
-                await safe_edit_message_text(
-                    context.bot,
-                    task.telegram_id,
-                    task.message_id,
-                    f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
-                )
-            path.unlink(missing_ok=True)
-            tmp_dir.rmdir()
-            continue
-
-        if not task.shadow:
-            audio_duration_str = format_duration(task.duration_seconds)
+            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if upload failed
             await safe_edit_message_text(
                 context.bot,
                 task.telegram_id,
                 task.message_id,
-                f"✅ Задача №{task.id} готова!\n\n"
-                f"Длительность: {audio_duration_str}\n"
-                f"Стоимость: {task.price_for_user} ₽\n\n"
-                f"Время обработки: {duration_str}\n\n"
+                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
             )
+            path.unlink(missing_ok=True)
+            tmp_dir.rmdir()
+            continue
+
+        audio_duration_str = format_duration(task.duration_seconds)
+        await safe_edit_message_text(
+            context.bot,
+            task.telegram_id,
+            task.message_id,
+            f"✅ Задача №{task.id} готова!\n\n"
+            f"Длительность: {audio_duration_str}\n"
+            f"Стоимость: {task.price_for_user} ₽\n\n"
+            f"Время обработки: {duration_str}\n\n"
+        )
 
         try:
-            if not task.shadow:
-                with path.open("rb") as f:
-                    await context.bot.send_document(
-                        chat_id=task.telegram_id,
-                        reply_to_message_id=task.message_id,
-                        document=f,
-                        caption=RATING_PROMPT,
-                        reply_markup=make_rating_keyboard(task.id),
-                        connect_timeout=15,
-                        write_timeout=30,
-                    )
+            with path.open("rb") as f:
+                await context.bot.send_document(
+                    chat_id=task.telegram_id,
+                    reply_to_message_id=task.message_id,
+                    document=f,
+                    caption=RATING_PROMPT,
+                    reply_markup=make_rating_keyboard(task.id),
+                    connect_timeout=15,
+                    write_timeout=30,
+                )
 
             update_transcription(
                 task.id,
@@ -164,14 +159,13 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 result_s3_path=s3_url,
                 llm_tokens_by_encoding=token_counts,
             )
-            if not task.shadow:
-                change_user_balance(task.telegram_id, task.price_for_user)  # Refund if sending failed
-                await safe_edit_message_text(
-                    context.bot,
-                    task.telegram_id,
-                    task.message_id,
-                    f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
-                )
+            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if sending failed
+            await safe_edit_message_text(
+                context.bot,
+                task.telegram_id,
+                task.message_id,
+                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
+            )
         finally:
             path.unlink(missing_ok=True)
             tmp_dir.rmdir()

@@ -171,7 +171,6 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     operation_id           VARCHAR(64),
     message_id             INTEGER,
     rating                 INTEGER,
-    shadow                 BOOLEAN         NOT NULL DEFAULT FALSE,
     created_at             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP

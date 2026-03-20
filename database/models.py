@@ -1,7 +1,6 @@
 """SQLAlchemy models for database tables."""
 from sqlalchemy import (
     BigInteger,
-    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -90,9 +89,6 @@ class TranscriptionHistory(Base):
 
     # User rating of the transcription quality (1–5 stars)
     rating = Column(Integer, nullable=True)
-
-    # Shadow tasks are run silently for provider comparison; user is never notified
-    shadow = Column(Boolean, nullable=False, default=False)
 
     # Timestamp when the task was created and sent to the user for approval (before execution)
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
