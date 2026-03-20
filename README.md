@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS users (
     telegram_id      BIGINT          PRIMARY KEY,
     telegram_login   VARCHAR(32),
     balance          DECIMAL(10,2)   NOT NULL DEFAULT 150.00,
+    total_topped_up  DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
     registered_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -197,6 +198,20 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX idx_payments_telegram_id
     ON payments(telegram_id);
+
+-- Trigger to maintain users.total_topped_up automatically.
+-- Fires after each payment row update; adds amount only when status
+-- transitions to CONFIRMED to avoid double-counting.
+CREATE TRIGGER trg_payment_confirmed
+AFTER UPDATE ON payments
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'CONFIRMED' AND OLD.status != 'CONFIRMED' THEN
+        UPDATE users
+        SET total_topped_up = total_topped_up + NEW.amount
+        WHERE telegram_id = NEW.telegram_id;
+    END IF;
+END;
 ```
 
 ## Installation
