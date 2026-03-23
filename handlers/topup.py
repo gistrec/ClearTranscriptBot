@@ -8,8 +8,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from database.queries import add_user, get_user_by_telegram_id, change_user_balance, \
-    create_payment, get_payment_by_order_id, update_payment
+from database.queries import add_user, get_user_by_telegram_id, \
+    create_payment, get_payment_by_order_id, update_payment, confirm_payment
 
 from utils.sentry import sentry_bind_user
 from utils.utils import available_time_by_balance
@@ -215,8 +215,10 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     payment_status = tinkoff_response.get("Status", None)
 
     if payment_status in ("CONFIRMED", "AUTHORIZED"):
-        user = change_user_balance(payment.telegram_id, payment.amount)
-        update_payment(order_id, status=payment_status)
+        won, user = confirm_payment(order_id, payment_status)
+        if not won:
+            await query.message.edit_text("Платёж уже завершён ранее", reply_markup=None)
+            return
 
         balance = Decimal(user.balance or 0)
         duration_str = available_time_by_balance(balance)

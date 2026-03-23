@@ -142,5 +142,8 @@ class Payment(Base):
     # Raw tinkoff response for debugging
     tinkoff_response = Column(Text, nullable=False)
 
+    # Next scheduled polling time
+    next_check_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
     # Timestamp when the payment was created
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())

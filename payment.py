@@ -25,6 +25,7 @@ PAYMENT_STATUSES = {
     "CONFIRMED": "оплачен",
     "AUTHORIZED": "оплачен",
     "CANCELED": "отменён",
+    "EXPIRED": "истёк",
 }
 
 

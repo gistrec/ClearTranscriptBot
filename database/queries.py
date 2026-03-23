@@ -2,9 +2,13 @@ import json
 
 from typing import Optional, Any
 from decimal import Decimal
+from datetime import datetime
+
+from sqlalchemy import update
 
 from .connection import SessionLocal
 from .models import User, TranscriptionHistory, Payment
+from utils.utils import MoscowTimezone
 
 
 def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
@@ -138,6 +142,92 @@ def get_recent_payments(telegram_id: int, limit: int = 5) -> list[Payment]:
             .limit(limit)
             .all()
         )
+
+
+def get_payments_by_status(status: str) -> list[Payment]:
+    """Return all payments with the specified *status*."""
+    with SessionLocal() as session:
+        return (
+            session.query(Payment)
+            .filter(Payment.status == status)
+            .all()
+        )
+
+
+def get_payments_due_for_check() -> list[Payment]:
+    """Return NEW payments whose next_check_at is past."""
+    now = datetime.now(MoscowTimezone)
+    with SessionLocal() as session:
+        return (
+            session.query(Payment)
+            .filter(
+                Payment.status == "NEW",
+                Payment.next_check_at <= now,
+            )
+            .all()
+        )
+
+
+def claim_payment_for_check(order_id: str, next_check_at: datetime) -> bool:
+    """Atomically reserve a payment for checking.
+
+    Sets next_check_at only when the row is still NEW and still due.
+    Returns True if this caller won the slot; False if another worker already did.
+    """
+    now = datetime.now(MoscowTimezone)
+    with SessionLocal() as session:
+        result = session.execute(
+            update(Payment)
+            .where(
+                Payment.order_id == order_id,
+                Payment.status == "NEW",
+                Payment.next_check_at <= now,
+            )
+            .values(next_check_at=next_check_at)
+        )
+        session.commit()
+        return result.rowcount > 0
+
+
+def confirm_payment(order_id: str, payment_status: str) -> tuple[bool, Optional[User]]:
+    """Atomically transition payment NEW→paid and credit user balance in one transaction.
+
+    Uses SELECT FOR UPDATE so only one caller (scheduler or button handler) can win the race.
+    Returns (True, updated_user) if this caller performed the transition;
+    (False, None) if the payment was already handled by someone else.
+    """
+    with SessionLocal() as session:
+        payment = (
+            session.query(Payment)
+            .filter(Payment.order_id == order_id, Payment.status == "NEW")
+            .with_for_update()
+            .one_or_none()
+        )
+        if payment is None:
+            return False, None
+
+        payment.status = payment_status
+        user = session.get(User, payment.telegram_id)
+        user.balance = (user.balance or Decimal("0")) + payment.amount
+        session.commit()
+        session.refresh(user)
+        return True, user
+
+
+def expire_payment(order_id: str) -> bool:
+    """Set payment status to EXPIRED only if it is still NEW.
+
+    Returns True if the transition happened; False if the payment was already
+    handled by another path (e.g. manually cancelled by the user).
+    """
+    with SessionLocal() as session:
+        result = session.execute(
+            update(Payment)
+            .where(Payment.order_id == order_id, Payment.status == "NEW")
+            .values(status="EXPIRED")
+        )
+        session.commit()
+        return result.rowcount > 0
 
 
 def get_payment_by_order_id(order_id: str) -> Optional[Payment]:

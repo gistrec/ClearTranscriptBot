@@ -26,6 +26,7 @@ ClearTranscriptBot
 ├── payment.py           # Tinkoff acquiring API wrappers
 ├── schedulers/          # Periodic task schedulers
 │   ├── ffmpeg.py
+│   ├── topup.py
 │   └── transcription.py
 ├── handlers/            # Telegram update handlers
 │   ├── balance.py
@@ -193,6 +194,7 @@ CREATE TABLE IF NOT EXISTS payments (
     payment_url      TEXT            NOT NULL,
     description      VARCHAR(255)    NOT NULL,
     tinkoff_response TEXT            NOT NULL,
+    next_check_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

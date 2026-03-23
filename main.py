@@ -12,6 +12,7 @@ from telegram.ext import (
 )
 
 from schedulers.transcription import check_running_tasks
+from schedulers.topup import check_pending_payments
 
 from handlers.balance import handle_balance
 from handlers.cancel_task import handle_cancel_task
@@ -96,6 +97,7 @@ def main() -> None:
         CallbackQueryHandler(handle_skip_rating, pattern=r"^rate_skip:\d+$")
     )
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
+    application.job_queue.run_repeating(check_pending_payments, interval=10.0)
     application.run_polling()
 
 
