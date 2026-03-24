@@ -20,8 +20,8 @@ from utils.utils import format_duration
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
 
-MAX_AUDIO_DURATION = 4 * 60 * 60  # seconds, SpeechKit limit
-LONG_AUDIO_THRESHOLD = 600  # seconds; files longer than this use Replicate
+MAX_AUDIO_DURATION = 6 * 60 * 60  # seconds; files longer than this are rejected outright
+LONG_AUDIO_THRESHOLD = 120  # seconds; files longer than this use Replicate
 
 
 @sentry_bind_user
