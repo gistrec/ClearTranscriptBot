@@ -30,7 +30,7 @@ class User(Base):
     telegram_login = Column(String(32), nullable=True)
 
     # Account balance
-    balance = Column(Numeric(10, 2), nullable=False, default=150.00)
+    balance = Column(Numeric(10, 2), nullable=False, default=50.00)
 
     # Cumulative amount topped up across all confirmed payments (maintained by DB trigger)
     total_topped_up = Column(Numeric(10, 2), nullable=False, default=0.00)
