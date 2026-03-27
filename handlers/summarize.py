@@ -3,7 +3,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.queries import create_summarization, get_transcription
-from handlers.rate_transcription import make_rating_keyboard
 from utils.sentry import sentry_bind_user
 from utils.utils import format_duration
 
@@ -26,10 +25,7 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if not transcription.result_s3_path:
         return
 
-    # Remove the summarize row from the keyboard, keep rating row
-    await query.edit_message_reply_markup(
-        reply_markup=make_rating_keyboard(transcription_id, selected=transcription.rating)
-    )
+    await query.edit_message_reply_markup(reply_markup=None)
 
     msg = await query.message.reply_text(f"⏳ Создаю конспект...\n\nВремя обработки: {format_duration(0)}")
 

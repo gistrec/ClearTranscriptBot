@@ -8,6 +8,7 @@ import providers.speechkit as speechkit_provider
 from pathlib import Path
 from datetime import datetime
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
@@ -104,6 +105,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             continue
 
         audio_duration_str = format_duration(task.duration_seconds)
+        summarize_keyboard = None
+        if task.duration_seconds > SUMMARIZE_THRESHOLD:
+            summarize_keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
+            ]])
         await safe_edit_message_text(
             context.bot,
             task.telegram_id,
@@ -111,7 +117,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             f"✅ Распознавание завершено!\n\n"
             f"Длительность: {audio_duration_str}\n"
             f"Стоимость: {task.price_for_user} ₽\n\n"
-            f"Время обработки: {duration_str}\n\n"
+            f"Время обработки: {duration_str}\n\n",
+            reply_markup=summarize_keyboard,
         )
 
         try:
@@ -121,10 +128,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     reply_to_message_id=task.message_id,
                     document=f,
                     caption=RATING_PROMPT,
-                    reply_markup=make_rating_keyboard(
-                        task.id,
-                        show_summarize=task.duration_seconds > SUMMARIZE_THRESHOLD,
-                    ),
+                    reply_markup=make_rating_keyboard(task.id),
                     connect_timeout=15,
                     write_timeout=30,
                 )
