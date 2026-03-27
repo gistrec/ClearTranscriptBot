@@ -11,6 +11,7 @@ from telegram.ext import (
     filters,
 )
 
+from schedulers.summarization import check_summarizations
 from schedulers.transcription import check_running_tasks
 from schedulers.topup import check_pending_payments
 
@@ -23,6 +24,7 @@ from handlers.price import handle_price
 from handlers.text import handle_text
 from handlers.topup import handle_topup, handle_topup_callback, handle_check_payment, handle_cancel_payment
 from handlers.rate_transcription import handle_rate_transcription, handle_skip_rating
+from handlers.summarize import handle_summarize
 
 
 logging.basicConfig(
@@ -96,7 +98,11 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(handle_skip_rating, pattern=r"^rate_skip:\d+$")
     )
+    application.add_handler(
+        CallbackQueryHandler(handle_summarize, pattern=r"^summarize:\d+$")
+    )
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
+    application.job_queue.run_repeating(check_summarizations, interval=1.0)
     application.job_queue.run_repeating(check_pending_payments, interval=10.0)
     application.run_polling()
 

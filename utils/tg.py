@@ -1,7 +1,28 @@
 import re
 import logging
 
+from datetime import datetime, timedelta
 from decimal import Decimal
+
+
+EDIT_INTERVAL_SEC = 5
+
+
+def need_edit(context, item_id: int, now: datetime, cache_key: str = "status_cache") -> bool:
+    """Return True if enough time has passed to warrant editing the status message.
+
+    Uses *cache_key* to namespace the throttle cache inside ``context.bot_data``,
+    so transcription and summarization tasks don't collide.
+    """
+    cache = context.bot_data.setdefault(cache_key, {})
+    last_ts = cache.get(item_id)
+    if not last_ts:
+        cache[item_id] = now
+        return False
+    if now - last_ts < timedelta(seconds=EDIT_INTERVAL_SEC):
+        return False
+    cache[item_id] = now
+    return True
 
 
 ANCHOR = "/var/lib/telegram-bot-api"

@@ -6,40 +6,21 @@ import providers.replicate as replicate_provider
 import providers.speechkit as speechkit_provider
 
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from telegram.ext import ContextTypes
 
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
 
 from handlers.rate_transcription import make_rating_keyboard, RATING_PROMPT
+from handlers.summarize import SUMMARIZE_THRESHOLD
 
 from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import check_transcription, get_result
-from utils.tg import safe_edit_message_text
+from utils.tg import need_edit, safe_edit_message_text
 from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
 
-
-EDIT_INTERVAL_SEC = 5  # не редактировать чаще, чем раз в 5 сек
-
-
-def _need_edit(context, task_id: int, now: datetime) -> bool:
-    """Возвращает True, если прошло достаточно времени."""
-    cache = context.bot_data.setdefault("status_cache", {})
-    last_ts = cache.get(task_id)
-
-    if not last_ts:
-        # Если нет кэша, значит не нужно редактировать
-        # Скорее всего новый текст будет таким же, как предыдущий
-        cache[task_id] = now
-        return False
-
-    if now - last_ts < timedelta(seconds=EDIT_INTERVAL_SEC):
-        return False
-
-    cache[task_id] = now
-    return True
 
 
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -53,7 +34,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         duration_str = format_duration(duration)
 
         # Редактируем сообщение только если прошло достаточно времени
-        if _need_edit(context, task.id, now):
+        if need_edit(context, task.id, now):
             audio_duration_str = format_duration(task.duration_seconds)
             await safe_edit_message_text(
                 context.bot,
@@ -127,7 +108,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             context.bot,
             task.telegram_id,
             task.message_id,
-            f"✅ Задача №{task.id} готова!\n\n"
+            f"✅ Распознавание завершено!\n\n"
             f"Длительность: {audio_duration_str}\n"
             f"Стоимость: {task.price_for_user} ₽\n\n"
             f"Время обработки: {duration_str}\n\n"
@@ -140,7 +121,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     reply_to_message_id=task.message_id,
                     document=f,
                     caption=RATING_PROMPT,
-                    reply_markup=make_rating_keyboard(task.id),
+                    reply_markup=make_rating_keyboard(
+                        task.id,
+                        show_summarize=task.duration_seconds > SUMMARIZE_THRESHOLD,
+                    ),
                     connect_timeout=15,
                     write_timeout=30,
                 )

@@ -49,7 +49,7 @@ class TranscriptionHistory(Base):
     )
 
     # Identifier of transcription request
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     # Telegram user who made the request
     telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
@@ -100,6 +100,46 @@ class TranscriptionHistory(Base):
     started_at = Column(DateTime, nullable=True)
 
     # Timestamp when the transcription operation finished
+    finished_at = Column(DateTime, nullable=True)
+
+
+class Summarization(Base):
+    """Summarization requests for long transcriptions."""
+
+    __tablename__ = "summarizations"
+
+    __table_args__ = (
+        Index("idx_summarizations_transcription_id", "transcription_id"),
+    )
+
+    # Identifier of summarization request
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Transcription this summary was generated for
+    transcription_id = Column(Integer, ForeignKey("transcription_history.id"), nullable=False)
+
+    # Telegram user who requested it
+    telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
+
+    # Processing status: "pending" → "running" → "completed" / "failed"
+    status = Column(String(32), nullable=False)
+
+    # Replicate prediction ID (set when status becomes "running")
+    operation_id = Column(String(64), nullable=True)
+
+    # Summary text produced by the LLM
+    result_text = Column(Text, nullable=True)
+
+    # LLM model used for summarization
+    llm_model = Column(String(64), nullable=True)
+
+    # Identifier of the Telegram message showing the status / result
+    message_id = Column(Integer, nullable=True)
+
+    # Timestamp when the summarization was requested
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    # Timestamp when the summarization finished (completed or failed)
     finished_at = Column(DateTime, nullable=True)
 
 

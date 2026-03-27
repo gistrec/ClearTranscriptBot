@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import update
 
 from .connection import SessionLocal
-from .models import User, TranscriptionHistory, Payment
+from .models import User, TranscriptionHistory, Payment, Summarization
 from utils.utils import MoscowTimezone
 
 
@@ -104,6 +104,56 @@ def get_recent_transcriptions(telegram_id: int, limit: int = 10) -> list[Transcr
             .limit(limit)
             .all()
         )
+
+
+def create_summarization(
+    transcription_id: int,
+    telegram_id: int,
+    message_id: int,
+) -> Summarization:
+    """Persist a new summarization record in pending state."""
+    with SessionLocal() as session:
+        record = Summarization(
+            transcription_id=transcription_id,
+            telegram_id=telegram_id,
+            message_id=message_id,
+            status="pending",
+        )
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+        return record
+
+
+def get_summarization(summarization_id: int) -> Optional[Summarization]:
+    """Fetch a summarization record by its identifier."""
+    with SessionLocal() as session:
+        return session.get(Summarization, summarization_id)
+
+
+def get_summarizations_by_status(status: str) -> list[Summarization]:
+    """Return all summarizations with the specified *status*."""
+    with SessionLocal() as session:
+        return (
+            session.query(Summarization)
+            .filter(Summarization.status == status)
+            .all()
+        )
+
+
+def update_summarization(summarization_id: int, **fields: Any) -> Optional[Summarization]:
+    """Update fields of an existing summarization record."""
+    if not fields:
+        return None
+    with SessionLocal() as session:
+        record = session.get(Summarization, summarization_id)
+        if record is None:
+            return None
+        for key, value in fields.items():
+            setattr(record, key, value)
+        session.commit()
+        session.refresh(record)
+        return record
 
 
 def create_payment(

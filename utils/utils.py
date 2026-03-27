@@ -35,5 +35,3 @@ def available_time_by_balance(
     blocks = int(balance_rub / price_per_block)
     total_seconds = blocks * 15
     return format_duration(total_seconds)
-
-

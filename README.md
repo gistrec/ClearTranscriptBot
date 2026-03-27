@@ -11,9 +11,10 @@ Telegram bot for automatic audio/video transcription:
 
 ## Features
 
-- 🎙 Supports audio and video files (up to 4 hours)
+- 🎙 Supports audio and video files (up to 6 hours)
 - 📦 Stores files in Yandex Cloud S3
 - 💬 Transcription via Yandex SpeechKit or Replicate WhisperX
+- 📝 AI-generated summaries for long recordings (via Replicate LLM)
 - 💰 Balance and billing inside Telegram
 - 📜 Full request history
 - 🐞 Optional error reporting via Sentry
@@ -26,6 +27,7 @@ ClearTranscriptBot
 ├── payment.py           # Tinkoff acquiring API wrappers
 ├── schedulers/          # Periodic task schedulers
 │   ├── ffmpeg.py
+│   ├── summarization.py
 │   ├── topup.py
 │   └── transcription.py
 ├── handlers/            # Telegram update handlers
@@ -36,6 +38,7 @@ ClearTranscriptBot
 │   ├── history.py
 │   ├── price.py
 │   ├── rate_transcription.py
+│   ├── summarize.py
 │   ├── text.py
 │   └── topup.py
 ├── providers/           # Transcription provider implementations
@@ -51,6 +54,7 @@ ClearTranscriptBot
 │   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
 │   ├── sentry.py        # Sentry error reporting helpers
 │   ├── tokens.py        # LLM token counting helpers
+│   ├── summarize.py     # Replicate LLM wrapper for summarization
 │   ├── transcription.py # Unified entry point routing to provider implementations
 │   ├── tg.py            # Telegram-specific helpers
 │   └── utils.py         # Shared utility functions
@@ -151,14 +155,14 @@ server.
 CREATE TABLE IF NOT EXISTS users (
     telegram_id      BIGINT          PRIMARY KEY,
     telegram_login   VARCHAR(32),
-    balance          DECIMAL(10,2)   NOT NULL DEFAULT 150.00,
+    balance          DECIMAL(10,2)   NOT NULL DEFAULT 50.00,
     total_topped_up  DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
     registered_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- History of transcription requests made by users
 CREATE TABLE IF NOT EXISTS transcription_history (
-    id                     INTEGER         PRIMARY KEY AUTO_INCREMENT,
+    id                     BIGINT          PRIMARY KEY AUTO_INCREMENT,
     telegram_id            BIGINT          NOT NULL REFERENCES users(telegram_id),
     status                 VARCHAR(32)     NOT NULL,
     audio_s3_path          TEXT            NOT NULL,
@@ -200,6 +204,23 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX idx_payments_telegram_id
     ON payments(telegram_id);
+
+-- AI summarization requests for completed transcriptions
+CREATE TABLE IF NOT EXISTS summarizations (
+    id                INTEGER         PRIMARY KEY AUTO_INCREMENT,
+    transcription_id  INTEGER         NOT NULL REFERENCES transcription_history(id),
+    telegram_id       BIGINT          NOT NULL REFERENCES users(telegram_id),
+    status            VARCHAR(32)     NOT NULL,
+    operation_id      VARCHAR(64),
+    result_text       TEXT,
+    llm_model         VARCHAR(64),
+    message_id        INTEGER,
+    created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at       TIMESTAMP
+);
+
+CREATE INDEX idx_summarizations_transcription_id
+    ON summarizations(transcription_id);
 
 -- Trigger to maintain users.total_topped_up automatically.
 -- Fires after each payment row update; adds amount only when status

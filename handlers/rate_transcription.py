@@ -10,15 +10,24 @@ from utils.sentry import sentry_bind_user
 RATING_PROMPT = "Насколько точно распознан текст?"
 
 
-def make_rating_keyboard(transcription_id: int, selected: int | None = None) -> InlineKeyboardMarkup:
-    buttons = [
+def make_rating_keyboard(
+    transcription_id: int,
+    selected: int | None = None,
+    show_summarize: bool = False,
+) -> InlineKeyboardMarkup:
+    rating_buttons = [
         InlineKeyboardButton(
             f"✅ {i}⭐" if i == selected else f"{i}⭐",
             callback_data=f"rate:{transcription_id}:{i}",
         )
         for i in range(1, 6)
     ]
-    return InlineKeyboardMarkup([buttons])
+    rows = [rating_buttons]
+    if show_summarize:
+        rows.append([
+            InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}")
+        ])
+    return InlineKeyboardMarkup(rows)
 
 
 @sentry_bind_user
