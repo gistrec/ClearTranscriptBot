@@ -77,13 +77,13 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE) -> None:
             await _edit_status(context, record.telegram_id, record.message_id, "❌ Не удалось создать конспект")
             continue
 
-        summary = result["text"]
+        message = f"📝 Конспект:\n\n{result['text']}"
         # Telegram message limit is 4096 characters
-        if len(summary) > 4096:
-            summary = summary[:4093] + "..."
+        if len(message) > 4096:
+            message = message[:4093] + "..."
 
         update_summarization(record.id, status="completed", result_text=result["text"], finished_at=now)
-        await _edit_status(context, record.telegram_id, record.message_id, f"📝 Конспект:\n\n{summary}")
+        await _edit_status(context, record.telegram_id, record.message_id, message)
 
 
 async def _edit_status(
