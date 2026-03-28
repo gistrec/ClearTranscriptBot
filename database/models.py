@@ -3,10 +3,11 @@ from sqlalchemy import (
     BigInteger,
     Column,
     DateTime,
-    ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     JSON,
     Numeric,
+    PrimaryKeyConstraint,
     String,
     Text,
     Index,
@@ -17,16 +18,26 @@ from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+PLATFORM_TELEGRAM = "telegram"
+PLATFORM_MAX = "max"
+
 
 class User(Base):
-    """Telegram user interacting with the bot."""
+    """User interacting with the bot (Telegram or Max)."""
 
     __tablename__ = "users"
 
-    # Telegram identifier of the user
-    telegram_id = Column(BigInteger, primary_key=True)
+    __table_args__ = (
+        PrimaryKeyConstraint("user_id", "platform"),
+    )
 
-    # Optional Telegram username
+    # Platform user identifier (Telegram user ID or Max user ID)
+    user_id = Column(BigInteger, nullable=False)
+
+    # Platform: "telegram" or "max"
+    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+
+    # Optional username (Telegram login or Max username)
     telegram_login = Column(String(32), nullable=True)
 
     # Account balance
@@ -45,14 +56,21 @@ class TranscriptionHistory(Base):
     __tablename__ = "transcription_history"
 
     __table_args__ = (
-        Index("idx_transcription_history_telegram_id", "telegram_id"),
+        ForeignKeyConstraint(
+            ["user_id", "platform"],
+            ["users.user_id", "users.platform"],
+        ),
+        Index("idx_th_user", "user_id", "platform"),
     )
 
     # Identifier of transcription request
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    # Telegram user who made the request
-    telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
+    # Platform user identifier
+    user_id = Column(BigInteger, nullable=False)
+
+    # Platform: "telegram" or "max"
+    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
 
     # Processing status of the request
     status = Column(String(32), nullable=False)
@@ -81,14 +99,14 @@ class TranscriptionHistory(Base):
     # Transcription provider used: "speechkit" or "replicate"
     provider = Column(String(16), nullable=True)
 
-    # Model used for transcription (e.g. "victor-upmeet/whisperx" or "victor-upmeet/whisperx-a40-large")
+    # Model used for transcription
     model = Column(String(64), nullable=True)
 
     # Identifier of the transcription operation returned by the provider
     operation_id = Column(String(64), nullable=True)
 
-    # Identifier of the Telegram message with task status
-    message_id = Column(Integer, nullable=True)
+    # Identifier of the status message (string to support both Telegram int IDs and Max string IDs)
+    message_id = Column(String(64), nullable=True)
 
     # User rating of the transcription quality (1–5 stars)
     rating = Column(Integer, nullable=True)
@@ -109,17 +127,25 @@ class Summarization(Base):
     __tablename__ = "summarizations"
 
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id", "platform"],
+            ["users.user_id", "users.platform"],
+        ),
         Index("idx_summarizations_transcription_id", "transcription_id"),
+        Index("idx_sum_user", "user_id", "platform"),
     )
 
     # Identifier of summarization request
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Transcription this summary was generated for
-    transcription_id = Column(Integer, ForeignKey("transcription_history.id"), nullable=False)
+    transcription_id = Column(Integer, nullable=False)
 
-    # Telegram user who requested it
-    telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
+    # Platform user identifier
+    user_id = Column(BigInteger, nullable=False)
+
+    # Platform: "telegram" or "max"
+    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
 
     # Processing status: "pending" → "running" → "completed" / "failed"
     status = Column(String(32), nullable=False)
@@ -133,8 +159,8 @@ class Summarization(Base):
     # LLM model used for summarization
     llm_model = Column(String(64), nullable=True)
 
-    # Identifier of the Telegram message showing the status / result
-    message_id = Column(Integer, nullable=True)
+    # Identifier of the status message (string to support both Telegram int IDs and Max string IDs)
+    message_id = Column(String(64), nullable=True)
 
     # Timestamp when the summarization was requested
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -149,17 +175,24 @@ class Payment(Base):
     __tablename__ = "payments"
 
     __table_args__ = (
-        Index("idx_payments_telegram_id", "telegram_id"),
+        ForeignKeyConstraint(
+            ["user_id", "platform"],
+            ["users.user_id", "users.platform"],
+        ),
+        Index("idx_payments_user", "user_id", "platform"),
     )
 
     # Identifier of the payment record
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Telegram user who initiated the payment
-    telegram_id = Column(BigInteger, ForeignKey("users.telegram_id"), nullable=False)
+    # Platform user identifier
+    user_id = Column(BigInteger, nullable=False)
 
-    # Identifier of the Telegram message with payment info
-    message_id = Column(Integer, nullable=True)
+    # Platform: "telegram" or "max"
+    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+
+    # Identifier of the message with payment info (string to support both platforms)
+    message_id = Column(String(64), nullable=True)
 
     # Merchant order identifier
     order_id = Column(String(64), nullable=False, unique=True)

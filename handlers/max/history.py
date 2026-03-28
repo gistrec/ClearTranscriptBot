@@ -1,25 +1,31 @@
-from telegram import Update
-from telegram.ext import ContextTypes
+"""Handler for /history command on Max messenger."""
+import logging
 
+import aiomax
+
+from database.models import PLATFORM_MAX
 from database.queries import get_recent_transcriptions
-
-from utils.sentry import sentry_bind_user
 from utils.utils import format_duration, MoscowTimezone
 from utils.tg import STATUS_EMOJI, fmt_price
+from utils.sentry import sentry_bind_user_max
 
 
-@sentry_bind_user
-async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    telegram_id = update.effective_user.id
-    items = get_recent_transcriptions(telegram_id, limit=10)
-
-    if not items:
-        await update.message.reply_text(
-            "История пуста\n\n"
-            "Пришлите видео или аудио — вернём текст"
-        )
+@sentry_bind_user_max
+async def handle_max_history(message: aiomax.Message, bot: aiomax.Bot) -> None:
+    try:
+        user_id = int(message.sender.user_id)
+    except (ValueError, TypeError):
+        logging.error("Max: cannot parse user_id: %s", message.sender)
         return
 
+    items = get_recent_transcriptions(user_id, PLATFORM_MAX, limit=10)
+
+    if not items:
+        await bot.send_message(
+            "История пуста\n\nПришлите видео или аудио — вернём текст",
+            chat_id=message.recipient.chat_id,
+        )
+        return
 
     lines: list[str] = []
     for r in items:
@@ -38,4 +44,4 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • 🚫 отменено"
     )
 
-    await update.message.reply_text(msg)
+    await bot.send_message(msg, chat_id=message.recipient.chat_id)

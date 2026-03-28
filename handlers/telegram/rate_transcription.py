@@ -40,7 +40,7 @@ async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAUL
     rating = int(rating_str)
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.telegram_id != query.from_user.id:
+    if transcription is None or transcription.user_id != query.from_user.id:
         return
 
     update_transcription(transcription_id, rating=rating)

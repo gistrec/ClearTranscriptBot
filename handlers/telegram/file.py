@@ -9,7 +9,8 @@ from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from database.queries import add_transcription, add_user, get_user_by_telegram_id
+from database.models import PLATFORM_TELEGRAM
+from database.queries import add_transcription, add_user, get_user
 
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
@@ -28,10 +29,10 @@ LONG_AUDIO_THRESHOLD = 120  # seconds; files longer than this use Replicate
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming media files."""
     message = update.message
-    telegram_id = message.from_user.id
-    user = get_user_by_telegram_id(telegram_id)
+    user_id = message.from_user.id
+    user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
-        user = add_user(telegram_id, message.from_user.username)
+        user = add_user(user_id, PLATFORM_TELEGRAM, message.from_user.username)
 
     await message.reply_text(
         "📥 Файл получен\n\n"
@@ -151,7 +152,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-        object_name = f"source/{telegram_id}/{message.message_id}_{ogg_path.name}"
+        object_name = f"source/{user_id}/{message.message_id}_{ogg_path.name}"
         s3_url, s3_signed_url = await upload_file(ogg_path, object_name)
         if not s3_url or not s3_signed_url:
             await message.reply_text(
@@ -163,7 +164,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     provider = "replicate" if duration > LONG_AUDIO_THRESHOLD else "speechkit"
 
     history = add_transcription(
-        telegram_id=telegram_id,
+        user_id=user_id,
+        platform=PLATFORM_TELEGRAM,
         status="pending",
         audio_s3_path=s3_url,
         provider=provider,

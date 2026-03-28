@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from database.models import PLATFORM_TELEGRAM
 from database.queries import get_transcription, update_transcription
 
 from utils.sentry import sentry_bind_user
@@ -20,8 +21,8 @@ async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     task = get_transcription(task_id)
-    telegram_id = query.from_user.id
-    if task is None or task.telegram_id != telegram_id:
+    user_id = query.from_user.id
+    if task is None or task.user_id != user_id or task.platform != PLATFORM_TELEGRAM:
         await query.edit_message_text("Задача не найдена")
         return
     if task.status != "pending":

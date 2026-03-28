@@ -8,7 +8,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from database.queries import add_user, get_user_by_telegram_id, \
+from database.models import PLATFORM_TELEGRAM
+from database.queries import add_user, get_user, \
     create_payment, get_payment_by_order_id, update_payment, confirm_payment
 
 from utils.sentry import sentry_bind_user
@@ -77,10 +78,10 @@ def _build_payment_text(amount: int, status: str, payment_url: str, strikethroug
 
 @sentry_bind_user
 async def handle_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    telegram_id = update.effective_user.id
-    user = get_user_by_telegram_id(telegram_id)
+    user_id = update.effective_user.id
+    user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
-        add_user(telegram_id, update.effective_user.username)
+        add_user(user_id, PLATFORM_TELEGRAM, update.effective_user.username)
 
     await update.message.reply_text(
         text=_build_topup_text("Выберите сумму пополнения"),
@@ -157,7 +158,8 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     create_payment(
-        telegram_id=query.from_user.id,
+        user_id=query.from_user.id,
+        platform=PLATFORM_TELEGRAM,
         order_id=order_id,
         amount=Decimal(amount),
         status=payment_status,
@@ -174,7 +176,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         disable_web_page_preview=True,
     )
 
-    update_payment(order_id, message_id=message.message_id)
+    update_payment(order_id, message_id=str(message.message_id))
 
 
 @sentry_bind_user
@@ -190,7 +192,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     payment = get_payment_by_order_id(order_id)
-    if payment is None or payment.telegram_id != query.from_user.id:
+    if payment is None or payment.user_id != query.from_user.id:
         logging.error(f"Payment not found for order_id: {order_id}")
         await query.message.edit_text("Платёж не найден", reply_markup=None)
         return
@@ -259,7 +261,7 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     payment = get_payment_by_order_id(order_id)
-    if payment is None or payment.telegram_id != query.from_user.id:
+    if payment is None or payment.user_id != query.from_user.id:
         await query.message.edit_text("Платёж не найден", reply_markup=None)
         return
 

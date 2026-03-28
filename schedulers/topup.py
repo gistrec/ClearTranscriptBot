@@ -37,6 +37,7 @@ def _check_interval(age_seconds: float) -> int:
 
 async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll due payments; credit balance when confirmed, expire after 3 hours."""
+    sender = context.bot_data.get("sender")
     now = datetime.now(MoscowTimezone)
 
     for payment in get_payments_due_for_check():
@@ -47,7 +48,7 @@ async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
             # Sentinel far in the future prevents other workers from racing on expiry
             if not claim_payment_for_check(payment.order_id, now + timedelta(days=1)):
                 continue
-            await _expire_payment(context.bot, payment)
+            await _expire_payment(sender, payment)
             continue
 
         interval = _check_interval(age_seconds)
@@ -64,10 +65,10 @@ async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
         if payment_status not in ("CONFIRMED", "AUTHORIZED"):
             continue
 
-        await _confirm_payment(context.bot, payment, payment_status)
+        await _confirm_payment(sender, payment, payment_status)
 
 
-async def _confirm_payment(bot, payment, payment_status: str) -> None:
+async def _confirm_payment(sender, payment, payment_status: str) -> None:
     """Atomically confirm payment and notify user.
 
     Uses confirm_payment() which holds SELECT FOR UPDATE, so only one caller
@@ -77,33 +78,31 @@ async def _confirm_payment(bot, payment, payment_status: str) -> None:
     if not won:
         return  # another path already handled this payment
 
-    if payment.message_id:
+    if payment.message_id and sender is not None:
         try:
-            await bot.edit_message_reply_markup(
-                chat_id=payment.telegram_id,
-                message_id=payment.message_id,
-                reply_markup=None,
-            )
+            await sender.remove_keyboard(payment.platform, payment.user_id, payment.message_id)
         except Exception:
             logging.exception("Failed to remove keyboard for payment %s", payment.order_id)
 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
 
-    try:
-        await bot.send_message(
-            chat_id=payment.telegram_id,
-            text=(
-                f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
-                f"Баланс: {balance} ₽\n"
-                f"Хватит на распознавание: {duration_str}"
-            ),
-        )
-    except Exception:
-        logging.exception("Failed to notify user about confirmed payment %s", payment.order_id)
+    if sender is not None:
+        try:
+            await sender.send_message(
+                payment.platform,
+                payment.user_id,
+                text=(
+                    f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
+                    f"Баланс: {balance} ₽\n"
+                    f"Хватит на распознавание: {duration_str}"
+                ),
+            )
+        except Exception:
+            logging.exception("Failed to notify user about confirmed payment %s", payment.order_id)
 
 
-async def _expire_payment(bot, payment) -> None:
+async def _expire_payment(sender, payment) -> None:
     """Check provider one last time before expiring.
 
     If the check fails (network error), reschedule a retry instead of expiring.
@@ -124,19 +123,20 @@ async def _expire_payment(bot, payment) -> None:
         return
 
     if payment_status in ("CONFIRMED", "AUTHORIZED"):
-        await _confirm_payment(bot, payment, payment_status)
+        await _confirm_payment(sender, payment, payment_status)
         return
 
     if not expire_payment(payment.order_id):
         return  # already cancelled by the user or another process
 
-    if payment.message_id:
+    if payment.message_id and sender is not None:
         try:
-            await bot.edit_message_text(
-                chat_id=payment.telegram_id,
-                message_id=payment.message_id,
+            await sender.edit_message(
+                payment.platform,
+                payment.user_id,
+                payment.message_id,
                 text="Пополнение отменено автоматически — прошло более 3 часов с момента создания",
-                reply_markup=None,
+                tg_markup=None,
             )
         except Exception:
             logging.exception("Failed to edit expired payment message %s", payment.order_id)

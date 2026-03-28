@@ -36,10 +36,42 @@ def sentry_bind_user(func):
                     "id": user.id,
                     "username": user.username,
                     "first_name": user.first_name,
+                    "platform": "telegram",
                 })
 
                 return await func(update, context, *args, **kwargs)
 
         return await func(update, context, *args, **kwargs)
+
+    return wrapper
+
+
+def sentry_bind_user_max(func):
+    """
+    Async Max handler decorator (aiomax.Message or aiomax.Callback as first arg).
+    If ENABLE_SENTRY=1 -> set_user in Sentry from sender.user_id / user.user_id.
+    """
+    @functools.wraps(func)
+    async def wrapper(event, bot, *args, **kwargs):
+        if ENABLE_SENTRY:
+            # aiomax.Message uses .sender; aiomax.Callback uses .user
+            user = getattr(event, "sender", None) or getattr(event, "user", None)
+
+            user_id = getattr(user, "user_id", None)
+            username = getattr(user, "username", None)
+            name = getattr(user, "name", None)
+
+            if user_id is not None:
+                with sentry_sdk.new_scope() as scope:
+                    scope.set_user({
+                        "id": user_id,
+                        "username": username,
+                        "first_name": name,
+                        "platform": "max",
+                    })
+
+                    return await func(event, bot, *args, **kwargs)
+
+        return await func(event, bot, *args, **kwargs)
 
     return wrapper

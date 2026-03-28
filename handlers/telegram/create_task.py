@@ -4,10 +4,11 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from database.models import PLATFORM_TELEGRAM
 from database.queries import (
     change_user_balance,
     get_transcription,
-    get_user_by_telegram_id,
+    get_user,
     update_transcription,
 )
 
@@ -29,9 +30,9 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     task = get_transcription(task_id)
-    telegram_id = query.from_user.id
+    user_id = query.from_user.id
 
-    if task is None or task.telegram_id != telegram_id:
+    if task is None or task.user_id != user_id or task.platform != PLATFORM_TELEGRAM:
         await query.edit_message_text("Задача не найдена")
         return
 
@@ -39,7 +40,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text("Задача уже запущена")
         return
 
-    user = get_user_by_telegram_id(telegram_id)
+    user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
         await query.edit_message_text("Пользователь не найден")
         return
@@ -53,7 +54,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
-    change_user_balance(telegram_id, -price_for_user)
+    change_user_balance(user_id, PLATFORM_TELEGRAM, -price_for_user)
 
     operation_id = await start_transcription(
         task.audio_s3_path,
@@ -61,7 +62,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         duration_seconds=task.duration_seconds,
     )
     if not operation_id:
-        change_user_balance(telegram_id, price_for_user)
+        change_user_balance(user_id, PLATFORM_TELEGRAM, price_for_user)
         await query.edit_message_text(
             "Не удалось запустить распознавание\n"
             "Пожалуйста, попробуйте ещё раз чуть позже"
@@ -84,7 +85,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         task.id,
         status="running",
         operation_id=operation_id,
-        message_id=query.message.message_id,
+        message_id=str(query.message.message_id),
         model=model,
         started_at=now,
     )

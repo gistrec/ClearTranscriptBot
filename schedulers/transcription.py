@@ -8,13 +8,13 @@ import providers.speechkit as speechkit_provider
 from pathlib import Path
 from datetime import datetime
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
+from database.models import PLATFORM_MAX
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
 
-from handlers.rate_transcription import make_rating_keyboard, RATING_PROMPT
-from handlers.summarize import SUMMARIZE_THRESHOLD
+from handlers.telegram.rate_transcription import make_rating_keyboard, RATING_PROMPT
+from handlers.telegram.summarize import SUMMARIZE_THRESHOLD
 
 from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import check_transcription, get_result
@@ -23,9 +23,26 @@ from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
 
 
+def _make_max_summarize_keyboard(task_id: int):
+    try:
+        from aiomax.buttons import CallbackButton, KeyboardBuilder
+        return KeyboardBuilder().row(CallbackButton("📝 Создать конспект", f"summarize:{task_id}"))
+    except Exception:
+        return None
+
+
+def _make_max_rating_keyboard(transcription_id: int):
+    try:
+        from aiomax.buttons import CallbackButton, KeyboardBuilder
+        buttons = [CallbackButton(f"{i}⭐", f"rate:{transcription_id}:{i}") for i in range(1, 6)]
+        return KeyboardBuilder().row(*buttons)
+    except Exception:
+        return None
+
 
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
+    sender = context.bot_data.get("sender")
     now = datetime.now(MoscowTimezone)
 
     for task in get_transcriptions_by_status("running"):
@@ -37,15 +54,18 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         # Редактируем сообщение только если прошло достаточно времени
         if need_edit(context, task.id, now):
             audio_duration_str = format_duration(task.duration_seconds)
-            await safe_edit_message_text(
-                context.bot,
-                task.telegram_id,
-                task.message_id,
-                f"⏳ Задача №{task.id} в работе\n\n"
+            status_text = (
+                f"⏳ Задача в работе\n\n"
                 f"Длительность: {audio_duration_str}\n"
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}\n\n"
             )
+            if sender is not None:
+                await sender.edit_message(task.platform, task.user_id, task.message_id, status_text)
+            else:
+                await safe_edit_message_text(
+                    context.bot, task.user_id, task.message_id, status_text
+                )
 
         result_info = await check_transcription(task.operation_id, provider=task.provider)
 
@@ -69,13 +89,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if not result_info.get("success"):
             update_transcription(task.id, status="failed")
-            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if failed
-            await safe_edit_message_text(
-                context.bot,
-                task.telegram_id,
-                task.message_id,
-                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
-            )
+            change_user_balance(task.user_id, task.platform, task.price_for_user)  # Refund if failed
+            fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
+            if sender is not None:
+                await sender.edit_message(task.platform, task.user_id, task.message_id, fail_text)
+            else:
+                await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
             continue
 
         text = get_result(result_info)
@@ -89,49 +108,79 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         path = tmp_dir / f"{source_stem}.txt"
         path.write_text(text, encoding="utf-8")
 
-        object_name = f"result/{task.telegram_id}/{path.name}"
+        object_name = f"result/{task.user_id}/{path.name}"
         s3_url, s3_signed_url = await upload_file(path, object_name)
         if not s3_url or not s3_signed_url:
             update_transcription(task.id, status="failed")
-            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if upload failed
-            await safe_edit_message_text(
-                context.bot,
-                task.telegram_id,
-                task.message_id,
-                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
-            )
+            change_user_balance(task.user_id, task.platform, task.price_for_user)  # Refund if upload failed
+            fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
+            if sender is not None:
+                await sender.edit_message(task.platform, task.user_id, task.message_id, fail_text)
+            else:
+                await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
             path.unlink(missing_ok=True)
             tmp_dir.rmdir()
             continue
 
         audio_duration_str = format_duration(task.duration_seconds)
-        summarize_keyboard = None
+
+        # Build platform-specific summarize keyboard
+        tg_summarize_keyboard = None
+        max_summarize_keyboard = None
         if task.duration_seconds > SUMMARIZE_THRESHOLD:
-            summarize_keyboard = InlineKeyboardMarkup([[
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            tg_summarize_keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
             ]])
-        await safe_edit_message_text(
-            context.bot,
-            task.telegram_id,
-            task.message_id,
+            if task.platform == PLATFORM_MAX:
+                max_summarize_keyboard = _make_max_summarize_keyboard(task.id)
+
+        done_text = (
             f"✅ Распознавание завершено!\n\n"
             f"Длительность: {audio_duration_str}\n"
             f"Стоимость: {task.price_for_user} ₽\n\n"
-            f"Время обработки: {duration_str}\n\n",
-            reply_markup=summarize_keyboard,
+            f"Время обработки: {duration_str}\n\n"
         )
+        if sender is not None:
+            await sender.edit_message(
+                task.platform, task.user_id, task.message_id, done_text,
+                tg_markup=tg_summarize_keyboard,
+                max_keyboard=max_summarize_keyboard,
+            )
+        else:
+            await safe_edit_message_text(
+                context.bot, task.user_id, task.message_id, done_text,
+                reply_markup=tg_summarize_keyboard,
+            )
 
         try:
+            tg_rating_keyboard = make_rating_keyboard(task.id)
+            max_rating_keyboard = _make_max_rating_keyboard(task.id) if task.platform == PLATFORM_MAX else None
+
             with path.open("rb") as f:
-                await context.bot.send_document(
-                    chat_id=task.telegram_id,
-                    reply_to_message_id=task.message_id,
-                    document=f,
-                    caption=RATING_PROMPT,
-                    reply_markup=make_rating_keyboard(task.id),
-                    connect_timeout=15,
-                    write_timeout=30,
-                )
+                if sender is not None:
+                    await sender.send_document(
+                        task.platform,
+                        task.user_id,
+                        task.message_id,
+                        f,
+                        path.name,
+                        RATING_PROMPT,
+                        tg_markup=tg_rating_keyboard,
+                        max_keyboard=max_rating_keyboard,
+                        connect_timeout=15,
+                        write_timeout=30,
+                    )
+                else:
+                    await context.bot.send_document(
+                        chat_id=task.user_id,
+                        reply_to_message_id=int(task.message_id),
+                        document=f,
+                        caption=RATING_PROMPT,
+                        reply_markup=tg_rating_keyboard,
+                        connect_timeout=15,
+                        write_timeout=30,
+                    )
 
             update_transcription(
                 task.id,
@@ -147,13 +196,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 result_s3_path=s3_url,
                 llm_tokens_by_encoding=token_counts,
             )
-            change_user_balance(task.telegram_id, task.price_for_user)  # Refund if sending failed
-            await safe_edit_message_text(
-                context.bot,
-                task.telegram_id,
-                task.message_id,
-                f"❌ Задача №{task.id} завершилась с ошибкой\n\nПопробуйте ещё раз",
-            )
+            change_user_balance(task.user_id, task.platform, task.price_for_user)  # Refund if sending failed
+            fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
+            if sender is not None:
+                await sender.edit_message(task.platform, task.user_id, task.message_id, fail_text)
+            else:
+                await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
         finally:
             path.unlink(missing_ok=True)
             tmp_dir.rmdir()

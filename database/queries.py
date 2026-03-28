@@ -7,30 +7,43 @@ from datetime import datetime
 from sqlalchemy import update
 
 from .connection import SessionLocal
-from .models import User, TranscriptionHistory, Payment, Summarization
+from .models import User, TranscriptionHistory, Payment, Summarization, PLATFORM_TELEGRAM
 from utils.utils import MoscowTimezone
 
 
-def add_user(telegram_id: int, telegram_login: str | None = None) -> User:
+def add_user(user_id: int, platform: str, username: str | None = None) -> User:
     """Create and persist a new user."""
     with SessionLocal() as session:
-        user = User(telegram_id=telegram_id, telegram_login=telegram_login)
+        user = User(user_id=user_id, platform=platform, telegram_login=username)
         session.add(user)
         session.commit()
         session.refresh(user)
         return user
 
 
-def get_user_by_telegram_id(telegram_id: int) -> Optional[User]:
-    """Fetch a user by their Telegram identifier."""
+def get_user(user_id: int, platform: str) -> Optional[User]:
+    """Fetch a user by their platform identifier."""
     with SessionLocal() as session:
-        return session.query(User).filter(User.telegram_id == telegram_id).one_or_none()
+        return (
+            session.query(User)
+            .filter(User.user_id == user_id, User.platform == platform)
+            .one_or_none()
+        )
 
 
-def change_user_balance(telegram_id: int, delta: Decimal) -> User:
+def get_user_by_telegram_id(telegram_id: int) -> Optional[User]:
+    """Compatibility shim — fetch a Telegram user by their identifier."""
+    return get_user(telegram_id, PLATFORM_TELEGRAM)
+
+
+def change_user_balance(user_id: int, platform: str, delta: Decimal) -> User:
     """Add *delta* to user's balance and return updated user."""
     with SessionLocal() as session:
-        user = session.get(User, telegram_id)
+        user = (
+            session.query(User)
+            .filter(User.user_id == user_id, User.platform == platform)
+            .one()
+        )
         user.balance = (user.balance or Decimal("0")) + delta
         session.commit()
         session.refresh(user)
@@ -38,7 +51,8 @@ def change_user_balance(telegram_id: int, delta: Decimal) -> User:
 
 
 def add_transcription(
-    telegram_id: int,
+    user_id: int,
+    platform: str,
     status: str,
     audio_s3_path: str,
     provider: str | None = None,
@@ -49,7 +63,8 @@ def add_transcription(
     """Persist a new transcription history record."""
     with SessionLocal() as session:
         history = TranscriptionHistory(
-            telegram_id=telegram_id,
+            user_id=user_id,
+            platform=platform,
             status=status,
             audio_s3_path=audio_s3_path,
             provider=provider,
@@ -94,12 +109,12 @@ def get_transcriptions_by_status(status: str) -> list[TranscriptionHistory]:
         )
 
 
-def get_recent_transcriptions(telegram_id: int, limit: int = 10) -> list[TranscriptionHistory]:
-    """Return recent transcriptions for *telegram_id* limited by *limit*."""
+def get_recent_transcriptions(user_id: int, platform: str, limit: int = 10) -> list[TranscriptionHistory]:
+    """Return recent transcriptions for the given user limited by *limit*."""
     with SessionLocal() as session:
         return (
             session.query(TranscriptionHistory)
-            .filter(TranscriptionHistory.telegram_id == telegram_id)
+            .filter(TranscriptionHistory.user_id == user_id, TranscriptionHistory.platform == platform)
             .order_by(TranscriptionHistory.id.desc())
             .limit(limit)
             .all()
@@ -108,14 +123,16 @@ def get_recent_transcriptions(telegram_id: int, limit: int = 10) -> list[Transcr
 
 def create_summarization(
     transcription_id: int,
-    telegram_id: int,
-    message_id: int,
+    user_id: int,
+    platform: str,
+    message_id: str,
 ) -> Summarization:
     """Persist a new summarization record in pending state."""
     with SessionLocal() as session:
         record = Summarization(
             transcription_id=transcription_id,
-            telegram_id=telegram_id,
+            user_id=user_id,
+            platform=platform,
             message_id=message_id,
             status="pending",
         )
@@ -157,7 +174,8 @@ def update_summarization(summarization_id: int, **fields: Any) -> Optional[Summa
 
 
 def create_payment(
-    telegram_id: int,
+    user_id: int,
+    platform: str,
     order_id: str,
     amount: Decimal,
     status: str,
@@ -168,7 +186,8 @@ def create_payment(
 ) -> Payment:
     with SessionLocal() as session:
         topup = Payment(
-            telegram_id=telegram_id,
+            user_id=user_id,
+            platform=platform,
             order_id=order_id,
             payment_id=payment_id,
             amount=amount,
@@ -183,11 +202,11 @@ def create_payment(
         return topup
 
 
-def get_recent_payments(telegram_id: int, limit: int = 5) -> list[Payment]:
+def get_recent_payments(user_id: int, platform: str, limit: int = 5) -> list[Payment]:
     with SessionLocal() as session:
         return (
             session.query(Payment)
-            .filter(Payment.telegram_id == telegram_id)
+            .filter(Payment.user_id == user_id, Payment.platform == platform)
             .order_by(Payment.id.desc())
             .limit(limit)
             .all()
@@ -257,7 +276,11 @@ def confirm_payment(order_id: str, payment_status: str) -> tuple[bool, Optional[
             return False, None
 
         payment.status = payment_status
-        user = session.get(User, payment.telegram_id)
+        user = (
+            session.query(User)
+            .filter(User.user_id == payment.user_id, User.platform == payment.platform)
+            .one()
+        )
         user.balance = (user.balance or Decimal("0")) + payment.amount
         session.commit()
         session.refresh(user)

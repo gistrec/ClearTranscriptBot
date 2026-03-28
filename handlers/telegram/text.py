@@ -3,7 +3,8 @@ from decimal import Decimal
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.queries import add_user, get_user_by_telegram_id
+from database.models import PLATFORM_TELEGRAM
+from database.queries import add_user, get_user
 
 from utils.marketing import track_goal
 from utils.sentry import sentry_bind_user
@@ -20,10 +21,10 @@ def extract_start_payload(text: str) -> str | None:
 @sentry_bind_user
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Respond to regular text messages."""
-    telegram_id = update.message.from_user.id
-    user = get_user_by_telegram_id(telegram_id)
+    user_id = update.message.from_user.id
+    user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
-        user = add_user(telegram_id, update.message.from_user.username)
+        user = add_user(user_id, PLATFORM_TELEGRAM, update.message.from_user.username)
 
     yclid = extract_start_payload(update.message.text or "")
     if yclid:
