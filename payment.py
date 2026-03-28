@@ -36,13 +36,23 @@ def _generate_token(params: dict) -> str:
     return hashlib.sha256(token_str.encode()).hexdigest()
 
 
-async def init_payment(order_id: str, amount: int, description: str) -> dict:
+async def init_payment(
+    order_id: str,
+    amount: int,
+    description: str,
+    success_url: str | None = None,
+    fail_url: str | None = None,
+) -> dict:
     payload = {
         "TerminalKey": TERMINAL_KEY,
         "Amount": amount,
         "OrderId": order_id,
         "Description": description,
     }
+    if success_url:
+        payload["SuccessURL"] = success_url
+    if fail_url:
+        payload["FailURL"] = fail_url
     payload["Token"] = _generate_token(payload)
 
     async with httpx.AsyncClient(timeout=10.0) as client:

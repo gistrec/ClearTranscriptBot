@@ -21,6 +21,8 @@ from handlers.max.common import make_topup_amounts_keyboard, make_payment_action
 from utils.sentry import sentry_bind_user_max
 
 
+BOT_URL = "https://max.ru/id420529656333_bot"
+
 TOPUP_AMOUNTS = (50, 100, 250, 500)
 
 
@@ -85,7 +87,11 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     amount_kopeks = int(Decimal(amount) * 100)
 
     try:
-        tinkoff_response = await init_payment(order_id, amount_kopeks, description)
+        tinkoff_response = await init_payment(
+            order_id, amount_kopeks, description,
+            success_url=BOT_URL,
+            fail_url=BOT_URL,
+        )
         payment_status = tinkoff_response.get("Status", None)
         payment_error = tinkoff_response.get("ErrorCode", "0")
         if not payment_status or payment_error != "0":

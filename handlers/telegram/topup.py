@@ -17,6 +17,8 @@ from utils.sentry import sentry_bind_user
 from utils.utils import available_time_by_balance
 
 
+BOT_URL = "https://t.me/ClearTranscriptBot"
+
 TOPUP_AMOUNTS = (50, 100, 250, 500)
 
 
@@ -137,7 +139,11 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
     amount_kopeks = int(Decimal(amount) * 100)
 
     try:
-        tinkoff_response = await init_payment(order_id, amount_kopeks, description)
+        tinkoff_response = await init_payment(
+            order_id, amount_kopeks, description,
+            success_url=BOT_URL,
+            fail_url=BOT_URL,
+        )
         logging.info(f"Payment initialized: {tinkoff_response}")
 
         payment_status = tinkoff_response.get("Status", None)
