@@ -1,4 +1,5 @@
 import logging
+import time
 
 from decimal import Decimal
 
@@ -126,7 +127,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         disable_web_page_preview=True,
     )
 
-    order_id = f"topup-{query.from_user.id}-{query.message.message_id}"
+    order_id = f"tg-{query.from_user.id}-{int(time.time() * 1000)}"
 
     if get_payment_by_order_id(order_id) is not None:
         logging.warning("Duplicate topup callback for order_id: %s", order_id)

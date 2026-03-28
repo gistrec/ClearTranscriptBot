@@ -1,5 +1,6 @@
 """Handler for /topup command and payment callbacks on Max messenger."""
 import logging
+import time
 
 from decimal import Decimal
 
@@ -74,7 +75,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
 
     await bot.edit_message(message_id, f"Сумма пополнения: {amount} ₽", attachments=[])
 
-    order_id = f"topup-max-{user_id}-{message_id}"
+    order_id = f"max-{user_id}-{int(time.time() * 1000)}"
 
     if get_payment_by_order_id(order_id) is not None:
         logging.warning("Max topup: duplicate callback for order_id: %s", order_id)
