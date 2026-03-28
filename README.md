@@ -173,15 +173,14 @@ server.
 
 ```sql
 -- Users table — supports both Telegram and Max users
--- Primary key is (user_id, platform) to avoid collisions between platforms
+-- Primary key is (user_id, user_platform) to avoid collisions between platforms
 CREATE TABLE IF NOT EXISTS users (
     user_id          BIGINT          NOT NULL,
-    platform         VARCHAR(16)     NOT NULL,
-    telegram_login   VARCHAR(32),
+    user_platform    VARCHAR(16)     NOT NULL,
     balance          DECIMAL(10,2)   NOT NULL DEFAULT 50.00,
     total_topped_up  DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
     registered_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, platform)
+    PRIMARY KEY (user_id, user_platform)
 );
 
 -- History of transcription requests made by users
@@ -205,16 +204,16 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     created_at             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP,
-    FOREIGN KEY (user_id, platform) REFERENCES users(user_id, platform)
+    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform)
 );
 
-CREATE INDEX idx_th_user ON transcription_history(user_id, platform);
+CREATE INDEX idx_th_user ON transcription_history(user_id, user_platform);
 
 -- Payments processed via Tinkoff acquiring
 CREATE TABLE IF NOT EXISTS payments (
     id               INTEGER         PRIMARY KEY AUTO_INCREMENT,
     user_id          BIGINT          NOT NULL,
-    platform         VARCHAR(16)     NOT NULL,
+    user_platform    VARCHAR(16)     NOT NULL,
     message_id       VARCHAR(64),
     order_id         VARCHAR(64)     NOT NULL UNIQUE,
     payment_id       BIGINT          NOT NULL UNIQUE,
@@ -225,10 +224,10 @@ CREATE TABLE IF NOT EXISTS payments (
     tinkoff_response TEXT            NOT NULL,
     next_check_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id, platform) REFERENCES users(user_id, platform)
+    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform)
 );
 
-CREATE INDEX idx_payments_user ON payments(user_id, platform);
+CREATE INDEX idx_payments_user ON payments(user_id, user_platform);
 
 -- AI summarization requests for completed transcriptions
 CREATE TABLE IF NOT EXISTS summarizations (
@@ -243,7 +242,7 @@ CREATE TABLE IF NOT EXISTS summarizations (
     message_id        VARCHAR(64),
     created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at       TIMESTAMP,
-    FOREIGN KEY (user_id, platform) REFERENCES users(user_id, platform)
+    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform)
 );
 
 CREATE INDEX idx_summarizations_transcription_id ON summarizations(transcription_id);
@@ -258,7 +257,7 @@ BEGIN
     IF NEW.status = 'CONFIRMED' AND OLD.status != 'CONFIRMED' THEN
         UPDATE users
         SET total_topped_up = total_topped_up + NEW.amount
-        WHERE user_id = NEW.user_id AND platform = NEW.platform;
+        WHERE user_id = NEW.user_id AND user_platform = NEW.user_platform;
     END IF;
 END;
 ```

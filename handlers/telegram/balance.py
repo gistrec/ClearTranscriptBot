@@ -17,7 +17,7 @@ async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = update.effective_user.id
     user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
-        user = add_user(user_id, PLATFORM_TELEGRAM, update.effective_user.username)
+        user = add_user(user_id, PLATFORM_TELEGRAM)
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
 

@@ -24,7 +24,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user_id = update.message.from_user.id
     user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
-        user = add_user(user_id, PLATFORM_TELEGRAM, update.message.from_user.username)
+        user = add_user(user_id, PLATFORM_TELEGRAM)
 
     yclid = extract_start_payload(update.message.text or "")
     if yclid:

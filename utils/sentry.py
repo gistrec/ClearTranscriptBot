@@ -34,7 +34,6 @@ def sentry_bind_user(func):
             with sentry_sdk.new_scope() as scope:
                 scope.set_user({
                     "id": user.id,
-                    "username": user.username,
                     "first_name": user.first_name,
                     "platform": "telegram",
                 })
@@ -58,14 +57,12 @@ def sentry_bind_user_max(func):
             user = getattr(event, "sender", None) or getattr(event, "user", None)
 
             user_id = getattr(user, "user_id", None)
-            username = getattr(user, "username", None)
             name = getattr(user, "name", None)
 
             if user_id is not None:
                 with sentry_sdk.new_scope() as scope:
                     scope.set_user({
                         "id": user_id,
-                        "username": username,
                         "first_name": name,
                         "platform": "max",
                     })

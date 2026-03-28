@@ -36,7 +36,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     message_id = callback.message.body.message_id
 
     task = get_transcription(task_id)
-    if task is None or task.user_id != user_id or task.platform != PLATFORM_MAX:
+    if task is None or task.user_id != user_id or task.user_platform != PLATFORM_MAX:
         await bot.edit_message(message_id, attachments=[], text="Задача не найдена")
         return
 

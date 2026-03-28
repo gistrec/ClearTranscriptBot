@@ -80,7 +80,7 @@ async def _confirm_payment(sender, payment, payment_status: str) -> None:
 
     if payment.message_id and sender is not None:
         try:
-            await sender.remove_keyboard(payment.platform, payment.user_id, payment.message_id)
+            await sender.remove_keyboard(payment.user_platform, payment.user_id, payment.message_id)
         except Exception:
             logging.exception("Failed to remove keyboard for payment %s", payment.order_id)
 
@@ -90,7 +90,7 @@ async def _confirm_payment(sender, payment, payment_status: str) -> None:
     if sender is not None:
         try:
             await sender.send_message(
-                payment.platform,
+                payment.user_platform,
                 payment.user_id,
                 text=(
                     f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
@@ -132,7 +132,7 @@ async def _expire_payment(sender, payment) -> None:
     if payment.message_id and sender is not None:
         try:
             await sender.edit_message(
-                payment.platform,
+                payment.user_platform,
                 payment.user_id,
                 payment.message_id,
                 text="Пополнение отменено автоматически — прошло более 3 часов с момента создания",

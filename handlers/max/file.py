@@ -37,7 +37,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     user = get_user(user_id, PLATFORM_MAX)
     if user is None:
-        user = add_user(user_id, PLATFORM_MAX, getattr(message.sender, "username", None))
+        user = add_user(user_id, PLATFORM_MAX)
 
     # Find the first supported attachment (also look inside forwarded message)
     attachment = None

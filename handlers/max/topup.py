@@ -33,7 +33,7 @@ async def handle_max_topup(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     user = get_user(user_id, PLATFORM_MAX)
     if user is None:
-        add_user(user_id, PLATFORM_MAX, getattr(message.sender, "username", None))
+        add_user(user_id, PLATFORM_MAX)
 
     await bot.send_message(
         "Выберите сумму пополнения:",

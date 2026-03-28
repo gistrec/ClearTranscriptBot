@@ -32,7 +32,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     task = get_transcription(task_id)
     user_id = query.from_user.id
 
-    if task is None or task.user_id != user_id or task.platform != PLATFORM_TELEGRAM:
+    if task is None or task.user_id != user_id or task.user_platform != PLATFORM_TELEGRAM:
         await query.edit_message_text("Задача не найдена")
         return
 

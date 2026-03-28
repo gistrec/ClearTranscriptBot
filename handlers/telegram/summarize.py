@@ -20,7 +20,7 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     transcription_id = int(transcription_id_str)
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != query.from_user.id or transcription.platform != PLATFORM_TELEGRAM:
+    if transcription is None or transcription.user_id != query.from_user.id or transcription.user_platform != PLATFORM_TELEGRAM:
         return
 
     if not transcription.result_s3_path:

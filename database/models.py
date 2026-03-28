@@ -28,17 +28,14 @@ class User(Base):
     __tablename__ = "users"
 
     __table_args__ = (
-        PrimaryKeyConstraint("user_id", "platform"),
+        PrimaryKeyConstraint("user_id", "user_platform"),
     )
 
     # Platform user identifier (Telegram user ID or Max user ID)
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
-
-    # Optional username (Telegram login or Max username)
-    telegram_login = Column(String(32), nullable=True)
+    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
 
     # Account balance
     balance = Column(Numeric(10, 2), nullable=False, default=50.00)
@@ -57,10 +54,10 @@ class TranscriptionHistory(Base):
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ["user_id", "platform"],
-            ["users.user_id", "users.platform"],
+            ["user_id", "user_platform"],
+            ["users.user_id", "users.user_platform"],
         ),
-        Index("idx_th_user", "user_id", "platform"),
+        Index("idx_th_user", "user_id", "user_platform"),
     )
 
     # Identifier of transcription request
@@ -70,7 +67,7 @@ class TranscriptionHistory(Base):
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
 
     # Processing status of the request
     status = Column(String(32), nullable=False)
@@ -128,11 +125,11 @@ class Summarization(Base):
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ["user_id", "platform"],
-            ["users.user_id", "users.platform"],
+            ["user_id", "user_platform"],
+            ["users.user_id", "users.user_platform"],
         ),
         Index("idx_summarizations_transcription_id", "transcription_id"),
-        Index("idx_sum_user", "user_id", "platform"),
+        Index("idx_sum_user", "user_id", "user_platform"),
     )
 
     # Identifier of summarization request
@@ -145,7 +142,7 @@ class Summarization(Base):
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
 
     # Processing status: "pending" → "running" → "completed" / "failed"
     status = Column(String(32), nullable=False)
@@ -176,10 +173,10 @@ class Payment(Base):
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ["user_id", "platform"],
-            ["users.user_id", "users.platform"],
+            ["user_id", "user_platform"],
+            ["users.user_id", "users.user_platform"],
         ),
-        Index("idx_payments_user", "user_id", "platform"),
+        Index("idx_payments_user", "user_id", "user_platform"),
     )
 
     # Identifier of the payment record
@@ -189,7 +186,7 @@ class Payment(Base):
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
 
     # Identifier of the message with payment info (string to support both platforms)
     message_id = Column(String(64), nullable=True)

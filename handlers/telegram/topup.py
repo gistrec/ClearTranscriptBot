@@ -81,7 +81,7 @@ async def handle_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user_id = update.effective_user.id
     user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
-        add_user(user_id, PLATFORM_TELEGRAM, update.effective_user.username)
+        add_user(user_id, PLATFORM_TELEGRAM)
 
     await update.message.reply_text(
         text=_build_topup_text("Выберите сумму пополнения"),

@@ -26,7 +26,7 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
         return
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != user_id or transcription.platform != PLATFORM_MAX:
+    if transcription is None or transcription.user_id != user_id or transcription.user_platform != PLATFORM_MAX:
         return
 
     update_transcription(transcription_id, rating=rating)

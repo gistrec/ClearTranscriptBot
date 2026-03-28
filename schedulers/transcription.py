@@ -61,7 +61,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"Время обработки: {duration_str}\n\n"
             )
             if sender is not None:
-                await sender.edit_message(task.platform, task.user_id, task.message_id, status_text)
+                await sender.edit_message(task.user_platform, task.user_id, task.message_id, status_text)
             else:
                 await safe_edit_message_text(
                     context.bot, task.user_id, task.message_id, status_text
@@ -89,10 +89,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if not result_info.get("success"):
             update_transcription(task.id, status="failed")
-            change_user_balance(task.user_id, task.platform, task.price_for_user)  # Refund if failed
+            change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if failed
             fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
             if sender is not None:
-                await sender.edit_message(task.platform, task.user_id, task.message_id, fail_text)
+                await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
             else:
                 await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
             continue
@@ -112,10 +112,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         s3_url, s3_signed_url = await upload_file(path, object_name)
         if not s3_url or not s3_signed_url:
             update_transcription(task.id, status="failed")
-            change_user_balance(task.user_id, task.platform, task.price_for_user)  # Refund if upload failed
+            change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
             fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
             if sender is not None:
-                await sender.edit_message(task.platform, task.user_id, task.message_id, fail_text)
+                await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
             else:
                 await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
             path.unlink(missing_ok=True)
@@ -132,7 +132,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             tg_summarize_keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
             ]])
-            if task.platform == PLATFORM_MAX:
+            if task.user_platform == PLATFORM_MAX:
                 max_summarize_keyboard = _make_max_summarize_keyboard(task.id)
 
         done_text = (
@@ -143,7 +143,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         if sender is not None:
             await sender.edit_message(
-                task.platform, task.user_id, task.message_id, done_text,
+                task.user_platform, task.user_id, task.message_id, done_text,
                 tg_markup=tg_summarize_keyboard,
                 max_keyboard=max_summarize_keyboard,
             )
@@ -155,12 +155,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         try:
             tg_rating_keyboard = make_rating_keyboard(task.id)
-            max_rating_keyboard = _make_max_rating_keyboard(task.id) if task.platform == PLATFORM_MAX else None
+            max_rating_keyboard = _make_max_rating_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
 
             with path.open("rb") as f:
                 if sender is not None:
                     await sender.send_document(
-                        task.platform,
+                        task.user_platform,
                         task.user_id,
                         task.message_id,
                         f,
@@ -196,10 +196,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 result_s3_path=s3_url,
                 llm_tokens_by_encoding=token_counts,
             )
-            change_user_balance(task.user_id, task.platform, task.price_for_user)  # Refund if sending failed
+            change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if sending failed
             fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
             if sender is not None:
-                await sender.edit_message(task.platform, task.user_id, task.message_id, fail_text)
+                await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
             else:
                 await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
         finally:

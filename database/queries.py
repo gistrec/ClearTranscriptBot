@@ -11,10 +11,10 @@ from .models import User, TranscriptionHistory, Payment, Summarization, PLATFORM
 from utils.utils import MoscowTimezone
 
 
-def add_user(user_id: int, platform: str, username: str | None = None) -> User:
+def add_user(user_id: int, platform: str) -> User:
     """Create and persist a new user."""
     with SessionLocal() as session:
-        user = User(user_id=user_id, platform=platform, telegram_login=username)
+        user = User(user_id=user_id, user_platform=platform)
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -26,7 +26,7 @@ def get_user(user_id: int, platform: str) -> Optional[User]:
     with SessionLocal() as session:
         return (
             session.query(User)
-            .filter(User.user_id == user_id, User.platform == platform)
+            .filter(User.user_id == user_id, User.user_platform == platform)
             .one_or_none()
         )
 
@@ -41,7 +41,7 @@ def change_user_balance(user_id: int, platform: str, delta: Decimal) -> User:
     with SessionLocal() as session:
         user = (
             session.query(User)
-            .filter(User.user_id == user_id, User.platform == platform)
+            .filter(User.user_id == user_id, User.user_platform == platform)
             .one()
         )
         user.balance = (user.balance or Decimal("0")) + delta
@@ -64,7 +64,7 @@ def add_transcription(
     with SessionLocal() as session:
         history = TranscriptionHistory(
             user_id=user_id,
-            platform=platform,
+            user_platform=platform,
             status=status,
             audio_s3_path=audio_s3_path,
             provider=provider,
@@ -114,7 +114,7 @@ def get_recent_transcriptions(user_id: int, platform: str, limit: int = 10) -> l
     with SessionLocal() as session:
         return (
             session.query(TranscriptionHistory)
-            .filter(TranscriptionHistory.user_id == user_id, TranscriptionHistory.platform == platform)
+            .filter(TranscriptionHistory.user_id == user_id, TranscriptionHistory.user_platform == platform)
             .order_by(TranscriptionHistory.id.desc())
             .limit(limit)
             .all()
@@ -132,7 +132,7 @@ def create_summarization(
         record = Summarization(
             transcription_id=transcription_id,
             user_id=user_id,
-            platform=platform,
+            user_platform=platform,
             message_id=message_id,
             status="pending",
         )
@@ -187,7 +187,7 @@ def create_payment(
     with SessionLocal() as session:
         topup = Payment(
             user_id=user_id,
-            platform=platform,
+            user_platform=platform,
             order_id=order_id,
             payment_id=payment_id,
             amount=amount,
@@ -206,7 +206,7 @@ def get_recent_payments(user_id: int, platform: str, limit: int = 5) -> list[Pay
     with SessionLocal() as session:
         return (
             session.query(Payment)
-            .filter(Payment.user_id == user_id, Payment.platform == platform)
+            .filter(Payment.user_id == user_id, Payment.user_platform == platform)
             .order_by(Payment.id.desc())
             .limit(limit)
             .all()
@@ -278,7 +278,7 @@ def confirm_payment(order_id: str, payment_status: str) -> tuple[bool, Optional[
         payment.status = payment_status
         user = (
             session.query(User)
-            .filter(User.user_id == payment.user_id, User.platform == payment.platform)
+            .filter(User.user_id == payment.user_id, User.user_platform == payment.user_platform)
             .one()
         )
         user.balance = (user.balance or Decimal("0")) + payment.amount
