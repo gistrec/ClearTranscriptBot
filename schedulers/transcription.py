@@ -136,7 +136,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 max_summarize_keyboard = _make_max_summarize_keyboard(task.id)
 
         done_text = (
-            f"✅ Распознавание завершено!\n\n"
+            f"✅ Распознавание завершено\n\n"
             f"Длительность: {audio_duration_str}\n"
             f"Стоимость: {task.price_for_user} ₽\n\n"
             f"Время обработки: {duration_str}\n\n"
