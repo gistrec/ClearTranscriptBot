@@ -31,6 +31,14 @@ def _make_max_summarize_keyboard(task_id: int):
         return None
 
 
+def _make_max_send_as_text_keyboard(task_id: int):
+    try:
+        from aiomax.buttons import CallbackButton, KeyboardBuilder
+        return KeyboardBuilder().row(CallbackButton("📄 Отправить текстом", f"send_as_text:{task_id}"))
+    except Exception:
+        return None
+
+
 def _make_max_rating_keyboard(transcription_id: int):
     try:
         from aiomax.buttons import CallbackButton, KeyboardBuilder
@@ -124,16 +132,18 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         audio_duration_str = format_duration(task.duration_seconds)
 
-        # Build platform-specific summarize keyboard
-        tg_summarize_keyboard = None
-        max_summarize_keyboard = None
+        # Build platform-specific action keyboard
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         if task.duration_seconds > SUMMARIZE_THRESHOLD:
-            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-            tg_summarize_keyboard = InlineKeyboardMarkup([[
+            tg_action_keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
             ]])
-            if task.user_platform == PLATFORM_MAX:
-                max_summarize_keyboard = _make_max_summarize_keyboard(task.id)
+            max_action_keyboard = _make_max_summarize_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+        else:
+            tg_action_keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{task.id}")
+            ]])
+            max_action_keyboard = _make_max_send_as_text_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
 
         done_text = (
             f"✅ Распознавание завершено\n\n"
@@ -144,13 +154,13 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if sender is not None:
             await sender.edit_message(
                 task.user_platform, task.user_id, task.message_id, done_text,
-                tg_markup=tg_summarize_keyboard,
-                max_keyboard=max_summarize_keyboard,
+                tg_markup=tg_action_keyboard,
+                max_keyboard=max_action_keyboard,
             )
         else:
             await safe_edit_message_text(
                 context.bot, task.user_id, task.message_id, done_text,
-                reply_markup=tg_summarize_keyboard,
+                reply_markup=tg_action_keyboard,
             )
 
         try:

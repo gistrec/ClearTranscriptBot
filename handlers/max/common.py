@@ -51,3 +51,9 @@ def make_summarize_keyboard(transcription_id: int) -> KeyboardBuilder:
     return KeyboardBuilder().row(
         CallbackButton("📝 Создать конспект", f"summarize:{transcription_id}")
     )
+
+
+def make_send_as_text_keyboard(transcription_id: int) -> KeyboardBuilder:
+    return KeyboardBuilder().row(
+        CallbackButton("📄 Отправить текстом", f"send_as_text:{transcription_id}")
+    )
