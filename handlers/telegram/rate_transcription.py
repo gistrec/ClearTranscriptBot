@@ -49,11 +49,3 @@ async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAUL
         caption=RATING_PROMPT,
         reply_markup=make_rating_keyboard(transcription_id, selected=rating),
     )
-
-
-@sentry_bind_user
-async def handle_skip_rating(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    await query.edit_message_reply_markup(reply_markup=None)

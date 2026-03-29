@@ -3,7 +3,6 @@ import logging
 
 import aiomax
 
-from database.models import PLATFORM_MAX
 from database.queries import get_transcription
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user_max

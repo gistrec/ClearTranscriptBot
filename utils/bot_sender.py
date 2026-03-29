@@ -4,6 +4,26 @@ import logging
 from database.models import PLATFORM_TELEGRAM, PLATFORM_MAX
 
 
+class _MaxKeyboardAttachment:
+    """Wraps an aiomax KeyboardBuilder as an attachment-like object.
+
+    Workaround for an aiomax bug: send_message's AttachmentNotReady retry
+    drops the keyboard= parameter, losing the inline keyboard. By encoding
+    the keyboard as an element of attachments= it survives the retry.
+    """
+    def __init__(self, keyboard):
+        from aiomax.buttons import KeyboardBuilder
+        if isinstance(keyboard, KeyboardBuilder):
+            keyboard = keyboard.to_list()
+        self._keyboard = keyboard
+
+    def as_dict(self):
+        return {
+            "type": "inline_keyboard",
+            "payload": {"buttons": self._keyboard},
+        }
+
+
 class BotSender:
     """Routes message delivery to the correct bot based on platform."""
 
@@ -103,11 +123,14 @@ class BotSender:
             data = file_obj.read() if hasattr(file_obj, "read") else file_obj
             try:
                 file_attachment = await self._max.upload_file(data, filename)
+                if max_keyboard is not None:
+                    attachments = [_MaxKeyboardAttachment(max_keyboard), file_attachment]
+                else:
+                    attachments = [file_attachment]
                 return await self._max.send_message(
                     caption,
                     user_id=int(chat_id),
-                    attachments=[file_attachment],
-                    keyboard=max_keyboard,
+                    attachments=attachments,
                 )
             except Exception:
                 logging.exception("Max send_document failed chat=%s", chat_id)

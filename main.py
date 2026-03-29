@@ -25,7 +25,7 @@ from handlers.telegram.history import handle_history
 from handlers.telegram.price import handle_price
 from handlers.telegram.text import handle_text
 from handlers.telegram.topup import handle_topup, handle_topup_callback, handle_check_payment, handle_cancel_payment
-from handlers.telegram.rate_transcription import handle_rate_transcription, handle_skip_rating
+from handlers.telegram.rate_transcription import handle_rate_transcription
 from handlers.telegram.summarize import handle_summarize
 from handlers.telegram.send_as_text import handle_send_as_text
 
@@ -35,7 +35,7 @@ from handlers.max.create_task import handle_max_create_task
 from handlers.max.file import handle_max_file
 from handlers.max.history import handle_max_history
 from handlers.max.price import handle_max_price
-from handlers.max.rate import handle_max_rate, handle_max_skip_rating
+from handlers.max.rate import handle_max_rate
 from handlers.max.summarize import handle_max_summarize
 from handlers.max.send_as_text import handle_max_send_as_text
 from handlers.max.text import handle_max_text
@@ -123,9 +123,6 @@ async def run_bots() -> None:
         CallbackQueryHandler(handle_rate_transcription, pattern=r"^rate:\d+:[1-5]$")
     )
     application.add_handler(
-        CallbackQueryHandler(handle_skip_rating, pattern=r"^rate_skip:\d+$")
-    )
-    application.add_handler(
         CallbackQueryHandler(handle_summarize, pattern=r"^summarize:\d+$")
     )
     application.add_handler(
@@ -204,8 +201,6 @@ async def run_bots() -> None:
                 await handle_max_cancel_task(callback, max_bot)
             elif payload.startswith("rate:"):
                 await handle_max_rate(callback, max_bot)
-            elif payload.startswith("rate_skip:"):
-                await handle_max_skip_rating(callback, max_bot)
             elif payload.startswith("summarize:"):
                 await handle_max_summarize(callback, max_bot)
             elif payload.startswith("send_as_text:"):

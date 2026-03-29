@@ -14,8 +14,6 @@ RATING_PROMPT = "Насколько точно распознан текст?"
 
 @sentry_bind_user_max
 async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="Спасибо за оценку!")
-
     try:
         _, transcription_id_str, rating_str = callback.payload.split(":")
         transcription_id = int(transcription_id_str)
@@ -31,13 +29,14 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
 
     update_transcription(transcription_id, rating=rating)
 
-    message_id = callback.message.body.message_id
+    file_attachments = [
+        att for att in (callback.message.body.attachments or [])
+        if att.type == "file"
+    ]
     keyboard = make_rating_keyboard(transcription_id, selected=rating)
-    await bot.edit_message(message_id, RATING_PROMPT, keyboard=keyboard)
-
-
-@sentry_bind_user_max
-async def handle_max_skip_rating(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
-    message_id = callback.message.body.message_id
-    await bot.edit_message(message_id, RATING_PROMPT, attachments=[])
+    await callback.answer(
+        notification="Спасибо за оценку!",
+        text=RATING_PROMPT,
+        keyboard=keyboard,
+        attachments=file_attachments if file_attachments else None,
+    )

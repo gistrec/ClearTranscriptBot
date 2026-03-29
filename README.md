@@ -39,6 +39,7 @@ ClearTranscriptBot
 │   │   ├── history.py
 │   │   ├── price.py
 │   │   ├── rate_transcription.py
+│   │   ├── send_as_text.py
 │   │   ├── summarize.py
 │   │   ├── text.py
 │   │   └── topup.py
@@ -51,6 +52,7 @@ ClearTranscriptBot
 │       ├── history.py
 │       ├── price.py
 │       ├── rate.py
+│       ├── send_as_text.py
 │       ├── summarize.py
 │       ├── text.py
 │       └── topup.py
@@ -187,7 +189,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS transcription_history (
     id                     BIGINT          PRIMARY KEY AUTO_INCREMENT,
     user_id                BIGINT          NOT NULL,
-    platform               VARCHAR(16)     NOT NULL,
+    user_platform          VARCHAR(16)     NOT NULL,
     status                 VARCHAR(32)     NOT NULL,
     audio_s3_path          TEXT            NOT NULL,
     result_json            TEXT,
@@ -204,10 +206,9 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     created_at             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP,
-    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform)
+    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
+    INDEX idx_th_user (user_id, user_platform)
 );
-
-CREATE INDEX idx_th_user ON transcription_history(user_id, user_platform);
 
 -- Payments processed via Tinkoff acquiring
 CREATE TABLE IF NOT EXISTS payments (
@@ -224,17 +225,16 @@ CREATE TABLE IF NOT EXISTS payments (
     tinkoff_response TEXT            NOT NULL,
     next_check_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform)
+    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
+    INDEX idx_payments_user (user_id, user_platform)
 );
-
-CREATE INDEX idx_payments_user ON payments(user_id, user_platform);
 
 -- AI summarization requests for completed transcriptions
 CREATE TABLE IF NOT EXISTS summarizations (
     id                INTEGER         PRIMARY KEY AUTO_INCREMENT,
     transcription_id  INTEGER         NOT NULL REFERENCES transcription_history(id),
     user_id           BIGINT          NOT NULL,
-    platform          VARCHAR(16)     NOT NULL,
+    user_platform     VARCHAR(16)     NOT NULL,
     status            VARCHAR(32)     NOT NULL,
     operation_id      VARCHAR(64),
     result_text       TEXT,
@@ -242,10 +242,10 @@ CREATE TABLE IF NOT EXISTS summarizations (
     message_id        VARCHAR(64),
     created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at       TIMESTAMP,
-    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform)
+    FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
+    INDEX idx_summarizations_transcription_id (transcription_id),
+    INDEX idx_sum_user (user_id, user_platform)
 );
-
-CREATE INDEX idx_summarizations_transcription_id ON summarizations(transcription_id);
 
 -- Trigger to maintain users.total_topped_up automatically.
 -- Fires after each payment row update; adds amount only when status
