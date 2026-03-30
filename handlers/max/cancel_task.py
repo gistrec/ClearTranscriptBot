@@ -41,6 +41,8 @@ async def handle_max_cancel_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     duration_str = format_duration(task.duration_seconds)
     await bot.edit_message(
         message_id,
-        f"❌ Задача отменена\n\nДлительность: {duration_str}\nСтоимость: {task.price_for_user} ₽",
+        f"❌ Задача отменена\n\n"
+        f"Длительность: {duration_str}\n"
+        f"Стоимость: {task.price_for_user} ₽",
         attachments=[],
     )

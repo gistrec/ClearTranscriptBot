@@ -218,7 +218,10 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         logging.info(f"Tinkoff response: {tinkoff_response}")
     except Exception:
         logging.exception(f"Failed to get payment state for order_id: {order_id}")
-        await query.message.reply_text("Не удалось проверить статус платежа\nПопробуйте ещё раз")
+        await query.message.reply_text(
+            "Не удалось проверить статус платежа\n"
+            "Попробуйте ещё раз"
+        )
         return
 
     payment_status = tinkoff_response.get("Status", None)

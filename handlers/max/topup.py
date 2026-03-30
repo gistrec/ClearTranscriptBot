@@ -103,7 +103,8 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     except Exception:
         logging.exception("Max topup: payment init failed for order_id: %s", order_id)
         await bot.send_message(
-            "Не удалось создать форму оплаты\nПопробуйте ещё раз чуть позже",
+            "Не удалось создать форму оплаты\n"
+            "Попробуйте ещё раз чуть позже",
             chat_id=chat_id,
         )
         return
@@ -121,7 +122,8 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     )
 
     payment_msg = await bot.send_message(
-        f"Счёт на {amount} ₽ создан\nСтатус: {PAYMENT_STATUSES.get(payment_status, payment_status)}",
+        f"Счёт на {amount} ₽ создан\n"
+        f"Статус: {PAYMENT_STATUSES.get(payment_status, payment_status)}",
         chat_id=chat_id,
         keyboard=make_payment_actions_keyboard(order_id, payment_url),
     )
@@ -157,7 +159,11 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         tinkoff_response = await get_payment_state(payment.payment_id)
     except Exception:
         logging.exception("Max check_payment: failed to get state for order: %s", order_id)
-        await bot.send_message("Не удалось проверить статус платежа\nПопробуйте ещё раз", chat_id=chat_id)
+        await bot.send_message(
+            "Не удалось проверить статус платежа\n"
+            "Попробуйте ещё раз",
+            chat_id=chat_id,
+        )
         return
 
     payment_status = tinkoff_response.get("Status", None)

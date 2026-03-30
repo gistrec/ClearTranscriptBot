@@ -36,7 +36,8 @@ async def handle_max_summarize(callback: aiomax.Callback, bot: aiomax.Bot) -> No
     await bot.edit_message(message_id, callback.message.body.text or "", attachments=[])
 
     msg = await bot.send_message(
-        f"⏳ Создаю конспект...\n\nВремя обработки: {format_duration(0)}",
+        f"⏳ Создаю конспект...\n\n"
+        f"Время обработки: {format_duration(0)}",
         chat_id=chat_id,
     )
 

@@ -71,7 +71,8 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         change_user_balance(user_id, PLATFORM_MAX, price_for_user)
         await bot.edit_message(
             message_id,
-            "Не удалось запустить распознавание\nПожалуйста, попробуйте ещё раз чуть позже",
+            "Не удалось запустить распознавание\n"
+            "Пожалуйста, попробуйте ещё раз чуть позже",
             attachments=[],
         )
         return

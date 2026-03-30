@@ -98,7 +98,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if not result_info.get("success"):
             update_transcription(task.id, status="failed")
             change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if failed
-            fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
+            fail_text = (
+            "❌ Задача завершилась с ошибкой\n\n"
+            "Попробуйте ещё раз"
+        )
             if sender is not None:
                 await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
             else:
@@ -121,7 +124,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if not s3_url or not s3_signed_url:
             update_transcription(task.id, status="failed")
             change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
-            fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
+            fail_text = (
+            "❌ Задача завершилась с ошибкой\n\n"
+            "Попробуйте ещё раз"
+        )
             if sender is not None:
                 await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
             else:
@@ -207,7 +213,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 llm_tokens_by_encoding=token_counts,
             )
             change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if sending failed
-            fail_text = "❌ Задача завершилась с ошибкой\n\nПопробуйте ещё раз"
+            fail_text = (
+            "❌ Задача завершилась с ошибкой\n\n"
+            "Попробуйте ещё раз"
+        )
             if sender is not None:
                 await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
             else:

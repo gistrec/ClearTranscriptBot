@@ -65,7 +65,9 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         return  # no supported attachment, ignore
 
     await bot.send_message(
-        "📥 Файл получен\n\nПодготавливаю аудио и считаю стоимость\nЭто может занять до 1 минуты",
+        "📥 Файл получен\n\n"
+        "Подготавливаю аудио и считаю стоимость\n"
+        "Это может занять до 1 минуты",
         chat_id=chat_id,
     )
 
@@ -77,14 +79,16 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     file_bytes = await download_max_file(file_url)
     if not file_bytes:
         await bot.send_message(
-            "❌ Не удалось загрузить файл\nПожалуйста, попробуйте ещё раз",
+            "❌ Не удалось загрузить файл\n"
+            "Пожалуйста, попробуйте ещё раз",
             chat_id=chat_id,
         )
         return
 
     if mime and not is_supported_mime(mime):
         await bot.send_message(
-            "❌ Этот тип файла не поддерживается\nПожалуйста, отправьте видео или аудио",
+            "❌ Этот тип файла не поддерживается\n"
+            "Пожалуйста, отправьте видео или аудио",
             chat_id=chat_id,
         )
         return
@@ -136,13 +140,15 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
         if convert_error == "no_audio_stream":
             await bot.send_message(
-                "❌ В этом файле не обнаружено аудио\nПожалуйста, отправьте файл со звуком",
+                "❌ В этом файле не обнаружено аудио\n"
+                "Пожалуйста, отправьте файл со звуком",
                 chat_id=chat_id,
             )
             return
         elif convert_error:
             await bot.send_message(
-                "❌ Не удалось обработать файл\nВозможно, он имеет неподдерживаемый формат",
+                "❌ Не удалось обработать файл\n"
+                "Возможно, он имеет неподдерживаемый формат",
                 chat_id=chat_id,
             )
             return
@@ -151,7 +157,8 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         s3_url, s3_signed_url = await upload_file(ogg_path, object_name)
         if not s3_url or not s3_signed_url:
             await bot.send_message(
-                "❌ Не удалось загрузить файл\nПожалуйста, попробуйте ещё раз чуть позже",
+                "❌ Не удалось загрузить файл\n"
+                "Пожалуйста, попробуйте ещё раз чуть позже",
                 chat_id=chat_id,
             )
             return
@@ -174,7 +181,10 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
     confirm_msg = await bot.send_message(
-        f"🎧 Аудио подготовлено\n\nДлительность: {duration_str}\nСтоимость: {price_for_user} ₽{hint}",
+        "🎧 Аудио подготовлено\n\n"
+        f"Длительность: {duration_str}\n"
+        f"Стоимость: {price_for_user} ₽"
+        f"{hint}",
         chat_id=chat_id,
         keyboard=keyboard,
     )

@@ -70,7 +70,8 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE) -> None:
                 elapsed_str = format_duration(elapsed)
                 await _edit_status(
                     context, sender, record.user_platform, record.user_id, record.message_id,
-                    f"⏳ Создаю конспект...\n\nВремя обработки: {elapsed_str}",
+                    f"⏳ Создаю конспект...\n\n"
+                    f"Время обработки: {elapsed_str}",
                 )
             continue
 
@@ -79,7 +80,10 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE) -> None:
             await _edit_status(context, sender, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
             continue
 
-        message = f"📝 Конспект\n\n{result['text']}"
+        message = (
+            "📝 Конспект\n\n"
+            + result['text']
+        )
         # Telegram message limit is 4096 characters
         if len(message) > 4096:
             message = message[:4093] + "..."

@@ -28,7 +28,10 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     await query.edit_message_reply_markup(reply_markup=None)
 
-    msg = await query.message.reply_text(f"⏳ Создаю конспект...\n\nВремя обработки: {format_duration(0)}")
+    msg = await query.message.reply_text(
+        f"⏳ Создаю конспект...\n\n"
+        f"Время обработки: {format_duration(0)}"
+    )
 
     create_summarization(
         transcription_id=transcription_id,

@@ -22,7 +22,8 @@ async def handle_max_history(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     if not items:
         await bot.send_message(
-            "История пуста\n\nПришлите видео или аудио — вернём текст",
+            "История пуста\n\n"
+            "Пришлите видео или аудио — вернём текст",
             chat_id=message.recipient.chat_id,
         )
         return
