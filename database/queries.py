@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import update
 
 from .connection import SessionLocal
-from .models import User, TranscriptionHistory, Payment, Summarization, PLATFORM_TELEGRAM
+from .models import User, Transcription, Payment, Summarization, PLATFORM_TELEGRAM
 from utils.utils import MoscowTimezone
 
 
@@ -59,10 +59,10 @@ def add_transcription(
     duration_seconds: int | None = None,
     price_for_user: Decimal | None = None,
     result_s3_path: str | None = None,
-) -> TranscriptionHistory:
+) -> Transcription:
     """Persist a new transcription history record."""
     with SessionLocal() as session:
-        history = TranscriptionHistory(
+        history = Transcription(
             user_id=user_id,
             user_platform=platform,
             status=status,
@@ -78,18 +78,18 @@ def add_transcription(
         return history
 
 
-def get_transcription(transcription_id: int) -> Optional[TranscriptionHistory]:
+def get_transcription(transcription_id: int) -> Optional[Transcription]:
     """Fetch a transcription history record by its identifier."""
     with SessionLocal() as session:
-        return session.get(TranscriptionHistory, transcription_id)
+        return session.get(Transcription, transcription_id)
 
 
-def update_transcription(transcription_id: int, **fields: Any) -> Optional[TranscriptionHistory]:
+def update_transcription(transcription_id: int, **fields: Any) -> Optional[Transcription]:
     """Update fields of an existing transcription history record."""
     if not fields:
         return None
     with SessionLocal() as session:
-        history = session.get(TranscriptionHistory, transcription_id)
+        history = session.get(Transcription, transcription_id)
         if history is None:
             return None
         for key, value in fields.items():
@@ -99,23 +99,23 @@ def update_transcription(transcription_id: int, **fields: Any) -> Optional[Trans
         return history
 
 
-def get_transcriptions_by_status(status: str) -> list[TranscriptionHistory]:
+def get_transcriptions_by_status(status: str) -> list[Transcription]:
     """Return all transcriptions with the specified *status*."""
     with SessionLocal() as session:
         return (
-            session.query(TranscriptionHistory)
-            .filter(TranscriptionHistory.status == status)
+            session.query(Transcription)
+            .filter(Transcription.status == status)
             .all()
         )
 
 
-def get_recent_transcriptions(user_id: int, platform: str, limit: int = 10) -> list[TranscriptionHistory]:
+def get_recent_transcriptions(user_id: int, platform: str, limit: int = 10) -> list[Transcription]:
     """Return recent transcriptions for the given user limited by *limit*."""
     with SessionLocal() as session:
         return (
-            session.query(TranscriptionHistory)
-            .filter(TranscriptionHistory.user_id == user_id, TranscriptionHistory.user_platform == platform)
-            .order_by(TranscriptionHistory.id.desc())
+            session.query(Transcription)
+            .filter(Transcription.user_id == user_id, Transcription.user_platform == platform)
+            .order_by(Transcription.id.desc())
             .limit(limit)
             .all()
         )

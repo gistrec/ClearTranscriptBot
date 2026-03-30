@@ -1,19 +1,21 @@
 """SQLAlchemy models for database tables."""
 from sqlalchemy import (
-    BigInteger,
     Column,
-    DateTime,
+    Index,
     ForeignKeyConstraint,
+    UniqueConstraint,
+    BigInteger,
+    DateTime,
     Integer,
-    JSON,
     Numeric,
-    PrimaryKeyConstraint,
     String,
     Text,
-    Index,
+    JSON,
 )
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
+
+from decimal import Decimal
 
 
 Base = declarative_base()
@@ -27,42 +29,35 @@ class User(Base):
 
     __tablename__ = "users"
 
-    __table_args__ = (
-        PrimaryKeyConstraint("user_id", "user_platform"),
-    )
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Platform user identifier (Telegram user ID or Max user ID)
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+    user_platform = Column(String(16), nullable=False)
 
     # Account balance
-    balance = Column(Numeric(10, 2), nullable=False, default=50.00)
+    balance = Column(Numeric(10, 2), nullable=False, default=Decimal("50.00"))
 
     # Cumulative amount topped up across all confirmed payments (maintained by DB trigger)
-    total_topped_up = Column(Numeric(10, 2), nullable=False, default=0.00)
+    total_topped_up = Column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
 
     # Registration timestamp
     registered_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 
-
-class TranscriptionHistory(Base):
-    """History of transcription requests made by users."""
-
-    __tablename__ = "transcription_history"
-
     __table_args__ = (
-        ForeignKeyConstraint(
-            ["user_id", "user_platform"],
-            ["users.user_id", "users.user_platform"],
-        ),
-        Index("idx_user", "user_id", "user_platform"),
-        Index("idx_status", "status"),
+        UniqueConstraint("user_id", "user_platform"),
     )
 
+
+class Transcription(Base):
+    """History of transcription requests made by users."""
+
+    __tablename__ = "transcriptions"
+
     # Identifier of transcription request
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Platform user identifier
     user_id = Column(BigInteger, nullable=False)
@@ -75,12 +70,6 @@ class TranscriptionHistory(Base):
 
     # Path to the audio file in S3
     audio_s3_path = Column(Text, nullable=False)
-
-    # Raw recognition result returned by the provider
-    result_json = Column(Text, nullable=True)
-
-    # Token counts for transcribed text by encoding
-    llm_tokens_by_encoding = Column(JSON, nullable=True)
 
     # Duration of the audio in seconds
     duration_seconds = Column(Integer, nullable=True)
@@ -100,6 +89,12 @@ class TranscriptionHistory(Base):
     # Model used for transcription
     model = Column(String(64), nullable=True)
 
+    # Raw recognition result returned by the provider
+    result_json = Column(Text, nullable=True)
+
+    # Token counts for transcribed text by encoding
+    llm_tokens_by_encoding = Column(JSON, nullable=True)
+
     # Identifier of the transcription operation returned by the provider
     operation_id = Column(String(64), nullable=True)
 
@@ -118,21 +113,20 @@ class TranscriptionHistory(Base):
     # Timestamp when the transcription operation finished
     finished_at = Column(DateTime, nullable=True)
 
-
-class Summarization(Base):
-    """Summarization requests for long transcriptions."""
-
-    __tablename__ = "summarizations"
-
     __table_args__ = (
         ForeignKeyConstraint(
             ["user_id", "user_platform"],
             ["users.user_id", "users.user_platform"],
         ),
-        Index("idx_summarizations_transcription_id", "transcription_id"),
-        Index("idx_sum_user", "user_id", "user_platform"),
-        Index("idx_sum_status", "status"),
+        Index("idx_transcriptions_status", "status"),
+        Index("idx_transcriptions_user_recent", "user_id", "user_platform", "id"),
     )
+
+
+class Summarization(Base):
+    """Summarization requests for long transcriptions."""
+
+    __tablename__ = "summarizations"
 
     # Identifier of summarization request
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -146,6 +140,9 @@ class Summarization(Base):
     # Platform: "telegram" or "max"
     user_platform = Column(String(16), nullable=False)
 
+    # Identifier of the status message (string to support both Telegram int IDs and Max string IDs)
+    message_id = Column(String(64), nullable=True)
+
     # Processing status: "pending" → "running" → "completed" / "failed"
     status = Column(String(32), nullable=False)
 
@@ -158,29 +155,31 @@ class Summarization(Base):
     # LLM model used for summarization
     llm_model = Column(String(64), nullable=True)
 
-    # Identifier of the status message (string to support both Telegram int IDs and Max string IDs)
-    message_id = Column(String(64), nullable=True)
-
     # Timestamp when the summarization was requested
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # Timestamp when the summarization finished (completed or failed)
     finished_at = Column(DateTime, nullable=True)
 
-
-class Payment(Base):
-    """Payments processed via Tinkoff acquiring."""
-
-    __tablename__ = "payments"
-
     __table_args__ = (
         ForeignKeyConstraint(
             ["user_id", "user_platform"],
             ["users.user_id", "users.user_platform"],
         ),
-        Index("idx_payments_user", "user_id", "user_platform"),
-        Index("idx_payments_status_check", "status", "next_check_at"),
+        ForeignKeyConstraint(
+            ["transcription_id"],
+            ["transcriptions.id"],
+        ),
+        Index("idx_summarizations_status", "status"),
+        Index("idx_summarizations_transcription_id", "transcription_id"),
+        Index("idx_summarizations_user", "user_id", "user_platform"),
     )
+
+
+class Payment(Base):
+    """Payments processed via Tinkoff acquiring."""
+
+    __tablename__ = "payments"
 
     # Identifier of the payment record
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -220,3 +219,12 @@ class Payment(Base):
 
     # Timestamp when the payment was created
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id", "user_platform"],
+            ["users.user_id", "users.user_platform"],
+        ),
+        Index("idx_payments_status_check", "status", "next_check_at"),
+        Index("idx_payments_user_recent", "user_id", "user_platform", "id"),
+    )

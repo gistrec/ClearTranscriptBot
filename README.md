@@ -1,6 +1,6 @@
 # ClearTranscriptBot
 
-[👉 Try the bot on Telegram][1]
+[👉 Try the bot on Telegram][1] | [👉 Try the bot on Max][2]
 
 Bot for automatic audio/video transcription, available on **Telegram** and **Max** messenger:
 1. Accepts files from a user
@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- History of transcription requests made by users
-CREATE TABLE IF NOT EXISTS transcription_history (
+CREATE TABLE IF NOT EXISTS transcriptions (
     id                     BIGINT          PRIMARY KEY AUTO_INCREMENT,
     user_id                BIGINT          NOT NULL,
     user_platform          VARCHAR(16)     NOT NULL,
@@ -207,8 +207,8 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP,
     FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
-    INDEX idx_user (user_id, user_platform),
-    INDEX idx_status (status)
+    INDEX idx_transcriptions_status (status),
+    INDEX idx_transcriptions_user_recent (user_id, user_platform, id)
 );
 
 -- Payments processed via Tinkoff acquiring
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS payments (
 -- AI summarization requests for completed transcriptions
 CREATE TABLE IF NOT EXISTS summarizations (
     id                INTEGER         PRIMARY KEY AUTO_INCREMENT,
-    transcription_id  INTEGER         NOT NULL REFERENCES transcription_history(id),
+    transcription_id  INTEGER         NOT NULL REFERENCES transcriptions(id),
     user_id           BIGINT          NOT NULL,
     user_platform     VARCHAR(16)     NOT NULL,
     status            VARCHAR(32)     NOT NULL,
@@ -246,8 +246,8 @@ CREATE TABLE IF NOT EXISTS summarizations (
     finished_at       TIMESTAMP,
     FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
     INDEX idx_summarizations_transcription_id (transcription_id),
-    INDEX idx_sum_user (user_id, user_platform),
-    INDEX idx_sum_status (status)
+    INDEX idx_summarizations_user (user_id, user_platform),
+    INDEX idx_summarizations_status (status)
 );
 
 -- Trigger to maintain users.total_topped_up automatically.
@@ -340,11 +340,13 @@ In that case install libmysqlclient-dev: `sudo apt install libmysqlclient-dev` o
 
 ## References
 
-- [Yandex Cloud SpeechKit docs][2]
-- [Replicate WhisperX examples][3]
-- [Telegram Bot API][4]
+- [Yandex Cloud SpeechKit docs][3]
+- [Replicate WhisperX examples][4]
+- [Telegram Bot API][5]
 
 [1]: https://t.me/ClearTranscriptBot
-[2]: https://cloud.yandex.com/docs/speechkit/
-[3]: https://replicate.com/victor-upmeet/whisperx-a40-large/examples
-[4]: https://core.telegram.org/bots/api
+[2]: https://max.ru/id420529656333_bot
+
+[3]: https://cloud.yandex.com/docs/speechkit/
+[4]: https://replicate.com/victor-upmeet/whisperx-a40-large/examples
+[5]: https://core.telegram.org/bots/api
