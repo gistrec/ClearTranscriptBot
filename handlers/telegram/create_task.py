@@ -72,10 +72,10 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     audio_duration_str = format_duration(task.duration_seconds)
     elapsed_str = format_duration(0)
     await query.edit_message_text(
-        f"⏳ Задача №{task_id} в работе\n\n"
+        f"⏳ Задача в работе\n\n"
         f"Длительность: {audio_duration_str}\n"
         f"Стоимость: {task.price_for_user} ₽\n\n"
-        f"Время обработки: {elapsed_str}\n\n"
+        f"Время обработки: {elapsed_str}"
     )
 
     now = datetime.now(MoscowTimezone)

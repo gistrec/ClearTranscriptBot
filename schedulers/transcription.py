@@ -66,7 +66,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"⏳ Задача в работе\n\n"
                 f"Длительность: {audio_duration_str}\n"
                 f"Стоимость: {task.price_for_user} ₽\n\n"
-                f"Время обработки: {duration_str}\n\n"
+                f"Время обработки: {duration_str}"
             )
             if sender is not None:
                 await sender.edit_message(task.user_platform, task.user_id, task.message_id, status_text)

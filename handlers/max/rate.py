@@ -9,7 +9,7 @@ from handlers.max.common import make_rating_keyboard
 from utils.sentry import sentry_bind_user_max
 
 
-RATING_PROMPT = "Насколько точно распознан текст?"
+RATING_PROMPT = "Оцените качество распознавания"
 
 
 @sentry_bind_user_max

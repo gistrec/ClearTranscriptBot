@@ -83,7 +83,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         f"⏳ Задача в работе\n\n"
         f"Длительность: {audio_duration_str}\n"
         f"Стоимость: {task.price_for_user} ₽\n\n"
-        f"Время обработки: {elapsed_str}\n\n",
+        f"Время обработки: {elapsed_str}",
         attachments=[],
     )
 

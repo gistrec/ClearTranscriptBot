@@ -28,7 +28,7 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         dt = r.created_at
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=MoscowTimezone)
-        dt_str = dt.strftime("%Y-%m-%d %H:%M")
+        dt_str = dt.strftime("%d.%m %H:%M")
         dur = format_duration(r.duration_seconds)
         price_for_user = fmt_price(r.price_for_user)
         lines.append(f"{emoji} #{r.id} • {dt_str} МСК • {dur} • {price_for_user}")

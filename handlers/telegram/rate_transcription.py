@@ -7,7 +7,7 @@ from database.queries import get_transcription, update_transcription
 from utils.sentry import sentry_bind_user
 
 
-RATING_PROMPT = "Насколько точно распознан текст?"
+RATING_PROMPT = "Оцените качество распознавания"
 
 
 def make_rating_keyboard(
