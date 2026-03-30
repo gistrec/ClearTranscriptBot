@@ -172,8 +172,9 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     from handlers.max.common import make_confirm_keyboard
     keyboard = make_confirm_keyboard(history.id)
 
+    hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
     confirm_msg = await bot.send_message(
-        f"🎧 Аудио подготовлено\n\nДлительность: {duration_str}\nСтоимость: {price_for_user} ₽",
+        f"🎧 Аудио подготовлено\n\nДлительность: {duration_str}\nСтоимость: {price_for_user} ₽{hint}",
         chat_id=chat_id,
         keyboard=keyboard,
     )

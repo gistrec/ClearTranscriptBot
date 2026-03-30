@@ -183,9 +183,11 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         ),
     ]
 
+    hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
     await message.reply_text(
         "🎧 Аудио подготовлено\n\n"
         f"Длительность: {duration_str}\n"
-        f"Стоимость: {price_for_user} ₽",
+        f"Стоимость: {price_for_user} ₽"
+        f"{hint}",
         reply_markup=InlineKeyboardMarkup([buttons]),
     )
