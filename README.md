@@ -207,7 +207,8 @@ CREATE TABLE IF NOT EXISTS transcription_history (
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP,
     FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
-    INDEX idx_th_user (user_id, user_platform)
+    INDEX idx_user (user_id, user_platform),
+    INDEX idx_status (status)
 );
 
 -- Payments processed via Tinkoff acquiring
@@ -226,7 +227,8 @@ CREATE TABLE IF NOT EXISTS payments (
     next_check_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
-    INDEX idx_payments_user (user_id, user_platform)
+    INDEX idx_payments_user (user_id, user_platform),
+    INDEX idx_payments_status_check (status, next_check_at)
 );
 
 -- AI summarization requests for completed transcriptions
@@ -244,7 +246,8 @@ CREATE TABLE IF NOT EXISTS summarizations (
     finished_at       TIMESTAMP,
     FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
     INDEX idx_summarizations_transcription_id (transcription_id),
-    INDEX idx_sum_user (user_id, user_platform)
+    INDEX idx_sum_user (user_id, user_platform),
+    INDEX idx_sum_status (status)
 );
 
 -- Trigger to maintain users.total_topped_up automatically.

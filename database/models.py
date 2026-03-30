@@ -57,7 +57,8 @@ class TranscriptionHistory(Base):
             ["user_id", "user_platform"],
             ["users.user_id", "users.user_platform"],
         ),
-        Index("idx_th_user", "user_id", "user_platform"),
+        Index("idx_user", "user_id", "user_platform"),
+        Index("idx_status", "status"),
     )
 
     # Identifier of transcription request
@@ -67,7 +68,7 @@ class TranscriptionHistory(Base):
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+    user_platform = Column(String(16), nullable=False)
 
     # Processing status of the request
     status = Column(String(32), nullable=False)
@@ -130,6 +131,7 @@ class Summarization(Base):
         ),
         Index("idx_summarizations_transcription_id", "transcription_id"),
         Index("idx_sum_user", "user_id", "user_platform"),
+        Index("idx_sum_status", "status"),
     )
 
     # Identifier of summarization request
@@ -142,7 +144,7 @@ class Summarization(Base):
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+    user_platform = Column(String(16), nullable=False)
 
     # Processing status: "pending" → "running" → "completed" / "failed"
     status = Column(String(32), nullable=False)
@@ -177,6 +179,7 @@ class Payment(Base):
             ["users.user_id", "users.user_platform"],
         ),
         Index("idx_payments_user", "user_id", "user_platform"),
+        Index("idx_payments_status_check", "status", "next_check_at"),
     )
 
     # Identifier of the payment record
@@ -186,7 +189,7 @@ class Payment(Base):
     user_id = Column(BigInteger, nullable=False)
 
     # Platform: "telegram" or "max"
-    user_platform = Column(String(16), nullable=False, default=PLATFORM_TELEGRAM)
+    user_platform = Column(String(16), nullable=False)
 
     # Identifier of the message with payment info (string to support both platforms)
     message_id = Column(String(64), nullable=True)
