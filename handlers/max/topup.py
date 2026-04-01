@@ -83,7 +83,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
         logging.warning("Max topup: duplicate callback for order_id: %s", order_id)
         return
 
-    description = f"Пополнение баланса на {amount} ₽"
+    description = f"Пополнение баланса на {amount} руб"
     amount_kopeks = int(Decimal(amount) * 100)
 
     try:

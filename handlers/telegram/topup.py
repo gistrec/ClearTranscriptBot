@@ -135,7 +135,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         logging.warning("Duplicate topup callback for order_id: %s", order_id)
         return
 
-    description = f"Пополнение баланса на {amount} ₽"
+    description = f"Пополнение баланса на {amount} руб"
     amount_kopeks = int(Decimal(amount) * 100)
 
     try:
