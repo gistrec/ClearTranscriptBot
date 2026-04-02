@@ -19,6 +19,8 @@ REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 if not REPLICATE_API_TOKEN:
     raise RuntimeError("REPLICATE_API_TOKEN must be set")
 
+client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+
 
 def get_model(duration_seconds: int) -> str:
     return MODEL_SMALL if duration_seconds < ONE_HOUR else MODEL_LARGE
@@ -49,7 +51,6 @@ async def start_transcription(audio_url: str, duration_seconds: int) -> Optional
     """Start a Replicate transcription and return its ID."""
     model = get_model(duration_seconds)
     try:
-        client = replicate.Client(api_token=REPLICATE_API_TOKEN)
         transcription = await asyncio.to_thread(
             client.predictions.create,
             version=model,
@@ -64,7 +65,6 @@ async def start_transcription(audio_url: str, duration_seconds: int) -> Optional
 async def check_transcription(operation_id: str) -> Optional[Dict[str, Any]]:
     """Return transcription result if finished, otherwise ``None``."""
     try:
-        client = replicate.Client(api_token=REPLICATE_API_TOKEN)
         transcription = await asyncio.to_thread(client.predictions.get, operation_id)
     except Exception:
         logging.exception(f"Failed to fetch Replicate transcription {operation_id}")

@@ -146,6 +146,7 @@ async def run_bots() -> None:
 
         @max_bot.on_bot_start()
         async def _on_max_bot_start(event) -> None:
+            print(event)
             logging.info("Max bot_start from user_id=%s", getattr(event, "user_id", "?"))
             from database.models import PLATFORM_MAX
             from database.queries import add_user, get_user

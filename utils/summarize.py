@@ -11,6 +11,8 @@ REPLICATE_LLM_MODEL = "openai/gpt-5-mini"
 
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 
+client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+
 SUMMARIZE_PROMPT = (
     "Ты — помощник, который делает очень короткие, точные и удобные для чтения конспекты транскрипций аудио.\n\n"
 
@@ -61,7 +63,6 @@ async def start_summarization(text: str) -> Optional[str]:
 
     def _create() -> Optional[str]:
         try:
-            client = replicate.Client(api_token=REPLICATE_API_TOKEN)
             prediction = client.predictions.create(
                 model=REPLICATE_LLM_MODEL,
                 input={"prompt": prompt},
@@ -82,7 +83,6 @@ async def check_summarization(operation_id: str) -> Optional[dict]:
     """
     def _check() -> Optional[dict]:
         try:
-            client = replicate.Client(api_token=REPLICATE_API_TOKEN)
             prediction = client.predictions.get(operation_id)
         except Exception:
             logging.exception(f"Failed to fetch summarization prediction {operation_id}")
