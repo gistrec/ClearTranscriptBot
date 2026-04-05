@@ -19,3 +19,7 @@ replicate
 
 # Monitoring / error reporting
 sentry_sdk
+
+# Healthcheck
+fastapi
+uvicorn

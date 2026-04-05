@@ -25,6 +25,7 @@ Bot for automatic audio/video transcription, available on **Telegram** and **Max
 ```
 ClearTranscriptBot
 ├── main.py              # Bot entry point (starts Telegram + Max bots concurrently)
+├── healthcheck.py       # Optional FastAPI healthcheck server on port 9000
 ├── payment.py           # Tinkoff acquiring API wrappers
 ├── schedulers/          # Periodic task schedulers
 │   ├── summarization.py
@@ -148,6 +149,12 @@ ClearTranscriptBot
 | `TERMINAL_KEY`      | Terminal key from Tinkoff                    |
 | `TERMINAL_PASSWORD` | Terminal password from Tinkoff               |
 | `TERMINAL_ENV`      | Environment: `test` for sandbox or `prod`    |
+
+### Healthcheck
+
+| Variable             | Description                                                        |
+|----------------------|--------------------------------------------------------------------|
+| `ENABLE_HEALTHCHECK` | Set to `1` to start an HTTP healthcheck server on port `9000`. `GET /healthcheck` returns `200 OK`. |
 
 ## Local Bot API server
 

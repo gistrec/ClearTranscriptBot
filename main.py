@@ -47,6 +47,7 @@ from handlers.max.topup import (
 )
 
 from utils.bot_sender import BotSender
+from healthcheck import start_healthcheck_server
 
 
 logging.basicConfig(
@@ -62,6 +63,7 @@ MAX_BOT_TOKEN = os.environ.get("MAX_BOT_TOKEN")
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
+ENABLE_HEALTHCHECK = os.environ.get("ENABLE_HEALTHCHECK") == "1"
 
 if not TELEGRAM_BOT_TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
@@ -243,14 +245,18 @@ async def run_bots() -> None:
     await application.start()
     await application.updater.start_polling()
 
-    # --- Start Max polling (blocking) or just keep PTB running ---
+    # --- Start Max polling + healthcheck concurrently ---
+    tasks = []
+    if max_bot is not None:
+        logging.info("Starting Max bot polling...")
+        tasks.append(max_bot.start_polling())
+    else:
+        logging.info("MAX_BOT_TOKEN not set; running Telegram only. Press Ctrl+C to stop.")
+        tasks.append(asyncio.Event().wait())
+    if ENABLE_HEALTHCHECK:
+        tasks.append(start_healthcheck_server())
     try:
-        if max_bot is not None:
-            logging.info("Starting Max bot polling...")
-            await max_bot.start_polling()
-        else:
-            logging.info("MAX_BOT_TOKEN not set; running Telegram only. Press Ctrl+C to stop.")
-            await asyncio.Event().wait()
+        await asyncio.gather(*tasks)
     finally:
         await application.updater.stop()
         await application.stop()
