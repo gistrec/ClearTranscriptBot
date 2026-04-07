@@ -164,6 +164,7 @@ Example using Docker:
 ```bash
 docker run \
     --detach \
+    --restart unless-stopped \
     --name tg-bot-api \
     --publish 8081:8081 \
     --volume /var/lib/telegram-bot-api:/var/lib/telegram-bot-api \
