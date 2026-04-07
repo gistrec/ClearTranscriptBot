@@ -153,8 +153,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
         try:
-            if local_path.exists():
-                local_path.unlink()
+            real_path = local_path.resolve()
+            if real_path.exists():
+                real_path.unlink()
         except Exception:
             logging.exception("Could not remove original file %s", local_path)
 
