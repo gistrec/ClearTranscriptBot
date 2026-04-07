@@ -176,6 +176,13 @@ docker run \
     --dir=/var/lib/telegram-bot-api
 ```
 
+Grant the current user read/write/execute access to the data directory so the bot can delete processed files:
+
+```bash
+sudo setfacl -R -m u:$(whoami):rwx /var/lib/telegram-bot-api
+sudo setfacl -R -d -m u:$(whoami):rwx /var/lib/telegram-bot-api
+```
+
 Run this container and set `USE_LOCAL_PTB` so that the bot uses the local
 server.
 
