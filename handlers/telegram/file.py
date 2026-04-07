@@ -152,6 +152,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
+        try:
+            if local_path.exists():
+                local_path.unlink()
+        except Exception:
+            logging.exception("Could not remove original file %s", local_path)
+
         object_name = f"source/{user_id}/{message.message_id}_{ogg_path.name}"
         s3_url, s3_signed_url = await upload_file(ogg_path, object_name)
         if not s3_url or not s3_signed_url:
