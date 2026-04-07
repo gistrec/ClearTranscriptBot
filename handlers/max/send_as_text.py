@@ -8,7 +8,7 @@ from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user_max
 
 
-_MAX_MSG_LEN = 4096
+_MAX_MSG_LEN = 4000
 
 
 @sentry_bind_user_max
