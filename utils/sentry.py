@@ -78,8 +78,8 @@ def sentry_bind_user(func):
                 scope.set_user({
                     "id": user.id,
                     "first_name": user.first_name,
-                    "platform": "telegram",
                 })
+                scope.set_tag("messenger", "telegram")
 
                 return await func(update, context, *args, **kwargs)
 
@@ -107,8 +107,8 @@ def sentry_bind_user_max(func):
                     scope.set_user({
                         "id": user_id,
                         "first_name": name,
-                        "platform": "max",
                     })
+                    scope.set_tag("messenger", "max")
 
                     return await func(event, bot, *args, **kwargs)
 
