@@ -15,7 +15,7 @@ from database.queries import (
     update_payment,
 )
 from utils.utils import MoscowTimezone, available_time_by_balance
-from utils.sentry import sentry_transaction
+from utils.sentry import sentry_transaction, sentry_drop_transaction
 
 
 # Age thresholds (seconds) that determine polling frequency
@@ -39,10 +39,15 @@ def _check_interval(age_seconds: float) -> int:
 @sentry_transaction(name="payment.poll", op="task.check")
 async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll due payments; credit balance when confirmed, expire after 3 hours."""
+    payments = get_payments_due_for_check()
+    if not payments:
+        sentry_drop_transaction()
+        return
+
     sender = context.bot_data.get("sender")
     now = datetime.now(MoscowTimezone)
 
-    for payment in get_payments_due_for_check():
+    for payment in payments:
         created_at = payment.created_at.replace(tzinfo=MoscowTimezone)
         age_seconds = (now - created_at).total_seconds()
 

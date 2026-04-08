@@ -21,7 +21,7 @@ from utils.transcription import check_transcription, get_result
 from utils.tg import need_edit, safe_edit_message_text
 from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
-from utils.sentry import sentry_transaction
+from utils.sentry import sentry_transaction, sentry_drop_transaction
 
 
 def _make_max_summarize_keyboard(task_id: int):
@@ -52,10 +52,15 @@ def _make_max_rating_keyboard(transcription_id: int):
 @sentry_transaction(name="transcription.poll", op="task.check")
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
+    tasks = get_transcriptions_by_status("running")
+    if not tasks:
+        sentry_drop_transaction()
+        return
+
     sender = context.bot_data.get("sender")
     now = datetime.now(MoscowTimezone)
 
-    for task in get_transcriptions_by_status("running"):
+    for task in tasks:
         started_at = task.started_at.replace(tzinfo=MoscowTimezone)
 
         duration = int((now - started_at).total_seconds())

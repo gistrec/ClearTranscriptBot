@@ -42,8 +42,10 @@ def sentry_transaction(name, op="task"):
         async def wrapper(*args, **kwargs):
             if not ENABLE_SENTRY:
                 return await func(*args, **kwargs)
+
             with sentry_sdk.start_transaction(name=name, op=op):
                 return await func(*args, **kwargs)
+
         return wrapper
     return decorator
 
@@ -58,10 +60,26 @@ def sentry_span(op, description=None):
         async def wrapper(*args, **kwargs):
             if not ENABLE_SENTRY:
                 return await func(*args, **kwargs)
+
             with sentry_sdk.start_span(op=op, description=description or func.__name__):
                 return await func(*args, **kwargs)
+
         return wrapper
     return decorator
+
+
+def sentry_drop_transaction() -> None:
+    """
+    Mark the current Sentry transaction as not sampled so it won't be sent.
+    Call this to discard a transaction that isn't worth tracking (e.g. empty poll cycles).
+    No-op when ENABLE_SENTRY=0 or no active transaction.
+    """
+    if not ENABLE_SENTRY:
+        return
+
+    transaction = sentry_sdk.get_current_scope().transaction
+    if transaction is not None:
+        transaction.sampled = False
 
 
 def sentry_bind_user(func):
@@ -71,17 +89,21 @@ def sentry_bind_user(func):
     """
     @functools.wraps(func)
     async def wrapper(update, context, *args, **kwargs):
-        if ENABLE_SENTRY and getattr(update, "effective_user", None):
-            user = update.effective_user
+        if ENABLE_SENTRY:
+            user = getattr(update, "effective_user", None)
 
-            with sentry_sdk.new_scope() as scope:
-                scope.set_user({
-                    "id": user.id,
-                    "first_name": user.first_name,
-                })
-                scope.set_tag("messenger", "telegram")
+            user_id = getattr(user, "id", None)
+            first_name = getattr(user, "first_name", None)
 
-                return await func(update, context, *args, **kwargs)
+            if user_id is not None:
+                with sentry_sdk.new_scope() as scope:
+                    scope.set_user({
+                        "id": user_id,
+                        "first_name": first_name,
+                    })
+                    scope.set_tag("messenger", "telegram")
+
+                    return await func(update, context, *args, **kwargs)
 
         return await func(update, context, *args, **kwargs)
 

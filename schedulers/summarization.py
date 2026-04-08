@@ -15,19 +15,25 @@ from utils.s3 import download_text, object_name_from_url
 from utils.summarize import REPLICATE_LLM_MODEL, check_summarization, start_summarization
 from utils.tg import need_edit
 from utils.utils import MoscowTimezone, format_duration
-from utils.sentry import sentry_transaction
+from utils.sentry import sentry_transaction, sentry_drop_transaction
 
 
 @sentry_transaction(name="summarization.poll", op="task.check")
 async def check_summarizations(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Pick up pending summarizations and poll running ones."""
-    await _process_pending(context)
-    await _process_running(context)
+    pending_summarizations = get_summarizations_by_status("pending")
+    running_summarizations = get_summarizations_by_status("running")
+    if not pending_summarizations and not running_summarizations:
+        sentry_drop_transaction()
+        return
+
+    await _process_pending(context, pending_summarizations)
+    await _process_running(context, running_summarizations)
 
 
-async def _process_pending(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_summarizations) -> None:
     sender = context.bot_data.get("sender")
-    for record in get_summarizations_by_status("pending"):
+    for record in pending_summarizations:
         transcription = get_transcription(record.transcription_id)
         if transcription is None or not transcription.result_s3_path:
             update_summarization(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
@@ -55,9 +61,9 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
 
-async def _process_running(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_summarizations) -> None:
     sender = context.bot_data.get("sender")
-    for record in get_summarizations_by_status("running"):
+    for record in running_summarizations:
         # Re-fetch to get latest operation_id (set during pending→running transition)
         record = get_summarization(record.id)
         if record is None:
