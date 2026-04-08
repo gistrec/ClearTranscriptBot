@@ -82,6 +82,7 @@ async def get_signed_url(object_name: str, expires_in: int = 3600) -> Optional[s
     return await asyncio.to_thread(_sign)
 
 
+@sentry_span(op="s3.download")
 async def download_text(object_name: str) -> Optional[str]:
     """Download a text file from S3 and return its contents."""
 
