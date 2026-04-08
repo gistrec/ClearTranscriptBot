@@ -5,13 +5,14 @@ import aiomax
 
 from database.queries import get_transcription
 from utils.s3 import download_text, object_name_from_url
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 _MAX_MSG_LEN = 4000
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="send_as_text", op="max.callback")
 async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
     await callback.answer(notification="")
 

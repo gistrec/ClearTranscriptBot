@@ -13,7 +13,7 @@ from database.models import PLATFORM_TELEGRAM
 from database.queries import add_user, get_user, \
     create_payment, get_payment_by_order_id, update_payment, confirm_payment
 
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance
 
 
@@ -80,6 +80,7 @@ def _build_payment_text(amount: int, status: str, payment_url: str, strikethroug
 
 
 @sentry_bind_user
+@sentry_transaction(name="topup", op="telegram.command")
 async def handle_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     user = get_user(user_id, PLATFORM_TELEGRAM)
@@ -95,6 +96,7 @@ async def handle_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 @sentry_bind_user
+@sentry_transaction(name="topup_callback", op="telegram.callback")
 async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -187,6 +189,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 @sentry_bind_user
+@sentry_transaction(name="payment.check", op="telegram.callback")
 async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -259,6 +262,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 @sentry_bind_user
+@sentry_transaction(name="payment.cancel", op="telegram.callback")
 async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()

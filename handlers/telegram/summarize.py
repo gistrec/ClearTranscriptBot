@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM
 from database.queries import create_summarization, get_transcription
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
 
 
@@ -12,6 +12,7 @@ SUMMARIZE_THRESHOLD = 300  # seconds — show button only for audio longer than 
 
 
 @sentry_bind_user
+@sentry_transaction(name="summarization.create", op="telegram.callback")
 async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()

@@ -6,6 +6,8 @@ import logging
 from typing import Tuple
 from pathlib import Path
 
+from utils.sentry import sentry_span
+
 
 async def get_conversion_progress(
     progress_file: str | Path,
@@ -61,6 +63,7 @@ async def get_conversion_progress(
     return percent, elapsed, eta
 
 
+@sentry_span(op="ffprobe")
 async def get_media_duration(source: str | Path) -> float:
     """Return duration of the media file in seconds.
 
@@ -105,6 +108,7 @@ async def get_media_duration(source: str | Path) -> float:
         return 0.0
 
 
+@sentry_span(op="ffmpeg.convert")
 async def convert_to_ogg(
     source: str | Path,
     destination: str | Path,

@@ -1,10 +1,11 @@
 """Handler for /price command on Max messenger."""
 import aiomax
 
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="price", op="max.command")
 async def handle_max_price(message: aiomax.Message, bot: aiomax.Bot) -> None:
     await bot.send_message(
         "Стоимость распознавания:\n\n"

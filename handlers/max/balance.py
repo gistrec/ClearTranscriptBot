@@ -8,10 +8,11 @@ from database.models import PLATFORM_MAX
 from database.queries import add_user, get_recent_payments, get_user
 from payment import PAYMENT_STATUSES
 from utils.utils import available_time_by_balance
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="balance", op="max.command")
 async def handle_max_balance(message: aiomax.Message, bot: aiomax.Bot) -> None:
     try:
         user_id = int(message.sender.user_id)

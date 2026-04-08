@@ -7,13 +7,14 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM
 from database.queries import get_transcription
 from utils.s3 import download_text, object_name_from_url
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 
 
 _TG_MAX_LEN = 4096
 
 
 @sentry_bind_user
+@sentry_transaction(name="send_as_text", op="telegram.callback")
 async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()

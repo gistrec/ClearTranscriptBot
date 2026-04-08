@@ -6,12 +6,13 @@ import aiomax
 from database.queries import create_summarization, get_transcription
 from database.models import PLATFORM_MAX
 from utils.utils import format_duration
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 SUMMARIZE_THRESHOLD = 300  # seconds
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="summarization.create", op="max.callback")
 async def handle_max_summarize(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
     await callback.answer(notification="")
 

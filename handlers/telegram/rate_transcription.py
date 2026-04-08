@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 
 from database.queries import get_transcription, update_transcription
 
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 
 
 RATING_PROMPT = "Оцените качество распознавания"
@@ -31,6 +31,7 @@ def make_rating_keyboard(
 
 
 @sentry_bind_user
+@sentry_transaction(name="transcription.rate", op="telegram.callback")
 async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer("Спасибо за оценку!")

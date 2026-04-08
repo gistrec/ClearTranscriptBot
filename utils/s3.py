@@ -7,6 +7,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from utils.sentry import sentry_span
+
 
 S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
@@ -19,6 +21,7 @@ if not all([S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_BUCKET]):
     )
 
 
+@sentry_span(op="s3.upload")
 async def upload_file(
     file_path: str | Path, object_name: Optional[str] = None
 ) -> tuple[str | None, str | None]:

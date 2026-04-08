@@ -8,11 +8,12 @@ from database.queries import add_user, get_recent_payments, get_user
 
 from payment import PAYMENT_STATUSES
 
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance
 
 
 @sentry_bind_user
+@sentry_transaction(name="balance", op="telegram.command")
 async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     user = get_user(user_id, PLATFORM_TELEGRAM)

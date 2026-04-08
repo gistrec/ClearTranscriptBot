@@ -6,13 +6,14 @@ import aiomax
 from database.models import PLATFORM_MAX
 from database.queries import get_transcription, update_transcription
 from handlers.max.common import make_rating_keyboard
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 RATING_PROMPT = "Оцените качество распознавания"
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="transcription.rate", op="max.callback")
 async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
     try:
         _, transcription_id_str, rating_str = callback.payload.split(":")

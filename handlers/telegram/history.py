@@ -4,12 +4,13 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM
 from database.queries import get_recent_transcriptions
 
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration, MoscowTimezone
 from utils.tg import STATUS_EMOJI, fmt_price
 
 
 @sentry_bind_user
+@sentry_transaction(name="history", op="telegram.command")
 async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     items = get_recent_transcriptions(user_id, PLATFORM_TELEGRAM, limit=10)

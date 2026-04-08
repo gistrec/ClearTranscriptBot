@@ -35,7 +35,7 @@ from handlers.max.create_task import handle_max_create_task
 from handlers.max.file import handle_max_file
 from handlers.max.history import handle_max_history
 from handlers.max.price import handle_max_price
-from handlers.max.rate import handle_max_rate
+from handlers.max.rate_transcription import handle_max_rate
 from handlers.max.summarize import handle_max_summarize
 from handlers.max.send_as_text import handle_max_send_as_text
 from handlers.max.text import handle_max_text

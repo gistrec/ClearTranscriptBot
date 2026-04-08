@@ -7,10 +7,11 @@ from database.models import PLATFORM_MAX
 from database.queries import get_recent_transcriptions
 from utils.utils import format_duration, MoscowTimezone
 from utils.tg import STATUS_EMOJI, fmt_price
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="history", op="max.command")
 async def handle_max_history(message: aiomax.Message, bot: aiomax.Bot) -> None:
     try:
         user_id = int(message.sender.user_id)
