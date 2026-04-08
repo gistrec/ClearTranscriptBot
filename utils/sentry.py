@@ -4,6 +4,7 @@ import functools
 import sentry_sdk
 
 from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 
 ENABLE_SENTRY = os.getenv("ENABLE_SENTRY") == "1"
@@ -14,10 +15,13 @@ if ENABLE_SENTRY:
         enable_logs=True,
         send_default_pii=False,
         traces_sample_rate=1.0,
-        integrations=[LoggingIntegration(
-            level=logging.INFO,
-            event_level=logging.ERROR,
-        )],
+        integrations=[
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR,
+            ),
+            SqlalchemyIntegration(),
+        ],
     )
 
 
