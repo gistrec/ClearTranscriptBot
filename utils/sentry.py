@@ -3,6 +3,7 @@ import logging
 import functools
 import sentry_sdk
 
+from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
@@ -21,6 +22,7 @@ if ENABLE_SENTRY:
                 event_level=logging.ERROR,
             ),
             SqlalchemyIntegration(),
+            HttpxIntegration(),
         ],
     )
 
