@@ -7,7 +7,7 @@ from database.models import PLATFORM_TELEGRAM
 from database.queries import add_user, get_user
 
 from utils.marketing import track_goal
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance
 
 
@@ -19,6 +19,7 @@ def extract_start_payload(text: str) -> str | None:
 
 
 @sentry_bind_user
+@sentry_transaction(name="message.text", op="telegram.message")
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Respond to regular text messages."""
     user_id = update.message.from_user.id

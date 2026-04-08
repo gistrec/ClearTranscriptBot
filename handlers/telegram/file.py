@@ -14,7 +14,7 @@ from database.queries import add_transcription, add_user, get_user
 
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import is_supported_mime, sanitize_filename, extract_local_path
 from utils.utils import format_duration
 
@@ -26,6 +26,7 @@ LONG_AUDIO_THRESHOLD = 120  # seconds; files longer than this use Replicate
 
 
 @sentry_bind_user
+@sentry_transaction(name="file.upload", op="telegram.message")
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming media files."""
     message = update.message

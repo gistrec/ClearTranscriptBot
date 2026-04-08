@@ -15,8 +15,10 @@ from utils.s3 import download_text, object_name_from_url
 from utils.summarize import REPLICATE_LLM_MODEL, check_summarization, start_summarization
 from utils.tg import need_edit
 from utils.utils import MoscowTimezone, format_duration
+from utils.sentry import sentry_transaction
 
 
+@sentry_transaction(name="summarization.poll", op="task.check")
 async def check_summarizations(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Pick up pending summarizations and poll running ones."""
     await _process_pending(context)

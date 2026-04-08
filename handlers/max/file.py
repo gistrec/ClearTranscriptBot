@@ -17,7 +17,7 @@ from utils.max_download import download_max_file
 from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename
 from utils.utils import format_duration
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 MAX_AUDIO_DURATION = 6 * 60 * 60  # seconds
@@ -25,6 +25,7 @@ LONG_AUDIO_THRESHOLD = 120  # seconds
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="file.upload", op="max.message")
 async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     """Handle incoming file/audio/video attachments from Max."""
     try:

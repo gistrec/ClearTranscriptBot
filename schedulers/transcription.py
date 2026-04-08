@@ -21,6 +21,7 @@ from utils.transcription import check_transcription, get_result
 from utils.tg import need_edit, safe_edit_message_text
 from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
+from utils.sentry import sentry_transaction
 
 
 def _make_max_summarize_keyboard(task_id: int):
@@ -48,6 +49,7 @@ def _make_max_rating_keyboard(transcription_id: int):
         return None
 
 
+@sentry_transaction(name="transcription.poll", op="task.check")
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
     sender = context.bot_data.get("sender")

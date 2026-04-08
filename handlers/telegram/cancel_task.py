@@ -4,11 +4,12 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM
 from database.queries import get_transcription, update_transcription
 
-from utils.sentry import sentry_bind_user
+from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
 
 
 @sentry_bind_user
+@sentry_transaction(name="transcription.cancel", op="telegram.callback")
 async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()

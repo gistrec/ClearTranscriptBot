@@ -7,10 +7,11 @@ import aiomax
 from database.models import PLATFORM_MAX
 from database.queries import add_user, get_user
 from utils.utils import available_time_by_balance
-from utils.sentry import sentry_bind_user_max
+from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 @sentry_bind_user_max
+@sentry_transaction(name="message.text", op="max.message")
 async def handle_max_text(message: aiomax.Message, bot: aiomax.Bot) -> None:
     """Respond to text messages with help text and current balance."""
     try:

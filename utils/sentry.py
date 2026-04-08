@@ -27,6 +27,38 @@ if ENABLE_SENTRY:
     )
 
 
+def sentry_transaction(name, op="task"):
+    """
+    Async decorator that wraps a function in a Sentry transaction.
+    No-op when ENABLE_SENTRY=0.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            if not ENABLE_SENTRY:
+                return await func(*args, **kwargs)
+            with sentry_sdk.start_transaction(name=name, op=op):
+                return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def sentry_span(op, description=None):
+    """
+    Async decorator that creates a span within the current Sentry transaction.
+    No-op when ENABLE_SENTRY=0.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            if not ENABLE_SENTRY:
+                return await func(*args, **kwargs)
+            with sentry_sdk.start_span(op=op, description=description or func.__name__):
+                return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
 def sentry_bind_user(func):
     """
     Async PTB handler decorator.
