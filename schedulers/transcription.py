@@ -8,6 +8,7 @@ import providers.speechkit as speechkit_provider
 from pathlib import Path
 from datetime import datetime
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_MAX
@@ -148,7 +149,6 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         audio_duration_str = format_duration(task.duration_seconds)
 
         # Build platform-specific action keyboard
-        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         if task.duration_seconds > SUMMARIZE_THRESHOLD:
             tg_action_keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
