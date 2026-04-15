@@ -13,7 +13,7 @@ from database.queries import (
 )
 from utils.s3 import download_text, object_name_from_url
 from utils.summarize import REPLICATE_LLM_MODEL, check_summarization, start_summarization
-from utils.tg import need_edit
+from utils.tg import need_edit, prune_edit_cache
 from utils.utils import MoscowTimezone, format_duration
 from utils.sentry import sentry_transaction, sentry_drop_transaction
 
@@ -26,6 +26,8 @@ async def check_summarizations(context: ContextTypes.DEFAULT_TYPE) -> None:
     if not pending_summarizations and not running_summarizations:
         sentry_drop_transaction()
         return
+
+    prune_edit_cache(context, {r.id for r in running_summarizations}, cache_key="summarization_status_cache")
 
     await _process_pending(context, pending_summarizations)
     await _process_running(context, running_summarizations)

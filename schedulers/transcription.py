@@ -18,7 +18,7 @@ from handlers.telegram.summarize import SUMMARIZE_THRESHOLD
 
 from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import check_transcription, get_result
-from utils.tg import need_edit, safe_edit_message_text
+from utils.tg import need_edit, safe_edit_message_text, prune_edit_cache
 from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
 from utils.sentry import sentry_transaction, sentry_drop_transaction
@@ -59,6 +59,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     sender = context.bot_data.get("sender")
     now = datetime.now(MoscowTimezone)
+
+    prune_edit_cache(context, {task.id for task in tasks})
 
     for task in tasks:
         started_at = task.started_at.replace(tzinfo=MoscowTimezone)

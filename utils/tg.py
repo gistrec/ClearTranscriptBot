@@ -25,6 +25,20 @@ def need_edit(context, item_id: int, now: datetime, cache_key: str = "status_cac
     return True
 
 
+def prune_edit_cache(context, active_ids: set, cache_key: str = "status_cache") -> None:
+    """Remove cache entries whose IDs are no longer in *active_ids*.
+
+    Call once per scheduler tick with the current set of running task IDs so
+    that orphaned entries (e.g. from a bot restart or unhandled exception) are
+    automatically evicted rather than accumulating indefinitely.
+    """
+    cache = context.bot_data.get(cache_key)
+    if not cache:
+        return
+    for stale_id in [k for k in cache if k not in active_ids]:
+        del cache[stale_id]
+
+
 ANCHOR = "/var/lib/telegram-bot-api"
 
 STATUS_EMOJI = {
