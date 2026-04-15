@@ -24,19 +24,16 @@ if not all([S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_BUCKET]):
 @sentry_span(op="s3.upload")
 async def upload_file(
     file_path: str | Path, object_name: Optional[str] = None
-) -> tuple[str | None, str | None]:
+) -> Optional[str]:
     """Upload *file_path* to Yandex Cloud S3.
 
-    Returns a tuple of ``(plain_url, signed_url)`` where *plain_url* is the
-    permanent object URL and *signed_url* is a one-hour signed URL suitable
-    for passing to external services like Replicate.
-    Returns ``None`` if the upload failed.
+    Returns the permanent object URL on success, or ``None`` on failure.
     """
     file_path = Path(file_path)
     if object_name is None:
         object_name = file_path.name
 
-    def _upload() -> tuple[str | None, str | None]:
+    def _upload() -> Optional[str]:
         try:
             session = boto3.session.Session(
                 aws_access_key_id=S3_ACCESS_KEY,
@@ -44,18 +41,10 @@ async def upload_file(
             )
             s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
             s3.upload_file(str(file_path), S3_BUCKET, object_name)
-
-            plain_url = f"{S3_ENDPOINT}/{S3_BUCKET}/{object_name}"
-            signed_url = s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": S3_BUCKET, "Key": object_name},
-                ExpiresIn=3600,
-            )
-
-            return plain_url, signed_url
+            return f"{S3_ENDPOINT}/{S3_BUCKET}/{object_name}"
         except Exception:
             logging.exception(f"Failed to upload {file_path} to S3")
-            return None, None
+            return None
 
     return await asyncio.to_thread(_upload)
 

@@ -161,8 +161,8 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             logging.exception("Could not remove original file %s", local_path)
 
         object_name = f"source/{user_id}/{message.body.message_id}_{ogg_path.name}"
-        s3_url, s3_signed_url = await upload_file(ogg_path, object_name)
-        if not s3_url or not s3_signed_url:
+        s3_url = await upload_file(ogg_path, object_name)
+        if not s3_url:
             await bot.send_message(
                 "❌ Не удалось загрузить файл\n"
                 "Пожалуйста, попробуйте ещё раз чуть позже",

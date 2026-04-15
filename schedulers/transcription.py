@@ -129,8 +129,8 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         path.write_text(text, encoding="utf-8")
 
         object_name = f"result/{task.user_id}/{path.name}"
-        s3_url, s3_signed_url = await upload_file(path, object_name)
-        if not s3_url or not s3_signed_url:
+        s3_url = await upload_file(path, object_name)
+        if not s3_url:
             update_transcription(task.id, status="failed")
             change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
             fail_text = (
