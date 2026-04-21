@@ -46,7 +46,7 @@ from handlers.max.topup import (
     handle_max_cancel_payment,
 )
 
-from utils.bot_sender import BotSender
+from messengers.common import BotSender
 from healthcheck import start_healthcheck_server
 
 

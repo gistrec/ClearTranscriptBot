@@ -9,6 +9,7 @@ from database.queries import add_user, get_recent_payments, get_user
 from payment import PAYMENT_STATUSES
 from utils.utils import available_time_by_balance
 from utils.sentry import sentry_bind_user_max, sentry_transaction
+from messengers.max import safe_send_message
 
 
 @sentry_bind_user_max
@@ -35,7 +36,7 @@ async def handle_max_balance(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     topups_text = "\n".join(topup_lines) if topup_lines else "Пополнений пока нет"
 
-    await bot.send_message(
+    await safe_send_message(bot,
         f"Текущий баланс: {balance} ₽\n"
         f"Хватит на распознавание: {duration_str}\n\n"
         "Последние пополнения:\n"

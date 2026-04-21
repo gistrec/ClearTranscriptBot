@@ -85,7 +85,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     context.bot, task.user_id, task.message_id, status_text
                 )
 
-        result_info = await check_transcription(task.operation_id, provider=task.provider)
+        try:
+            result_info = await check_transcription(task.operation_id, provider=task.provider)
+        except Exception:
+            logging.exception("Failed to check transcription for task %s", task.id)
+            continue
 
         # Результата еще нет, проверим снова через секунду
         if result_info is None:

@@ -1,4 +1,6 @@
 """Handler for the 'Create summary' button on completed transcriptions."""
+import logging
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -27,12 +29,16 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if not transcription.result_s3_path:
         return
 
-    await query.edit_message_reply_markup(reply_markup=None)
-
-    msg = await query.message.reply_text(
-        f"⏳ Создаю конспект...\n\n"
-        f"Время обработки: {format_duration(0)}"
-    )
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+        msg = await query.message.reply_text(
+            f"⏳ Создаю конспект...\n\n"
+            f"Время обработки: {format_duration(0)}"
+        )
+    except Exception:
+        logging.exception("summarize: failed to start for transcription %s", transcription_id)
+        await query.message.reply_text("Не удалось создать конспект")
+        return
 
     create_summarization(
         transcription_id=transcription_id,

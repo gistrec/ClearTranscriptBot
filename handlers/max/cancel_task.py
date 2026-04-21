@@ -7,6 +7,7 @@ from database.models import PLATFORM_MAX
 from database.queries import get_transcription, update_transcription
 from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
+from messengers.max import safe_edit_message
 
 
 @sentry_bind_user_max
@@ -30,17 +31,17 @@ async def handle_max_cancel_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
 
     task = get_transcription(task_id)
     if task is None or task.user_id != user_id or task.user_platform != PLATFORM_MAX:
-        await bot.edit_message(message_id, "Задача не найдена", attachments=[])
+        await safe_edit_message(bot, message_id, "Задача не найдена", attachments=[])
         return
 
     if task.status != "pending":
-        await bot.edit_message(message_id, "Задача уже обработана", attachments=[])
+        await safe_edit_message(bot, message_id, "Задача уже обработана", attachments=[])
         return
 
     update_transcription(task.id, status="cancelled")
 
     duration_str = format_duration(task.duration_seconds)
-    await bot.edit_message(
+    await safe_edit_message(bot,
         message_id,
         f"❌ Задача отменена\n\n"
         f"Длительность: {duration_str}\n"

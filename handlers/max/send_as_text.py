@@ -6,6 +6,7 @@ import aiomax
 from database.queries import get_transcription
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user_max, sentry_transaction
+from messengers.max import safe_send_message, safe_edit_message
 
 
 _MAX_MSG_LEN = 4000
@@ -35,12 +36,12 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
     if not text:
         logging.error("Max send_as_text: failed to download text for transcription %s", transcription_id)
         chat_id = callback.message.recipient.chat_id
-        await bot.send_message("Не удалось получить текст", chat_id=chat_id)
+        await safe_send_message(bot, "Не удалось получить текст", chat_id=chat_id)
         return
 
     message_id = callback.message.body.message_id
-    await bot.edit_message(message_id, callback.message.body.text or "", attachments=[])
+    await safe_edit_message(bot, message_id, callback.message.body.text or "", attachments=[])
 
     chat_id = callback.message.recipient.chat_id
     for i in range(0, len(text), _MAX_MSG_LEN):
-        await bot.send_message(text[i:i + _MAX_MSG_LEN], chat_id=chat_id)
+        await safe_send_message(bot, text[i:i + _MAX_MSG_LEN], chat_id=chat_id)

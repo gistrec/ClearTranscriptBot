@@ -8,6 +8,7 @@ from database.queries import get_recent_transcriptions
 from utils.utils import format_duration, MoscowTimezone
 from utils.tg import STATUS_EMOJI, fmt_price
 from utils.sentry import sentry_bind_user_max, sentry_transaction
+from messengers.max import safe_send_message
 
 
 @sentry_bind_user_max
@@ -22,7 +23,7 @@ async def handle_max_history(message: aiomax.Message, bot: aiomax.Bot) -> None:
     items = get_recent_transcriptions(user_id, PLATFORM_MAX, limit=10)
 
     if not items:
-        await bot.send_message(
+        await safe_send_message(bot, 
             "История пуста\n\n"
             "Пришлите видео или аудио — вернём текст",
             chat_id=message.recipient.chat_id,
@@ -46,4 +47,4 @@ async def handle_max_history(message: aiomax.Message, bot: aiomax.Bot) -> None:
         + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • 🚫 отменено"
     )
 
-    await bot.send_message(msg, chat_id=message.recipient.chat_id)
+    await safe_send_message(bot, msg, chat_id=message.recipient.chat_id)

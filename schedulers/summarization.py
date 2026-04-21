@@ -73,7 +73,12 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_summariza
 
         now = datetime.now(MoscowTimezone)
 
-        result = await check_summarization(record.operation_id)
+        try:
+            result = await check_summarization(record.operation_id)
+        except Exception:
+            logging.exception("Failed to check summarization for record %s", record.id)
+            continue
+
         if result is None:
             if need_edit(context, record.id, now, cache_key="summarization_status_cache"):
                 elapsed = int((now - record.created_at.replace(tzinfo=MoscowTimezone)).total_seconds())

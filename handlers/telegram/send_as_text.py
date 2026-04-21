@@ -35,7 +35,10 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.message.reply_text("Не удалось получить текст")
         return
 
-    await query.edit_message_reply_markup(reply_markup=None)
-
-    for i in range(0, len(text), _TG_MAX_LEN):
-        await query.message.reply_text(text[i:i + _TG_MAX_LEN])
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+        for i in range(0, len(text), _TG_MAX_LEN):
+            await query.message.reply_text(text[i:i + _TG_MAX_LEN])
+    except Exception:
+        logging.exception("send_as_text: failed to send text for transcription %s", transcription_id)
+        await query.message.reply_text("Не удалось отправить текст")

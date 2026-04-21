@@ -8,6 +8,7 @@ from database.models import PLATFORM_MAX
 from database.queries import add_user, get_user
 from utils.utils import available_time_by_balance
 from utils.sentry import sentry_bind_user_max, sentry_transaction
+from messengers.max import safe_send_message
 
 
 @sentry_bind_user_max
@@ -27,7 +28,7 @@ async def handle_max_text(message: aiomax.Message, bot: aiomax.Bot) -> None:
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
 
-    await bot.send_message(
+    await safe_send_message(bot,
         "Отправьте видео или аудио — вернём текст\n\n"
         "Поддерживаем все популярные форматы:\n"
         "• Видео: mp4, mov, mkv, webm и другие\n"

@@ -7,6 +7,7 @@ from database.queries import create_summarization, get_transcription
 from database.models import PLATFORM_MAX
 from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
+from messengers.max import safe_send_message, safe_edit_message
 
 SUMMARIZE_THRESHOLD = 300  # seconds
 
@@ -34,13 +35,15 @@ async def handle_max_summarize(callback: aiomax.Callback, bot: aiomax.Bot) -> No
     message_id = callback.message.body.message_id
     chat_id = callback.message.recipient.chat_id
 
-    await bot.edit_message(message_id, callback.message.body.text or "", attachments=[])
+    await safe_edit_message(bot, message_id, callback.message.body.text or "", attachments=[])
 
-    msg = await bot.send_message(
+    msg = await safe_send_message(bot,
         f"⏳ Создаю конспект...\n\n"
         f"Время обработки: {format_duration(0)}",
         chat_id=chat_id,
     )
+    if msg is None:
+        return
 
     create_summarization(
         transcription_id=transcription_id,
