@@ -80,17 +80,8 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         await safe_send_message(bot, "❌ Не удалось получить файл от Max", chat_id=chat_id)
         return
 
-    file_bytes = await download_max_file(file_url)
-    if not file_bytes:
-        await safe_send_message(bot, 
-            "❌ Не удалось загрузить файл\n"
-            "Пожалуйста, попробуйте ещё раз",
-            chat_id=chat_id,
-        )
-        return
-
     if mime and not is_supported_mime(mime):
-        await safe_send_message(bot, 
+        await safe_send_message(bot,
             "❌ Этот тип файла не поддерживается\n"
             "Пожалуйста, отправьте видео или аудио",
             chat_id=chat_id,
@@ -105,11 +96,18 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         out_dir.mkdir()
 
         local_path = in_dir / file_name
-        local_path.write_bytes(file_bytes)
+        downloaded = await download_max_file(file_url, local_path)
+        if not downloaded:
+            await safe_send_message(bot,
+                "❌ Не удалось загрузить файл\n"
+                "Пожалуйста, попробуйте ещё раз",
+                chat_id=chat_id,
+            )
+            return
 
         duration = await get_media_duration(local_path)
         if not duration:
-            await safe_send_message(bot, 
+            await safe_send_message(bot,
                 "❌ Не удалось определить длительность файла\n"
                 "Возможно, формат не поддерживается или файл повреждён",
                 chat_id=chat_id,
@@ -119,7 +117,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         duration_str = format_duration(int(duration))
         if duration > MAX_AUDIO_DURATION:
             max_duration_str = format_duration(MAX_AUDIO_DURATION)
-            await safe_send_message(bot, 
+            await safe_send_message(bot,
                 f"❌ Файл слишком длинный: {duration_str}\n"
                 f"Максимально допустимая длительность — {max_duration_str}",
                 chat_id=chat_id,
@@ -128,7 +126,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
         price_for_user = speechkit_provider.cost_in_rub(duration)
         if user.balance < price_for_user:
-            await safe_send_message(bot, 
+            await safe_send_message(bot,
                 f"❌ Недостаточно средств\n"
                 f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
                 f"Для пополнения баланса используйте команду /topup",
@@ -143,14 +141,14 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
         convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
         if convert_error == "no_audio_stream":
-            await safe_send_message(bot, 
+            await safe_send_message(bot,
                 "❌ В этом файле не обнаружено аудио\n"
                 "Пожалуйста, отправьте файл со звуком",
                 chat_id=chat_id,
             )
             return
         elif convert_error:
-            await safe_send_message(bot, 
+            await safe_send_message(bot,
                 "❌ Не удалось обработать файл\n"
                 "Возможно, он имеет неподдерживаемый формат",
                 chat_id=chat_id,
@@ -166,7 +164,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         object_name = f"source/{user_id}/{message.body.message_id}_{ogg_path.name}"
         s3_url = await upload_file(ogg_path, object_name)
         if not s3_url:
-            await safe_send_message(bot, 
+            await safe_send_message(bot,
                 "❌ Не удалось загрузить файл\n"
                 "Пожалуйста, попробуйте ещё раз чуть позже",
                 chat_id=chat_id,
@@ -190,7 +188,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     keyboard = make_confirm_keyboard(history.id)
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
-    confirm_msg = await safe_send_message(bot, 
+    confirm_msg = await safe_send_message(bot,
         "🎧 Аудио подготовлено\n\n"
         f"Длительность: {duration_str}\n"
         f"Стоимость: {price_for_user} ₽"
