@@ -25,14 +25,15 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     lines: list[str] = []
     for r in items:
-        emoji = STATUS_EMOJI.get(r.status, "•")
+        status = r.status if isinstance(r.status, str) else ""
+        emoji = STATUS_EMOJI[status] if status in STATUS_EMOJI else "•"
         dt = r.created_at
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=MoscowTimezone)
         dt_str = dt.strftime("%d.%m %H:%M")
         dur = format_duration(r.duration_seconds)
         price_for_user = fmt_price(r.price_for_user)
-        lines.append(f"{emoji} #{r.id} • {dt_str} МСК • {dur} • {price_for_user}")
+        lines.append(f"{emoji} {dt_str} МСК • {dur} • {price_for_user}")
 
     msg = (
         "Последние 10 распознаваний:\n"
