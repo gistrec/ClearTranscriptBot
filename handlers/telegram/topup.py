@@ -3,7 +3,7 @@ import time
 
 from decimal import Decimal
 
-from payment import init_payment, get_payment_state, cancel_payment, PAYMENT_STATUSES
+from payment import init_payment, get_payment_state, cancel_payment, format_payment_status
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.helpers import escape_markdown
@@ -74,7 +74,7 @@ def _build_payment_text(amount: int, status: str, payment_url: str, strikethroug
 
     return (
         f"Счёт на {amount} ₽ создан\n"
-        f"Статус: {PAYMENT_STATUSES[status]}\n\n"
+        f"Статус: {format_payment_status(status)}\n\n"
         f"Оплатить: {safe_url}"
     )
 

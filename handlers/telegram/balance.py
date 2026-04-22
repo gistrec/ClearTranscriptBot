@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM
 from database.queries import add_user, get_recent_payments, get_user
 
-from payment import PAYMENT_STATUSES
+from payment import format_payment_status
 
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance
@@ -25,7 +25,7 @@ async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     topup_lines = []
     for topup in get_recent_payments(user_id, PLATFORM_TELEGRAM, limit=5):
         created = topup.created_at.strftime("%d.%m %H:%M") if topup.created_at is not None else "—"
-        payment_status = PAYMENT_STATUSES.get(topup.status) or "неизвестно"
+        payment_status = format_payment_status(topup.status)
 
         topup_lines.append(
             f"{created} — {topup.amount} ₽ — {payment_status}"

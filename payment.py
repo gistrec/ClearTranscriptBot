@@ -28,6 +28,21 @@ PAYMENT_STATUSES = {
     "EXPIRED": "истёк",
 }
 
+PAYMENT_STATUS_EMOJI = {
+    "NEW": "🕓",
+    "CONFIRMED": "✅",
+    "AUTHORIZED": "✅",
+    "CANCELED": "🚫",
+    "EXPIRED": "⌛",
+}
+
+
+def format_payment_status(status: str | None) -> str:
+    """Return payment status text with emoji for user-facing messages."""
+    if isinstance(status, str) and status in PAYMENT_STATUSES:
+        return f"{PAYMENT_STATUS_EMOJI[status]} {PAYMENT_STATUSES[status]}"
+    return "❓ неизвестно"
+
 
 def _generate_token(params: dict) -> str:
     data = params.copy()

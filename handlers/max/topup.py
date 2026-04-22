@@ -15,7 +15,7 @@ from database.queries import (
     update_payment,
     confirm_payment,
 )
-from payment import init_payment, get_payment_state, cancel_payment, PAYMENT_STATUSES
+from payment import init_payment, get_payment_state, cancel_payment, format_payment_status
 from utils.utils import available_time_by_balance
 from handlers.max.common import make_topup_amounts_keyboard, make_payment_actions_keyboard
 from utils.sentry import sentry_bind_user_max, sentry_transaction
@@ -40,7 +40,7 @@ async def handle_max_topup(message: aiomax.Message, bot: aiomax.Bot) -> None:
     if user is None:
         add_user(user_id, PLATFORM_MAX)
 
-    await safe_send_message(bot, 
+    await safe_send_message(bot,
         "Выберите сумму пополнения:",
         chat_id=message.recipient.chat_id,
         keyboard=make_topup_amounts_keyboard(),
@@ -105,7 +105,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
             raise Exception(f"Payment response missing PaymentURL or PaymentId: {tinkoff_response}")
     except Exception:
         logging.exception("Max topup: payment init failed for order_id: %s", order_id)
-        await safe_send_message(bot, 
+        await safe_send_message(bot,
             "Не удалось создать форму оплаты\n"
             "Попробуйте ещё раз чуть позже",
             chat_id=chat_id,
@@ -124,9 +124,9 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
         tinkoff_response=tinkoff_response,
     )
 
-    payment_msg = await safe_send_message(bot, 
+    payment_msg = await safe_send_message(bot,
         f"Счёт на {amount} ₽ создан\n"
-        f"Статус: {PAYMENT_STATUSES.get(payment_status, payment_status)}",
+        f"Статус: {format_payment_status(payment_status)}",
         chat_id=chat_id,
         keyboard=make_payment_actions_keyboard(order_id, payment_url),
     )
@@ -166,7 +166,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         tinkoff_response = await get_payment_state(payment.payment_id)
     except Exception:
         logging.exception("Max check_payment: failed to get state for order: %s", order_id)
-        await safe_send_message(bot, 
+        await safe_send_message(bot,
             "Не удалось проверить статус платежа\n"
             "Попробуйте ещё раз",
             chat_id=chat_id,
@@ -185,7 +185,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         duration_str = available_time_by_balance(balance)
 
         await safe_edit_message(bot, message_id, f"✅ Оплачено {int(payment.amount)} ₽", attachments=[])
-        await safe_send_message(bot, 
+        await safe_send_message(bot,
             f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
             f"Баланс: {balance} ₽\n"
             f"Хватит на распознавание: {duration_str}",
