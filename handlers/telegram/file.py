@@ -30,6 +30,8 @@ LONG_AUDIO_THRESHOLD = 120  # seconds; files longer than this use Replicate
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming media files."""
     message = update.message
+    if message is None:  # edited_message updates have no .message
+        return
     user_id = message.from_user.id
     user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:

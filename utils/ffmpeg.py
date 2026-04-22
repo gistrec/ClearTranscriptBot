@@ -104,7 +104,7 @@ async def get_media_duration(source: str | Path) -> float:
         out = stdout.decode().strip()
         return float(out)
     except Exception:
-        logging.exception(f"Failed to get media duration for {source}")
+        logging.warning(f"Failed to get media duration for {source}", exc_info=True)
         return 0.0
 
 
