@@ -16,7 +16,7 @@ from database.queries import (
     confirm_payment,
 )
 from payment import init_payment, get_payment_state, cancel_payment, format_payment_status
-from utils.utils import available_time_by_balance
+from utils.utils import available_time_by_balance, build_topup_text
 from handlers.max.common import make_topup_amounts_keyboard, make_payment_actions_keyboard
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
@@ -25,6 +25,17 @@ from messengers.max import safe_callback_answer, safe_send_message, safe_edit_me
 BOT_URL = "https://max.ru/id420529656333_bot"
 
 TOPUP_AMOUNTS = (50, 100, 250, 500)
+
+
+def _build_payment_text(amount: int, status: str, payment_url: str, strikethrough_link: bool) -> str:
+    link = f"[Оплатить]({payment_url})"
+    if strikethrough_link:
+        link = f"~{link}~"
+    return (
+        f"Счёт на {amount} ₽ создан\n"
+        f"Статус: {format_payment_status(status)}\n\n"
+        f"{link}"
+    )
 
 
 @sentry_bind_user_max
@@ -41,7 +52,7 @@ async def handle_max_topup(message: aiomax.Message, bot: aiomax.Bot) -> None:
         add_user(user_id, PLATFORM_MAX)
 
     await safe_send_message(bot,
-        "Выберите сумму пополнения:",
+        build_topup_text("Выберите сумму пополнения"),
         chat_id=message.recipient.chat_id,
         keyboard=make_topup_amounts_keyboard(),
     )
@@ -78,7 +89,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
         await safe_edit_message(bot, message_id, "Сумма пополнения недоступна", attachments=[])
         return
 
-    await safe_edit_message(bot, message_id, f"Сумма пополнения: {amount} ₽", attachments=[])
+    await safe_edit_message(bot, message_id, build_topup_text(f"Сумма пополнения: {amount} ₽"), attachments=[])
 
     order_id = f"max-{user_id}-{int(time.time() * 1000)}"
 
@@ -125,8 +136,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     )
 
     payment_msg = await safe_send_message(bot,
-        f"Счёт на {amount} ₽ создан\n"
-        f"Статус: {format_payment_status(payment_status)}",
+        _build_payment_text(amount, payment_status, payment_url, strikethrough_link=False),
         chat_id=chat_id,
         keyboard=make_payment_actions_keyboard(order_id, payment_url),
     )
@@ -147,6 +157,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         user_id = int(callback.user.user_id)
     except (IndexError, ValueError, AttributeError):
         logging.exception("Max check_payment: invalid callback data: %s", callback.payload)
+        await safe_edit_message(bot, callback.message.body.message_id, "Некорректные данные платежа", attachments=[])
         return
 
     message_id = callback.message.body.message_id
@@ -184,7 +195,10 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         balance = Decimal(user.balance or 0)
         duration_str = available_time_by_balance(balance)
 
-        await safe_edit_message(bot, message_id, f"✅ Оплачено {int(payment.amount)} ₽", attachments=[])
+        await safe_edit_message(bot, message_id,
+            _build_payment_text(int(payment.amount), payment_status, payment.payment_url, strikethrough_link=True),
+            attachments=[],
+        )
         await safe_send_message(bot,
             f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
             f"Баланс: {balance} ₽\n"
@@ -205,6 +219,7 @@ async def handle_max_cancel_payment(callback: aiomax.Callback, bot: aiomax.Bot) 
         user_id = int(callback.user.user_id)
     except (IndexError, ValueError, AttributeError):
         logging.exception("Max cancel_payment: invalid callback data: %s", callback.payload)
+        await safe_edit_message(bot, callback.message.body.message_id, "Некорректные данные платежа", attachments=[])
         return
 
     message_id = callback.message.body.message_id

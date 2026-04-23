@@ -14,7 +14,7 @@ from database.queries import add_user, get_user, \
     create_payment, get_payment_by_order_id, update_payment, confirm_payment
 
 from utils.sentry import sentry_bind_user, sentry_transaction
-from utils.utils import available_time_by_balance
+from utils.utils import available_time_by_balance, build_topup_text
 from messengers.telegram import safe_edit_message_text, safe_reply_text
 
 
@@ -53,20 +53,6 @@ def _build_payment_actions_keyboard(order_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def _build_topup_text(last_line: str) -> str:
-    return (
-        "Пополняя баланс, вы соглашаетесь с условиями "
-        "[публичной оферты](https://clear-transcript-bot.gistrec.cloud/user-agreement.html) "
-        "и [политикой обработки персональных данных](https://clear-transcript-bot.gistrec.cloud/privacy-policy.html)\n\n"
-
-        "Доступные способы оплаты:\n"
-        "\\* Банковские карты \\(Visa, MasterCard, Мир\\)\n"
-        "\\* Система быстрых платежей \\(СБП\\)\n\n"
-
-        f"{last_line}"
-    )
-
-
 def _build_payment_text(amount: int, status: str, payment_url: str, strikethrough_link: bool) -> str:
     safe_url = escape_markdown(payment_url, version=2)
 
@@ -90,7 +76,7 @@ async def handle_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await safe_reply_text(
         update.message,
-        text=_build_topup_text("Выберите сумму пополнения"),
+        text=build_topup_text("Выберите сумму пополнения"),
         reply_markup=_build_topup_amounts_keyboard(),
         parse_mode="MarkdownV2",
         disable_web_page_preview=True,
@@ -105,7 +91,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     if query.data == "topup:cancel":
         await safe_edit_message_text(query,
-            text=_build_topup_text("Пополнение отменено"),
+            text="Пополнение отменено",
             reply_markup=None,
             parse_mode="MarkdownV2",
             disable_web_page_preview=True,
@@ -117,17 +103,17 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         amount = int(amount_str)
     except (ValueError, AttributeError):
         logging.exception(f"Invalid topup callback data: {query.data}")
-        await safe_edit_message_text(query,"Некорректная сумма пополнения")
+        await safe_edit_message_text(query, "Некорректная сумма пополнения")
         return
 
     if amount not in TOPUP_AMOUNTS:
         logging.error(f"Unavailable topup amount selected: {amount}")
-        await safe_edit_message_text(query,"Сумма пополнения недоступна")
+        await safe_edit_message_text(query, "Сумма пополнения недоступна")
         return
 
     # Редактируем сообщение с выбором суммы
     await safe_edit_message_text(query,
-        text=_build_topup_text(f"Сумма пополнения: {amount} ₽"),
+        text=build_topup_text(f"Сумма пополнения: {amount} ₽"),
         reply_markup=None,
         parse_mode="MarkdownV2",
         disable_web_page_preview=True,
@@ -203,13 +189,13 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         order_id = query.data.split(":", 2)[2]
     except (IndexError, AttributeError):
         logging.exception(f"Invalid payment check callback data: {query.data}")
-        await safe_edit_message_text(query,"Некорректные данные платежа", reply_markup=None)
+        await safe_edit_message_text(query, "Некорректные данные платежа", reply_markup=None)
         return
 
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.user_id != query.from_user.id:
         logging.error(f"Payment not found for order_id: {order_id}")
-        await safe_edit_message_text(query,"Платёж не найден", reply_markup=None)
+        await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
         return
 
     if payment.status in ("CONFIRMED", "AUTHORIZED"):
@@ -238,7 +224,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     if payment_status in ("CONFIRMED", "AUTHORIZED"):
         won, user = confirm_payment(order_id, payment_status)
         if not won:
-            await safe_edit_message_text(query,"Платёж уже завершён ранее", reply_markup=None)
+            await safe_edit_message_text(query, "Платёж уже завершён ранее", reply_markup=None)
             return
 
         balance = Decimal(user.balance or 0)
@@ -278,12 +264,12 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
         order_id = query.data.split(":", 2)[2]
     except (IndexError, AttributeError):
         logging.exception(f"Invalid payment cancel callback data: {query.data}")
-        await safe_edit_message_text(query,"Некорректные данные платежа", reply_markup=None)
+        await safe_edit_message_text(query, "Некорректные данные платежа", reply_markup=None)
         return
 
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.user_id != query.from_user.id:
-        await safe_edit_message_text(query,"Платёж не найден", reply_markup=None)
+        await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
         return
 
     await safe_edit_message_text(query,

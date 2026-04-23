@@ -28,23 +28,23 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         _, id_str = query.data.split(":", 1)
         task_id = int(id_str)
     except ValueError:
-        await safe_edit_message_text(query,"Некорректная задача")
+        await safe_edit_message_text(query, "Некорректная задача")
         return
 
     task = get_transcription(task_id)
     user_id = query.from_user.id
 
     if task is None or task.user_id != user_id or task.user_platform != PLATFORM_TELEGRAM:
-        await safe_edit_message_text(query,"Задача не найдена")
+        await safe_edit_message_text(query, "Задача не найдена")
         return
 
     if task.status != "pending":
-        await safe_edit_message_text(query,"Задача уже запущена")
+        await safe_edit_message_text(query, "Задача уже запущена")
         return
 
     user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
-        await safe_edit_message_text(query,"Пользователь не найден")
+        await safe_edit_message_text(query, "Пользователь не найден")
         return
 
     price_for_user = Decimal(task.price_for_user or 0)
@@ -74,7 +74,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     audio_duration_str = format_duration(task.duration_seconds)
     elapsed_str = format_duration(0)
     await safe_edit_message_text(query,
-        f"⏳ Задача в работе\n\n"
+        f"⏳ Распознавание в процессе\n\n"
         f"Длительность: {audio_duration_str}\n"
         f"Стоимость: {task.price_for_user} ₽\n\n"
         f"Время обработки: {elapsed_str}"

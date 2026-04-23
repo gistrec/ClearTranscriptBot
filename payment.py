@@ -2,6 +2,8 @@ import os
 import httpx
 import hashlib
 
+from utils.sentry import sentry_span
+
 
 TERMINAL_KEY = os.environ["TERMINAL_KEY"]
 TERMINAL_PASSWORD = os.environ["TERMINAL_PASSWORD"]
@@ -51,6 +53,7 @@ def _generate_token(params: dict) -> str:
     return hashlib.sha256(token_str.encode()).hexdigest()
 
 
+@sentry_span(op="payment.init")
 async def init_payment(
     order_id: str,
     amount: int,
@@ -76,6 +79,7 @@ async def init_payment(
         return response.json()
 
 
+@sentry_span(op="payment.get_state")
 async def get_payment_state(payment_id: int) -> dict:
     payload = {
         "TerminalKey": TERMINAL_KEY,
@@ -89,6 +93,7 @@ async def get_payment_state(payment_id: int) -> dict:
         return response.json()
 
 
+@sentry_span(op="payment.cancel")
 async def cancel_payment(payment_id: int) -> dict:
     payload = {
         "TerminalKey": TERMINAL_KEY,

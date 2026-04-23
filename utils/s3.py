@@ -49,6 +49,7 @@ async def upload_file(
     return await asyncio.to_thread(_upload)
 
 
+@sentry_span(op="s3.signed_url")
 async def get_signed_url(object_name: str, expires_in: int = 3600) -> Optional[str]:
     """Generate a fresh presigned URL for an existing S3 object."""
 

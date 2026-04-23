@@ -115,6 +115,25 @@ async def safe_send_document(bot, chat_id, reply_to_message_id, document, captio
         return None
 
 
+async def safe_edit_message_reply_markup(query, *args, **kwargs):
+    try:
+        return await query.edit_message_reply_markup(*args, **kwargs)
+    except Forbidden as exc:
+        if _BOT_BLOCKED in exc.message.lower():
+            logging.warning("TG edit_message_reply_markup skipped (bot blocked): %s", exc)
+        else:
+            logging.exception("TG edit_message_reply_markup failed (Forbidden): %s", exc)
+        return None
+    except BadRequest as exc:
+        if exc.message.startswith(_MSG_NOT_MODIFIED):
+            return None
+        logging.exception("TG edit_message_reply_markup failed")
+        return None
+    except Exception:
+        logging.exception("TG edit_message_reply_markup failed")
+        return None
+
+
 async def safe_remove_keyboard(bot, chat_id, message_id) -> None:
     try:
         await bot.edit_message_reply_markup(

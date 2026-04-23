@@ -6,6 +6,8 @@ import replicate
 
 from typing import Optional
 
+from utils.sentry import sentry_span
+
 
 REPLICATE_LLM_MODEL = "openai/gpt-5-mini"
 
@@ -54,6 +56,7 @@ SUMMARIZE_PROMPT = (
 )
 
 
+@sentry_span(op="summarization.start")
 async def start_summarization(text: str) -> Optional[str]:
     """Submit a summarization prediction to Replicate.
 
@@ -75,6 +78,7 @@ async def start_summarization(text: str) -> Optional[str]:
     return await asyncio.to_thread(_create)
 
 
+@sentry_span(op="summarization.check")
 async def check_summarization(operation_id: str) -> Optional[dict]:
     """Poll a Replicate prediction.
 

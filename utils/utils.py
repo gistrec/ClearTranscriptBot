@@ -4,6 +4,22 @@ from decimal import Decimal
 from typing import Optional
 
 
+_OFFER_URL = "https://clear-transcript-bot.ru/user-agreement.html"
+_PRIVACY_URL = "https://clear-transcript-bot.ru/privacy-policy.html"
+
+
+def build_topup_text(last_line: str) -> str:
+    return (
+        "Пополняя баланс, вы соглашаетесь с условиями "
+        f"[публичной оферты]({_OFFER_URL}) "
+        f"и [политикой обработки персональных данных]({_PRIVACY_URL})\n\n"
+        "Доступные способы оплаты:\n"
+        "\\* Банковские карты \\(Visa, MasterCard, Мир\\)\n"
+        "\\* Система быстрых платежей \\(СБП\\)\n\n"
+        f"{last_line}"
+    )
+
+
 MoscowTimezone = ZoneInfo("Europe/Moscow")
 
 

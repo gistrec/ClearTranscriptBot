@@ -4,7 +4,10 @@ from pathlib import Path
 
 import httpx
 
+from utils.sentry import sentry_span
 
+
+@sentry_span(op="max.download_file")
 async def download_max_file(url: str, destination: str | Path) -> bool:
     """Stream a Max file attachment from *url* directly to *destination*.
 

@@ -39,16 +39,16 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
 
     task = get_transcription(task_id)
     if task is None or task.user_id != user_id or task.user_platform != PLATFORM_MAX:
-        await safe_edit_message(bot, message_id, attachments=[], text="Задача не найдена")
+        await safe_edit_message(bot, message_id, "Задача не найдена", attachments=[])
         return
 
     if task.status != "pending":
-        await safe_edit_message(bot, message_id, attachments=[], text="Задача уже запущена")
+        await safe_edit_message(bot, message_id, "Задача уже запущена", attachments=[])
         return
 
     user = get_user(user_id, PLATFORM_MAX)
     if user is None:
-        await safe_edit_message(bot, message_id, attachments=[], text="Пользователь не найден")
+        await safe_edit_message(bot, message_id, "Пользователь не найден", attachments=[])
         return
 
     price_for_user = Decimal(task.price_for_user or 0)
@@ -83,7 +83,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     elapsed_str = format_duration(0)
     await safe_edit_message(bot,
         message_id,
-        f"⏳ Задача в работе\n\n"
+        f"⏳ Распознавание в процессе\n\n"
         f"Длительность: {audio_duration_str}\n"
         f"Стоимость: {task.price_for_user} ₽\n\n"
         f"Время обработки: {elapsed_str}",

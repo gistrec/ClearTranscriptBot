@@ -19,16 +19,16 @@ async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         _, id_str = query.data.split(":", 1)
         task_id = int(id_str)
     except ValueError:
-        await safe_edit_message_text(query,"Некорректная задача")
+        await safe_edit_message_text(query, "Некорректная задача")
         return
 
     task = get_transcription(task_id)
     user_id = query.from_user.id
     if task is None or task.user_id != user_id or task.user_platform != PLATFORM_TELEGRAM:
-        await safe_edit_message_text(query,"Задача не найдена")
+        await safe_edit_message_text(query, "Задача не найдена")
         return
     if task.status != "pending":
-        await safe_edit_message_text(query,"Задача уже обработана")
+        await safe_edit_message_text(query, "Задача уже обработана")
         return
 
     update_transcription(task.id, status="cancelled")
