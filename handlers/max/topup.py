@@ -128,7 +128,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     )
 
     payment_msg = await safe_send_message(bot,
-        build_payment_text(amount, payment_status, payment_url, strikethrough_link=False),
+        build_payment_text(amount, payment_status, payment_url, strikethrough_url=False),
         chat_id=chat_id,
         keyboard=make_payment_actions_keyboard(order_id),
         format="markdown",
@@ -190,7 +190,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         duration_str = available_time_by_balance(balance)
 
         await safe_edit_message(bot, message_id,
-            build_payment_text(int(payment.amount), payment_status, payment.payment_url, strikethrough_link=True),
+            build_payment_text(int(payment.amount), payment_status, payment.payment_url, strikethrough_url=True),
             attachments=[],
             format="markdown",
         )

@@ -3,10 +3,9 @@ import time
 
 from decimal import Decimal
 
-from payment import init_payment, get_payment_state, cancel_payment, format_payment_status
+from payment import init_payment, get_payment_state, cancel_payment
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM
@@ -14,7 +13,7 @@ from database.queries import add_user, get_user, \
     create_payment, get_payment_by_order_id, update_payment, confirm_payment
 
 from utils.sentry import sentry_bind_user, sentry_transaction
-from utils.utils import available_time_by_balance, build_topup_text
+from utils.utils import available_time_by_balance, build_topup_text, build_payment_text
 from messengers.telegram import safe_edit_message_text, safe_reply_text
 
 
@@ -53,18 +52,6 @@ def _build_payment_actions_keyboard(order_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def _build_payment_text(amount: int, status: str, payment_url: str, strikethrough_link: bool) -> str:
-    safe_url = escape_markdown(payment_url, version=2)
-
-    if strikethrough_link:
-        safe_url = f"~{safe_url}~"  # ← только ссылка
-
-    return (
-        f"Счёт на {amount} ₽ создан\n"
-        f"Статус: {format_payment_status(status)}\n\n"
-        f"Оплатить: {safe_url}"
-    )
-
 
 @sentry_bind_user
 @sentry_transaction(name="topup", op="telegram.command")
@@ -91,7 +78,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     if query.data == "topup:cancel":
         await safe_edit_message_text(query,
-            text="Пополнение отменено",
+            text="🚫 Пополнение отменено",
             reply_markup=None,
             parse_mode="MarkdownV2",
             disable_web_page_preview=True,
@@ -169,7 +156,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     message = await safe_reply_text(
         query.message,
-        text=_build_payment_text(amount, payment_status, payment_url, strikethrough_link=False),
+        text=build_payment_text(amount, payment_status, payment_url, strikethrough_url=False, escape_url=True),
         reply_markup=_build_payment_actions_keyboard(order_id),
         parse_mode="MarkdownV2",
         disable_web_page_preview=True,
@@ -232,11 +219,12 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
 
         # Изменяем сообщение со ссылкой для оплаты
         await safe_edit_message_text(query,
-            text=_build_payment_text(
+            text=build_payment_text(
                 int(payment.amount),
                 payment_status,
                 payment.payment_url,
-                strikethrough_link=True
+                strikethrough_url=True,
+                escape_url=True,
             ),
             reply_markup=None,
             parse_mode="MarkdownV2",
@@ -273,7 +261,7 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     await safe_edit_message_text(query,
-        text="Пополнение отменено",
+        text="🚫 Пополнение отменено",
         reply_markup=None,
     )
 

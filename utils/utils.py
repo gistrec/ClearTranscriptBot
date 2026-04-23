@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from typing import Optional
 
+from telegram.helpers import escape_markdown
+
 from payment import format_payment_status
 
 
@@ -10,14 +12,20 @@ _OFFER_URL = "https://clear-transcript-bot.ru/user-agreement"
 _PRIVACY_URL = "https://clear-transcript-bot.ru/privacy-policy"
 
 
-def build_payment_text(amount: int, status: str, payment_url: str, strikethrough_link: bool) -> str:
-    link = f"[Оплатить]({payment_url})"
-    if strikethrough_link:
-        link = f"~{link}~"
+def build_payment_text(
+    amount: int,
+    status: str,
+    payment_url: str,
+    strikethrough_url: bool = False,  # set True to strike through the URL when payment is confirmed
+    escape_url: bool = False,  # set True when sending via Telegram MarkdownV2
+) -> str:
+    payment_url = escape_markdown(payment_url, version=2) if escape_url else payment_url
+    payment_url = f"~{payment_url}~" if strikethrough_url else payment_url
+
     return (
         f"Счёт на {amount} ₽ создан\n"
         f"Статус: {format_payment_status(status)}\n\n"
-        f"{link}"
+        f"Оплатить: {payment_url}"
     )
 
 
