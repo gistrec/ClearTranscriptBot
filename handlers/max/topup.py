@@ -81,7 +81,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
         await safe_edit_message(bot, message_id, "Сумма пополнения недоступна", attachments=[])
         return
 
-    await safe_edit_message(bot, message_id, build_topup_text(f"Сумма пополнения: {amount} ₽"), attachments=[], format="markdown", disable_link_preview=True)
+    await safe_edit_message(bot, message_id, build_topup_text(f"Сумма пополнения: {amount} ₽"), attachments=[], format="markdown")
 
     order_id = f"max-{user_id}-{int(time.time() * 1000)}"
 
@@ -193,7 +193,6 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
             build_payment_text(int(payment.amount), payment_status, payment.payment_url, strikethrough_link=True),
             attachments=[],
             format="markdown",
-            disable_link_preview=True,
         )
         await safe_send_message(bot,
             f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"

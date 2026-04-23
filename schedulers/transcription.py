@@ -129,111 +129,106 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
 
         source_stem = Path(task.audio_s3_path).stem
-        tmp_dir = Path(tempfile.mkdtemp())
-        path = tmp_dir / f"{source_stem}.txt"
-        path.write_text(text, encoding="utf-8")
+        with tempfile.TemporaryDirectory() as workdir:
+            path = Path(workdir) / f"{source_stem}.txt"
+            path.write_text(text, encoding="utf-8")
 
-        object_name = f"result/{task.user_id}/{path.name}"
-        s3_url = await upload_file(path, object_name)
-        if not s3_url:
-            update_transcription(task.id, status="failed")
-            change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
-            fail_text = (
-                "❌ Распознавание завершилось с ошибкой\n\n"
-                "Попробуйте ещё раз"
-            )
-            if sender is not None:
-                await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
-            else:
-                await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
-            path.unlink(missing_ok=True)
-            tmp_dir.rmdir()
-            continue
-
-        audio_duration_str = format_duration(task.duration_seconds)
-
-        # Build platform-specific action keyboard
-        if task.duration_seconds > SUMMARIZE_THRESHOLD:
-            tg_action_keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
-            ]])
-            max_action_keyboard = _make_max_summarize_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
-        else:
-            tg_action_keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{task.id}")
-            ]])
-            max_action_keyboard = _make_max_send_as_text_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
-
-        done_text = (
-            f"✅ Распознавание завершено\n\n"
-            f"Длительность: {audio_duration_str}\n"
-            f"Стоимость: {task.price_for_user} ₽\n\n"
-            f"Время обработки: {duration_str}\n\n"
-        )
-        if sender is not None:
-            await sender.edit_message(
-                task.user_platform, task.user_id, task.message_id, done_text,
-                tg_markup=tg_action_keyboard,
-                max_keyboard=max_action_keyboard,
-            )
-        else:
-            await safe_edit_message_text(
-                context.bot, task.user_id, task.message_id, done_text,
-                reply_markup=tg_action_keyboard,
-            )
-
-        try:
-            tg_rating_keyboard = make_rating_keyboard(task.id)
-            max_rating_keyboard = _make_max_rating_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
-
-            with path.open("rb") as f:
+            object_name = f"result/{task.user_id}/{path.name}"
+            s3_url = await upload_file(path, object_name)
+            if not s3_url:
+                update_transcription(task.id, status="failed")
+                change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
+                fail_text = (
+                    "❌ Распознавание завершилось с ошибкой\n\n"
+                    "Попробуйте ещё раз"
+                )
                 if sender is not None:
-                    await sender.send_document(
-                        task.user_platform,
-                        task.user_id,
-                        task.message_id,
-                        f,
-                        path.name,
-                        RATING_PROMPT,
-                        tg_markup=tg_rating_keyboard,
-                        max_keyboard=max_rating_keyboard,
-                        connect_timeout=15,
-                        write_timeout=30,
-                    )
+                    await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
                 else:
-                    await context.bot.send_document(
-                        chat_id=task.user_id,
-                        reply_to_message_id=int(task.message_id),
-                        document=f,
-                        caption=RATING_PROMPT,
-                        reply_markup=tg_rating_keyboard,
-                        connect_timeout=15,
-                        write_timeout=30,
-                    )
+                    await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
+                continue
 
-            update_transcription(
-                task.id,
-                status="completed",
-                result_s3_path=s3_url,
-                llm_tokens_by_encoding=token_counts,
-            )
-        except Exception:
-            logging.exception(f"Failed to send result for task {task.id}")
-            update_transcription(
-                task.id,
-                status="failed",
-                result_s3_path=s3_url,
-                llm_tokens_by_encoding=token_counts,
-            )
-            change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if sending failed
-            fail_text = (
-                "❌ Распознавание завершилось с ошибкой\n\n"
-                "Попробуйте ещё раз"
+            audio_duration_str = format_duration(task.duration_seconds)
+
+            # Build platform-specific action keyboard
+            if task.duration_seconds > SUMMARIZE_THRESHOLD:
+                tg_action_keyboard = InlineKeyboardMarkup([[
+                    InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
+                ]])
+                max_action_keyboard = _make_max_summarize_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+            else:
+                tg_action_keyboard = InlineKeyboardMarkup([[
+                    InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{task.id}")
+                ]])
+                max_action_keyboard = _make_max_send_as_text_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+
+            done_text = (
+                f"✅ Распознавание завершено\n\n"
+                f"Длительность: {audio_duration_str}\n"
+                f"Стоимость: {task.price_for_user} ₽\n\n"
+                f"Время обработки: {duration_str}\n\n"
             )
             if sender is not None:
-                await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
+                await sender.edit_message(
+                    task.user_platform, task.user_id, task.message_id, done_text,
+                    tg_markup=tg_action_keyboard,
+                    max_keyboard=max_action_keyboard,
+                )
             else:
-                await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
-        finally:
-            path.unlink(missing_ok=True)
-            tmp_dir.rmdir()
+                await safe_edit_message_text(
+                    context.bot, task.user_id, task.message_id, done_text,
+                    reply_markup=tg_action_keyboard,
+                )
+
+            try:
+                tg_rating_keyboard = make_rating_keyboard(task.id)
+                max_rating_keyboard = _make_max_rating_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+
+                with path.open("rb") as f:
+                    if sender is not None:
+                        await sender.send_document(
+                            task.user_platform,
+                            task.user_id,
+                            task.message_id,
+                            f,
+                            path.name,
+                            RATING_PROMPT,
+                            tg_markup=tg_rating_keyboard,
+                            max_keyboard=max_rating_keyboard,
+                            connect_timeout=15,
+                            write_timeout=30,
+                        )
+                    else:
+                        await context.bot.send_document(
+                            chat_id=task.user_id,
+                            reply_to_message_id=int(task.message_id),
+                            document=f,
+                            caption=RATING_PROMPT,
+                            reply_markup=tg_rating_keyboard,
+                            connect_timeout=15,
+                            write_timeout=30,
+                        )
+
+                update_transcription(
+                    task.id,
+                    status="completed",
+                    result_s3_path=s3_url,
+                    llm_tokens_by_encoding=token_counts,
+                )
+            except Exception:
+                logging.exception(f"Failed to send result for task {task.id}")
+                update_transcription(
+                    task.id,
+                    status="failed",
+                    result_s3_path=s3_url,
+                    llm_tokens_by_encoding=token_counts,
+                )
+                change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if sending failed
+                fail_text = (
+                    "❌ Распознавание завершилось с ошибкой\n\n"
+                    "Попробуйте ещё раз"
+                )
+                if sender is not None:
+                    await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
+                else:
+                    await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
