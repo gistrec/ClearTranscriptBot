@@ -6,7 +6,7 @@ import aiomax
 from database.queries import get_transcription
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_send_message, safe_edit_message
+from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
 
 
 _MAX_MSG_LEN = 4000
@@ -15,7 +15,7 @@ _MAX_MSG_LEN = 4000
 @sentry_bind_user_max
 @sentry_transaction(name="send_as_text", op="max.callback")
 async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
+    await safe_callback_answer(callback, notification="")
 
     try:
         _, transcription_id_str = callback.payload.split(":")

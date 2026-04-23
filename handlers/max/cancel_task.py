@@ -7,13 +7,13 @@ from database.models import PLATFORM_MAX
 from database.queries import get_transcription, update_transcription
 from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_edit_message
+from messengers.max import safe_callback_answer, safe_edit_message
 
 
 @sentry_bind_user_max
 @sentry_transaction(name="transcription.cancel", op="max.callback")
 async def handle_max_cancel_task(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
+    await safe_callback_answer(callback, notification="")
 
     try:
         _, id_str = callback.payload.split(":", 1)

@@ -6,7 +6,7 @@ import aiomax
 from database.models import PLATFORM_MAX
 from database.queries import get_transcription, update_transcription
 from handlers.max.common import make_rating_keyboard
-from messengers.max import safe_send_message
+from messengers.max import safe_callback_answer, safe_send_message
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
@@ -39,7 +39,8 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
         if att.type == "file"
     ]
     keyboard = make_rating_keyboard(transcription_id, selected=rating)
-    await callback.answer(
+    await safe_callback_answer(
+        callback,
         notification="Спасибо за оценку!",
         text=RATING_PROMPT,
         keyboard=keyboard,

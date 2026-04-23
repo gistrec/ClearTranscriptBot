@@ -19,7 +19,7 @@ from payment import init_payment, get_payment_state, cancel_payment, format_paym
 from utils.utils import available_time_by_balance
 from handlers.max.common import make_topup_amounts_keyboard, make_payment_actions_keyboard
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_send_message, safe_edit_message
+from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
 
 
 BOT_URL = "https://max.ru/id420529656333_bot"
@@ -50,7 +50,7 @@ async def handle_max_topup(message: aiomax.Message, bot: aiomax.Bot) -> None:
 @sentry_bind_user_max
 @sentry_transaction(name="topup_callback", op="max.callback")
 async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
+    await safe_callback_answer(callback, notification="")
 
     try:
         user_id = int(callback.user.user_id)
@@ -140,7 +140,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
 @sentry_bind_user_max
 @sentry_transaction(name="payment.check", op="max.callback")
 async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
+    await safe_callback_answer(callback, notification="")
 
     try:
         order_id = callback.payload.split(":", 2)[2]
@@ -198,7 +198,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
 @sentry_bind_user_max
 @sentry_transaction(name="payment.cancel", op="max.callback")
 async def handle_max_cancel_payment(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
+    await safe_callback_answer(callback, notification="")
 
     try:
         order_id = callback.payload.split(":", 2)[2]

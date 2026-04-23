@@ -15,13 +15,13 @@ from database.queries import (
 from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import start_transcription, get_model_name
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_edit_message
+from messengers.max import safe_callback_answer, safe_edit_message
 
 
 @sentry_bind_user_max
 @sentry_transaction(name="transcription.create", op="max.callback")
 async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
+    await safe_callback_answer(callback, notification="")
 
     try:
         _, id_str = callback.payload.split(":", 1)

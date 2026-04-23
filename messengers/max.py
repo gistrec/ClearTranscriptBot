@@ -29,6 +29,17 @@ def _is_chat_denied(exc: Exception) -> bool:
     return bool(args) and args[0] == "chat.denied"
 
 
+async def safe_callback_answer(callback: aiomax.Callback, **kwargs):
+    try:
+        return await callback.answer(**kwargs)
+    except Exception as exc:
+        if _is_chat_denied(exc):
+            logging.warning("Max callback.answer skipped (suspended dialog): %s", exc)
+            return None
+        logging.exception("Max callback.answer failed user=%s", getattr(callback.user, "user_id", "?"))
+        return None
+
+
 async def safe_send_message(bot: aiomax.Bot, *args, **kwargs):
     try:
         return await bot.send_message(*args, **kwargs)
@@ -36,7 +47,9 @@ async def safe_send_message(bot: aiomax.Bot, *args, **kwargs):
         if _is_chat_denied(exc):
             logging.warning("Max send_message skipped (suspended dialog): %s", exc)
             return None
-        raise
+        chat_id = kwargs.get("chat_id") or kwargs.get("user_id") or (args[1] if len(args) > 1 else "?")
+        logging.exception("Max send_message failed chat=%s", chat_id)
+        return None
 
 
 async def safe_edit_message(bot: aiomax.Bot, *args, **kwargs):
@@ -50,14 +63,15 @@ async def safe_edit_message(bot: aiomax.Bot, *args, **kwargs):
         return None
 
 
-async def safe_remove_keyboard(bot: aiomax.Bot, message_id) -> None:
+async def safe_remove_keyboard(bot: aiomax.Bot, message_id):
     try:
-        await bot.edit_message(str(message_id), attachments=[])
+        return await bot.edit_message(str(message_id), attachments=[])
     except Exception as exc:
         if _is_chat_denied(exc):
             logging.warning("Max remove_keyboard skipped (suspended dialog): %s", exc)
-            return
+            return None
         logging.exception("Max remove_keyboard failed msg=%s", message_id)
+        return None
 
 
 async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, caption: str, keyboard=None):

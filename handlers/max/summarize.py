@@ -7,7 +7,7 @@ from database.queries import create_summarization, get_transcription
 from database.models import PLATFORM_MAX
 from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_send_message, safe_edit_message
+from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
 
 SUMMARIZE_THRESHOLD = 300  # seconds
 
@@ -15,7 +15,7 @@ SUMMARIZE_THRESHOLD = 300  # seconds
 @sentry_bind_user_max
 @sentry_transaction(name="summarization.create", op="max.callback")
 async def handle_max_summarize(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
-    await callback.answer(notification="")
+    await safe_callback_answer(callback, notification="")
 
     try:
         _, transcription_id_str = callback.payload.split(":")

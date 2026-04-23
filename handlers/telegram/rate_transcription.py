@@ -55,7 +55,7 @@ async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAUL
         reply_markup=make_rating_keyboard(transcription_id, selected=rating),
     )
 
-    if rating <= 3:
+    if rating <= 2:
         if context.user_data is not None:
             context.user_data["awaiting_feedback_for"] = transcription_id
         await safe_send_message(context.bot, chat_id=query.from_user.id, text=FEEDBACK_PROMPT)
