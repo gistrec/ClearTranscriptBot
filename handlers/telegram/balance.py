@@ -10,6 +10,7 @@ from payment import format_payment_status
 
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance
+from messengers.telegram import safe_reply_text
 
 
 @sentry_bind_user
@@ -33,7 +34,8 @@ async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     topups_text = "\n".join(topup_lines) if topup_lines else "Пополнений пока нет"
 
-    await update.message.reply_text(
+    await safe_reply_text(
+        update.message,
         f"Текущий баланс: {balance} ₽\n"
         f"Хватит на распознавание: {duration_str}\n\n"
         "Последние пополнения:\n"

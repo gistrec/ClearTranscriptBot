@@ -9,6 +9,7 @@ from database.queries import add_user, get_user, update_transcription
 from utils.marketing import track_goal
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance
+from messengers.telegram import safe_reply_text
 
 
 def extract_start_payload(text: str) -> str | None:
@@ -29,7 +30,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         feedback_for = context.user_data.pop("awaiting_feedback_for", None)
         if feedback_for is not None:
             update_transcription(feedback_for, rating_comment=text.strip())
-            await update.message.reply_text("Спасибо! Ваш отзыв поможет нам улучшить качество")
+            await safe_reply_text(update.message, "Спасибо! Ваш отзыв поможет нам улучшить качество")
             return
 
     user = get_user(user_id, PLATFORM_TELEGRAM)
@@ -42,7 +43,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
-    await update.message.reply_text(
+    await safe_reply_text(
+        update.message,
         "Отправьте видео или аудио — вернём текст\n\n"
         "Поддерживаем все популярные форматы:\n"
         "• Видео: mp4, mov, mkv, webm и другие\n"

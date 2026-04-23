@@ -4,11 +4,41 @@ import logging
 from telegram.error import Forbidden
 
 
+async def safe_reply_text(message, *args, **kwargs):
+    try:
+        return await message.reply_text(*args, **kwargs)
+    except Forbidden as exc:
+        logging.warning("TG reply_text skipped (bot blocked) chat=%s: %s", message.chat_id, exc)
+        return None
+
+
 async def safe_send_message(bot, *args, **kwargs):
     try:
         return await bot.send_message(*args, **kwargs)
     except Forbidden as exc:
         logging.warning("TG send_message skipped (bot blocked): %s", exc)
+        return None
+
+
+async def safe_edit_message_text(query, *args, **kwargs):
+    try:
+        return await query.edit_message_text(*args, **kwargs)
+    except Forbidden as exc:
+        logging.warning("TG edit_message_text skipped (bot blocked): %s", exc)
+        return None
+    except Exception:
+        logging.exception("TG edit_message_text failed")
+        return None
+
+
+async def safe_edit_message_caption(query, *args, **kwargs):
+    try:
+        return await query.edit_message_caption(*args, **kwargs)
+    except Forbidden as exc:
+        logging.warning("TG edit_message_caption skipped (bot blocked): %s", exc)
+        return None
+    except Exception:
+        logging.exception("TG edit_message_caption failed")
         return None
 
 

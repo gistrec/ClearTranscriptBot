@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 
 from database.queries import get_transcription, update_transcription
 
+from messengers.telegram import safe_edit_message_caption, safe_send_message
 from utils.sentry import sentry_bind_user, sentry_transaction
 
 FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание"
@@ -48,12 +49,13 @@ async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAUL
 
     update_transcription(transcription_id, rating=rating)
 
-    await query.edit_message_caption(
+    await safe_edit_message_caption(
+        query,
         caption=RATING_PROMPT,
         reply_markup=make_rating_keyboard(transcription_id, selected=rating),
     )
 
-    if rating <= 2:
+    if rating <= 3:
         if context.user_data is not None:
             context.user_data["awaiting_feedback_for"] = transcription_id
-        await context.bot.send_message(chat_id=query.from_user.id, text=FEEDBACK_PROMPT)
+        await safe_send_message(context.bot, chat_id=query.from_user.id, text=FEEDBACK_PROMPT)

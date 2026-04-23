@@ -8,6 +8,7 @@ from database.models import PLATFORM_TELEGRAM
 from database.queries import create_summarization, get_transcription
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
+from messengers.telegram import safe_reply_text
 
 
 SUMMARIZE_THRESHOLD = 300  # seconds — show button only for audio longer than this
@@ -31,13 +32,17 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     try:
         await query.edit_message_reply_markup(reply_markup=None)
-        msg = await query.message.reply_text(
+        msg = await safe_reply_text(
+            query.message,
             f"⏳ Создаю конспект...\n\n"
             f"Время обработки: {format_duration(0)}"
         )
     except Exception:
         logging.exception("summarize: failed to start for transcription %s", transcription_id)
-        await query.message.reply_text("Не удалось создать конспект")
+        await safe_reply_text(query.message, "Не удалось создать конспект")
+        return
+
+    if msg is None:
         return
 
     create_summarization(

@@ -17,6 +17,7 @@ from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import is_supported_mime, sanitize_filename, extract_local_path
 from utils.utils import format_duration
+from messengers.telegram import safe_reply_text
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
@@ -37,7 +38,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if user is None:
         user = add_user(user_id, PLATFORM_TELEGRAM)
 
-    await message.reply_text(
+    await safe_reply_text(
+        message,
         "📥 Файл получен\n\n"
         "Подготавливаю аудио и считаю стоимость\n"
         "Это может занять до 1 минуты",
@@ -64,21 +66,24 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             mime = "audio/ogg"
             file_name = "voice.ogg"
         else:
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 "❌ Этот тип файла не поддерживается\n"
                 "Пожалуйста, отправьте видео или аудио"
             )
             return
     except Exception:
         logging.exception("Failed to get file from Telegram")
-        await message.reply_text(
+        await safe_reply_text(
+            message,
             "❌ Не удалось загрузить файл от Telegram\n"
             "Пожалуйста, попробуйте ещё раз"
         )
         return
 
     if not is_supported_mime(mime):
-        await message.reply_text(
+        await safe_reply_text(
+            message,
             "❌ Этот тип файла не поддерживается\n"
             "Пожалуйста, отправьте видео или аудио"
         )
@@ -101,7 +106,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 await file.download_to_drive(custom_path=str(local_path))
         except Exception:
             logging.exception("Failed to download file to disk")
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 "❌ Не удалось скачать файл\n"
                 "Пожалуйста, попробуйте ещё раз"
             )
@@ -109,7 +115,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         duration = await get_media_duration(local_path)
         if not duration:
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 "❌ Не удалось определить длительность файла\n"
                 "Возможно, формат не поддерживается или файл повреждён"
             )
@@ -118,7 +125,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         duration_str = format_duration(int(duration))
         if duration > MAX_AUDIO_DURATION:
             max_duration_str = format_duration(MAX_AUDIO_DURATION)
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 f"❌ Файл слишком длинный: {duration_str}\n"
                 f"Максимально допустимая длительность — {max_duration_str}"
             )
@@ -126,7 +134,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         price_for_user = speechkit_provider.cost_in_rub(duration)
         if user.balance < price_for_user:
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 f"❌ Недостаточно средств\n"
                 f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
                 f"Для пополнения баланса используйте команду /topup"
@@ -143,13 +152,15 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
         if convert_error == "no_audio_stream":
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 "❌ В этом файле не обнаружено аудио\n"
                 "Пожалуйста, отправьте файл со звуком"
             )
             return
         elif convert_error:
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 "❌ Не удалось обработать файл\n"
                 "Возможно, он имеет неподдерживаемый формат"
             )
@@ -165,7 +176,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         object_name = f"source/{user_id}/{message.message_id}_{ogg_path.name}"
         s3_url = await upload_file(ogg_path, object_name)
         if not s3_url:
-            await message.reply_text(
+            await safe_reply_text(
+                message,
                 "❌ Не удалось загрузить файл\n"
                 "Пожалуйста, попробуйте ещё раз чуть позже"
             )
@@ -194,7 +206,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     ]
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
-    await message.reply_text(
+    await safe_reply_text(
+        message,
         "🎧 Аудио подготовлено\n\n"
         f"Длительность: {duration_str}\n"
         f"Стоимость: {price_for_user} ₽"

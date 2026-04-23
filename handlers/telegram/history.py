@@ -7,6 +7,7 @@ from database.queries import get_recent_transcriptions
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration, MoscowTimezone
 from utils.tg import STATUS_EMOJI, fmt_price
+from messengers.telegram import safe_reply_text
 
 
 @sentry_bind_user
@@ -16,7 +17,8 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     items = get_recent_transcriptions(user_id, PLATFORM_TELEGRAM, limit=10)
 
     if not items:
-        await update.message.reply_text(
+        await safe_reply_text(
+            update.message,
             "История пуста\n\n"
             "Пришлите видео или аудио — вернём текст"
         )
@@ -41,4 +43,4 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • 🚫 отменено"
     )
 
-    await update.message.reply_text(msg)
+    await safe_reply_text(update.message, msg)

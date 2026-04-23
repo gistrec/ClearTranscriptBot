@@ -8,6 +8,7 @@ from database.models import PLATFORM_TELEGRAM
 from database.queries import get_transcription
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user, sentry_transaction
+from messengers.telegram import safe_reply_text
 
 
 _TG_MAX_LEN = 4096
@@ -32,13 +33,13 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     text = await download_text(object_name_from_url(transcription.result_s3_path))
     if not text:
         logging.error("send_as_text: failed to download text for transcription %s", transcription_id)
-        await query.message.reply_text("Не удалось получить текст")
+        await safe_reply_text(query.message, "Не удалось получить текст")
         return
 
     try:
         await query.edit_message_reply_markup(reply_markup=None)
         for i in range(0, len(text), _TG_MAX_LEN):
-            await query.message.reply_text(text[i:i + _TG_MAX_LEN])
+            await safe_reply_text(query.message, text[i:i + _TG_MAX_LEN])
     except Exception:
         logging.exception("send_as_text: failed to send text for transcription %s", transcription_id)
-        await query.message.reply_text("Не удалось отправить текст")
+        await safe_reply_text(query.message, "Не удалось отправить текст")
