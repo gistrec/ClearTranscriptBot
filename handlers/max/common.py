@@ -1,5 +1,5 @@
 """Shared keyboard builders for Max messenger handlers."""
-from aiomax.buttons import CallbackButton, KeyboardBuilder, LinkButton
+from aiomax.buttons import CallbackButton, KeyboardBuilder
 
 
 def make_confirm_keyboard(task_id: int) -> KeyboardBuilder:
@@ -38,10 +38,9 @@ def make_topup_amounts_keyboard() -> KeyboardBuilder:
     )
 
 
-def make_payment_actions_keyboard(order_id: str, payment_url: str) -> KeyboardBuilder:
+def make_payment_actions_keyboard(order_id: str) -> KeyboardBuilder:
     return (
         KeyboardBuilder()
-        .row(LinkButton("Оплатить", payment_url))
         .row(CallbackButton("Проверить платёж", f"payment:check:{order_id}"))
         .row(CallbackButton("Отменить платёж", f"payment:cancel:{order_id}"))
     )

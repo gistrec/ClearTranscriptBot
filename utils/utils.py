@@ -3,9 +3,22 @@ from decimal import Decimal
 
 from typing import Optional
 
+from payment import format_payment_status
+
 
 _OFFER_URL = "https://clear-transcript-bot.ru/user-agreement"
 _PRIVACY_URL = "https://clear-transcript-bot.ru/privacy-policy"
+
+
+def build_payment_text(amount: int, status: str, payment_url: str, strikethrough_link: bool) -> str:
+    link = f"[Оплатить]({payment_url})"
+    if strikethrough_link:
+        link = f"~{link}~"
+    return (
+        f"Счёт на {amount} ₽ создан\n"
+        f"Статус: {format_payment_status(status)}\n\n"
+        f"{link}"
+    )
 
 
 def build_topup_text(last_line: str) -> str:

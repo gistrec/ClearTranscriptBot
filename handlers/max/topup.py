@@ -15,8 +15,8 @@ from database.queries import (
     update_payment,
     confirm_payment,
 )
-from payment import init_payment, get_payment_state, cancel_payment, format_payment_status
-from utils.utils import available_time_by_balance, build_topup_text
+from payment import init_payment, get_payment_state, cancel_payment
+from utils.utils import available_time_by_balance, build_topup_text, build_payment_text
 from handlers.max.common import make_topup_amounts_keyboard, make_payment_actions_keyboard
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
@@ -26,16 +26,6 @@ BOT_URL = "https://max.ru/id420529656333_bot"
 
 TOPUP_AMOUNTS = (50, 100, 250, 500)
 
-
-def _build_payment_text(amount: int, status: str, payment_url: str, strikethrough_link: bool) -> str:
-    link = f"[Оплатить]({payment_url})"
-    if strikethrough_link:
-        link = f"~{link}~"
-    return (
-        f"Счёт на {amount} ₽ создан\n"
-        f"Статус: {format_payment_status(status)}\n\n"
-        f"{link}"
-    )
 
 
 @sentry_bind_user_max
@@ -138,9 +128,11 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     )
 
     payment_msg = await safe_send_message(bot,
-        _build_payment_text(amount, payment_status, payment_url, strikethrough_link=False),
+        build_payment_text(amount, payment_status, payment_url, strikethrough_link=False),
         chat_id=chat_id,
-        keyboard=make_payment_actions_keyboard(order_id, payment_url),
+        keyboard=make_payment_actions_keyboard(order_id),
+        format="markdown",
+        disable_link_preview=True,
     )
 
     if payment_msg is None:
@@ -198,8 +190,10 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         duration_str = available_time_by_balance(balance)
 
         await safe_edit_message(bot, message_id,
-            _build_payment_text(int(payment.amount), payment_status, payment.payment_url, strikethrough_link=True),
+            build_payment_text(int(payment.amount), payment_status, payment.payment_url, strikethrough_link=True),
             attachments=[],
+            format="markdown",
+            disable_link_preview=True,
         )
         await safe_send_message(bot,
             f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
