@@ -6,10 +6,14 @@ import aiomax
 from database.models import PLATFORM_MAX
 from database.queries import get_transcription, update_transcription
 from handlers.max.common import make_rating_keyboard
+from messengers.max import safe_send_message
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 
 
 RATING_PROMPT = "Оцените качество распознавания"
+FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание."
+
+_awaiting_feedback: dict[int, int] = {}  # user_id -> transcription_id
 
 
 @sentry_bind_user_max
@@ -41,3 +45,7 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
         keyboard=keyboard,
         attachments=file_attachments if file_attachments else None,
     )
+
+    if rating <= 2:
+        _awaiting_feedback[user_id] = transcription_id
+        await safe_send_message(bot, FEEDBACK_PROMPT, user_id=user_id)

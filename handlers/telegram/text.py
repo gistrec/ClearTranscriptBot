@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM
-from database.queries import add_user, get_user
+from database.queries import add_user, get_user, update_transcription
 
 from utils.marketing import track_goal
 from utils.sentry import sentry_bind_user, sentry_transaction
@@ -23,11 +23,20 @@ def extract_start_payload(text: str) -> str | None:
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Respond to regular text messages."""
     user_id = update.message.from_user.id
+    text = update.message.text or ""
+
+    if not text.startswith("/") and context.user_data:
+        feedback_for = context.user_data.pop("awaiting_feedback_for", None)
+        if feedback_for is not None:
+            update_transcription(feedback_for, rating_comment=text.strip())
+            await update.message.reply_text("Спасибо! Ваш отзыв поможет нам улучшить качество")
+            return
+
     user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
         user = add_user(user_id, PLATFORM_TELEGRAM)
 
-    yclid = extract_start_payload(update.message.text or "")
+    yclid = extract_start_payload(text)
     if yclid:
         context.application.create_task(track_goal(yclid, "startbot"))
 

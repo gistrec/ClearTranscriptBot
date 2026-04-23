@@ -6,6 +6,8 @@ from database.queries import get_transcription, update_transcription
 
 from utils.sentry import sentry_bind_user, sentry_transaction
 
+FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание"
+
 
 RATING_PROMPT = "Оцените качество распознавания"
 
@@ -50,3 +52,8 @@ async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAUL
         caption=RATING_PROMPT,
         reply_markup=make_rating_keyboard(transcription_id, selected=rating),
     )
+
+    if rating <= 2:
+        if context.user_data is not None:
+            context.user_data["awaiting_feedback_for"] = transcription_id
+        await context.bot.send_message(chat_id=query.from_user.id, text=FEEDBACK_PROMPT)
