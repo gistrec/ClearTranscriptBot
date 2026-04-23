@@ -55,6 +55,8 @@ async def handle_max_topup(message: aiomax.Message, bot: aiomax.Bot) -> None:
         build_topup_text("Выберите сумму пополнения"),
         chat_id=message.recipient.chat_id,
         keyboard=make_topup_amounts_keyboard(),
+        format="markdown",
+        disable_link_preview=True,
     )
 
 
@@ -73,7 +75,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     chat_id = callback.message.recipient.chat_id
 
     if callback.payload == "topup:cancel":
-        await safe_edit_message(bot, message_id, "Пополнение отменено", attachments=[])
+        await safe_edit_message(bot, message_id, "🚫 Пополнение отменено", attachments=[])
         return
 
     try:
@@ -89,7 +91,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
         await safe_edit_message(bot, message_id, "Сумма пополнения недоступна", attachments=[])
         return
 
-    await safe_edit_message(bot, message_id, build_topup_text(f"Сумма пополнения: {amount} ₽"), attachments=[])
+    await safe_edit_message(bot, message_id, build_topup_text(f"Сумма пополнения: {amount} ₽"), attachments=[], format="markdown", disable_link_preview=True)
 
     order_id = f"max-{user_id}-{int(time.time() * 1000)}"
 
@@ -229,7 +231,7 @@ async def handle_max_cancel_payment(callback: aiomax.Callback, bot: aiomax.Bot) 
         await safe_edit_message(bot, message_id, "Платёж не найден", attachments=[])
         return
 
-    await safe_edit_message(bot, message_id, "Пополнение отменено", attachments=[])
+    await safe_edit_message(bot, message_id, "🚫 Пополнение отменено", attachments=[])
     update_payment(order_id, status="CANCELED")
 
     try:

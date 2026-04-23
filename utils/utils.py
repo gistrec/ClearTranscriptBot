@@ -4,8 +4,8 @@ from decimal import Decimal
 from typing import Optional
 
 
-_OFFER_URL = "https://clear-transcript-bot.ru/user-agreement.html"
-_PRIVACY_URL = "https://clear-transcript-bot.ru/privacy-policy.html"
+_OFFER_URL = "https://clear-transcript-bot.ru/user-agreement"
+_PRIVACY_URL = "https://clear-transcript-bot.ru/privacy-policy"
 
 
 def build_topup_text(last_line: str) -> str:
