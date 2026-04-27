@@ -46,7 +46,6 @@ from handlers.max.topup import (
     handle_max_cancel_payment,
 )
 
-from messengers.common import BotSender
 from healthcheck import start_healthcheck_server
 
 
@@ -148,7 +147,6 @@ async def run_bots() -> None:
 
         @max_bot.on_bot_start()
         async def _on_max_bot_start(event) -> None:
-            print(event)
             logging.info("Max bot_start from user_id=%s", getattr(event, "user_id", "?"))
             from database.models import PLATFORM_MAX
             from database.queries import add_user, get_user
@@ -231,9 +229,7 @@ async def run_bots() -> None:
         async def _cmd_price(message: aiomax.Message) -> None:
             await handle_max_price(message, max_bot)
 
-    # --- Wire BotSender into PTB bot_data ---
-    sender = BotSender(tg_bot=application.bot, max_bot=max_bot)
-    application.bot_data["sender"] = sender
+    application.bot_data["max_bot"] = max_bot
 
     # Register job queue
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)

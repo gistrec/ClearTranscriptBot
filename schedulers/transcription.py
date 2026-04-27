@@ -4,6 +4,8 @@ import tempfile
 
 import providers.replicate as replicate_provider
 import providers.speechkit as speechkit_provider
+import messengers.telegram as tg_sender
+import messengers.max as max_sender
 
 from pathlib import Path
 from datetime import datetime
@@ -11,43 +13,23 @@ from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_MAX
+from database.models import PLATFORM_MAX, PLATFORM_TELEGRAM
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
 
-from handlers.telegram.rate_transcription import make_rating_keyboard, RATING_PROMPT
-from handlers.telegram.summarize import SUMMARIZE_THRESHOLD
+from handlers.telegram.rate_transcription import make_rating_keyboard
+from handlers.max.common import (
+    make_summarize_keyboard as make_max_summarize_keyboard,
+    make_send_as_text_keyboard as make_max_send_as_text_keyboard,
+    make_rating_keyboard as make_max_rating_keyboard,
+)
 
-from utils.utils import format_duration, MoscowTimezone
+from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, RATING_PROMPT
 from utils.transcription import check_transcription, get_result
-from utils.tg import need_edit, safe_edit_message_text, prune_edit_cache
+from utils.tg import need_edit, prune_edit_cache
 from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
 from utils.sentry import sentry_transaction, sentry_drop_transaction
 
-
-def _make_max_summarize_keyboard(task_id: int):
-    try:
-        from aiomax.buttons import CallbackButton, KeyboardBuilder
-        return KeyboardBuilder().row(CallbackButton("📝 Создать конспект", f"summarize:{task_id}"))
-    except Exception:
-        return None
-
-
-def _make_max_send_as_text_keyboard(task_id: int):
-    try:
-        from aiomax.buttons import CallbackButton, KeyboardBuilder
-        return KeyboardBuilder().row(CallbackButton("📄 Отправить текстом", f"send_as_text:{task_id}"))
-    except Exception:
-        return None
-
-
-def _make_max_rating_keyboard(transcription_id: int):
-    try:
-        from aiomax.buttons import CallbackButton, KeyboardBuilder
-        buttons = [CallbackButton(f"{i}⭐", f"rate:{transcription_id}:{i}") for i in range(1, 6)]
-        return KeyboardBuilder().row(*buttons)
-    except Exception:
-        return None
 
 
 @sentry_transaction(name="transcription.poll", op="task.check")
@@ -58,7 +40,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         sentry_drop_transaction()
         return
 
-    sender = context.bot_data.get("sender")
+    max_bot = context.bot_data.get("max_bot")
     now = datetime.now(MoscowTimezone)
 
     prune_edit_cache(context, {task.id for task in tasks})
@@ -78,12 +60,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}"
             )
-            if sender is not None:
-                await sender.edit_message(task.user_platform, task.user_id, task.message_id, status_text)
-            else:
-                await safe_edit_message_text(
-                    context.bot, task.user_id, task.message_id, status_text
-                )
+            if task.user_platform == PLATFORM_TELEGRAM:
+                await tg_sender.safe_edit_message(context.bot, task.user_id, task.message_id, status_text)
+            elif max_bot is not None:
+                await max_sender.safe_edit_message(max_bot, str(task.message_id), status_text, attachments=[])
 
         try:
             result_info = await check_transcription(task.operation_id, provider=task.provider)
@@ -116,10 +96,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 "❌ Распознавание завершилось с ошибкой\n\n"
                 "Попробуйте ещё раз"
             )
-            if sender is not None:
-                await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
-            else:
-                await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
+            if task.user_platform == PLATFORM_TELEGRAM:
+                await tg_sender.safe_edit_message(context.bot, task.user_id, task.message_id, fail_text)
+            elif max_bot is not None:
+                await max_sender.safe_edit_message(max_bot, str(task.message_id), fail_text, attachments=[])
             continue
 
         text = get_result(result_info)
@@ -142,10 +122,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     "❌ Распознавание завершилось с ошибкой\n\n"
                     "Попробуйте ещё раз"
                 )
-                if sender is not None:
-                    await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
-                else:
-                    await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
+                if task.user_platform == PLATFORM_TELEGRAM:
+                    await tg_sender.safe_edit_message(context.bot, task.user_id, task.message_id, fail_text)
+                elif max_bot is not None:
+                    await max_sender.safe_edit_message(max_bot, str(task.message_id), fail_text, attachments=[])
                 continue
 
             audio_duration_str = format_duration(task.duration_seconds)
@@ -155,12 +135,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 tg_action_keyboard = InlineKeyboardMarkup([[
                     InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
                 ]])
-                max_action_keyboard = _make_max_summarize_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+                max_action_keyboard = make_max_summarize_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
             else:
                 tg_action_keyboard = InlineKeyboardMarkup([[
                     InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{task.id}")
                 ]])
-                max_action_keyboard = _make_max_send_as_text_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+                max_action_keyboard = make_max_send_as_text_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
 
             done_text = (
                 f"✅ Распознавание завершено\n\n"
@@ -168,46 +148,28 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}\n\n"
             )
-            if sender is not None:
-                await sender.edit_message(
-                    task.user_platform, task.user_id, task.message_id, done_text,
-                    tg_markup=tg_action_keyboard,
-                    max_keyboard=max_action_keyboard,
-                )
-            else:
-                await safe_edit_message_text(
-                    context.bot, task.user_id, task.message_id, done_text,
-                    reply_markup=tg_action_keyboard,
-                )
+            if task.user_platform == PLATFORM_TELEGRAM:
+                await tg_sender.safe_edit_message(context.bot, task.user_id, task.message_id, done_text, tg_action_keyboard)
+            elif max_bot is not None:
+                if max_action_keyboard is None:
+                    await max_sender.safe_edit_message(max_bot, str(task.message_id), done_text, attachments=[])
+                else:
+                    await max_sender.safe_edit_message(max_bot, str(task.message_id), done_text, keyboard=max_action_keyboard)
 
             try:
                 tg_rating_keyboard = make_rating_keyboard(task.id)
-                max_rating_keyboard = _make_max_rating_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+                max_rating_keyboard = make_max_rating_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
 
                 with path.open("rb") as f:
-                    if sender is not None:
-                        await sender.send_document(
-                            task.user_platform,
-                            task.user_id,
-                            task.message_id,
-                            f,
-                            path.name,
-                            RATING_PROMPT,
-                            tg_markup=tg_rating_keyboard,
-                            max_keyboard=max_rating_keyboard,
+                    if task.user_platform == PLATFORM_TELEGRAM:
+                        await tg_sender.safe_send_document(
+                            context.bot, task.user_id, task.message_id, f, RATING_PROMPT, tg_rating_keyboard,
                             connect_timeout=15,
                             write_timeout=30,
                         )
-                    else:
-                        await context.bot.send_document(
-                            chat_id=task.user_id,
-                            reply_to_message_id=int(task.message_id),
-                            document=f,
-                            caption=RATING_PROMPT,
-                            reply_markup=tg_rating_keyboard,
-                            connect_timeout=15,
-                            write_timeout=30,
-                        )
+                    elif max_bot is not None:
+                        data = f.read()
+                        await max_sender.safe_send_document(max_bot, task.user_id, data, path.name, RATING_PROMPT, max_rating_keyboard)
 
                 update_transcription(
                     task.id,
@@ -228,7 +190,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     "❌ Распознавание завершилось с ошибкой\n\n"
                     "Попробуйте ещё раз"
                 )
-                if sender is not None:
-                    await sender.edit_message(task.user_platform, task.user_id, task.message_id, fail_text)
-                else:
-                    await safe_edit_message_text(context.bot, task.user_id, task.message_id, fail_text)
+                if task.user_platform == PLATFORM_TELEGRAM:
+                    await tg_sender.safe_edit_message(context.bot, task.user_id, task.message_id, fail_text)
+                elif max_bot is not None:
+                    await max_sender.safe_edit_message(max_bot, str(task.message_id), fail_text, attachments=[])

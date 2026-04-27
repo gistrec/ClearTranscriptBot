@@ -1,10 +1,14 @@
 """Periodic scheduler for checking summarization statuses."""
 import logging
 
+import messengers.telegram as tg_sender
+import messengers.max as max_sender
+
 from datetime import datetime
 
 from telegram.ext import ContextTypes
 
+from database.models import PLATFORM_TELEGRAM
 from database.queries import (
     get_summarization,
     get_summarizations_by_status,
@@ -34,25 +38,25 @@ async def check_summarizations(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_summarizations) -> None:
-    sender = context.bot_data.get("sender")
+    max_bot = context.bot_data.get("max_bot")
     for record in pending_summarizations:
         transcription = get_transcription(record.transcription_id)
         if transcription is None or not transcription.result_s3_path:
             update_summarization(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, sender, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
             continue
 
         object_name = object_name_from_url(transcription.result_s3_path)
         text = await download_text(object_name)
         if not text:
             update_summarization(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, sender, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
             continue
 
         operation_id = await start_summarization(text)
         if not operation_id:
             update_summarization(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, sender, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
             continue
 
         update_summarization(
@@ -64,7 +68,7 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_summariza
 
 
 async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_summarizations) -> None:
-    sender = context.bot_data.get("sender")
+    max_bot = context.bot_data.get("max_bot")
     for record in running_summarizations:
         # Re-fetch to get latest operation_id (set during pending→running transition)
         record = get_summarization(record.id)
@@ -84,7 +88,7 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_summariza
                 elapsed = int((now - record.created_at.replace(tzinfo=MoscowTimezone)).total_seconds())
                 elapsed_str = format_duration(elapsed)
                 await _edit_status(
-                    context, sender, record.user_platform, record.user_id, record.message_id,
+                    context, max_bot, record.user_platform, record.user_id, record.message_id,
                     f"⏳ Создаю конспект...\n\n"
                     f"Время обработки: {elapsed_str}",
                 )
@@ -92,7 +96,7 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_summariza
 
         if not result["success"]:
             update_summarization(record.id, status="failed", finished_at=now)
-            await _edit_status(context, sender, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
             continue
 
         message = (
@@ -104,25 +108,18 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_summariza
             message = message[:4093] + "..."
 
         update_summarization(record.id, status="completed", result_text=result["text"], finished_at=now)
-        await _edit_status(context, sender, record.user_platform, record.user_id, record.message_id, message)
+        await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, message)
 
 
 async def _edit_status(
     context: ContextTypes.DEFAULT_TYPE,
-    sender,
+    max_bot,
     platform: str,
     user_id: int,
     message_id,
     text: str,
 ) -> None:
-    if sender is not None:
-        await sender.edit_message(platform, user_id, message_id, text)
-    else:
-        try:
-            await context.bot.edit_message_text(
-                chat_id=user_id,
-                message_id=int(message_id),
-                text=text,
-            )
-        except Exception:
-            logging.exception(f"Failed to edit summarization status message {message_id}")
+    if platform == PLATFORM_TELEGRAM:
+        await tg_sender.safe_edit_message(context.bot, user_id, message_id, text)
+    elif max_bot is not None:
+        await max_sender.safe_edit_message(max_bot, str(message_id), text, attachments=[])
