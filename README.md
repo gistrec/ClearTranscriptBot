@@ -27,6 +27,9 @@ ClearTranscriptBot
 ├── main.py              # Bot entry point (starts Telegram + Max bots concurrently)
 ├── healthcheck.py       # Optional FastAPI healthcheck server on port 9000
 ├── payment.py           # Tinkoff acquiring API wrappers
+├── messengers/          # Safe message-sending wrappers (used by handlers and schedulers)
+│   ├── telegram.py      # Telegram safe send/edit helpers
+│   └── max.py           # Max messenger safe send/edit helpers
 ├── schedulers/          # Periodic task schedulers
 │   ├── summarization.py
 │   ├── topup.py
@@ -52,7 +55,7 @@ ClearTranscriptBot
 │       ├── file.py
 │       ├── history.py
 │       ├── price.py
-│       ├── rate.py
+│       ├── rate_transcription.py
 │       ├── send_as_text.py
 │       ├── summarize.py
 │       ├── text.py
@@ -65,7 +68,6 @@ ClearTranscriptBot
 │   ├── models.py        # SQLAlchemy models for application tables
 │   └── queries.py       # Helper functions for common database operations
 ├── utils/               # Helper utilities
-│   ├── bot_sender.py    # Platform-agnostic message sender (used by schedulers)
 │   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
 │   ├── marketing.py     # Advertising/tracking: send conversion goals to Yandex Metrica
 │   ├── max_download.py  # File download helper for Max messenger
@@ -75,7 +77,7 @@ ClearTranscriptBot
 │   ├── summarize.py     # Replicate LLM wrapper for summarization
 │   ├── transcription.py # Unified entry point routing to provider implementations
 │   ├── tg.py            # Telegram-specific helpers
-│   └── utils.py         # Shared utility functions
+│   └── utils.py         # Shared utility functions and constants
 ├── docs/                # GitHub Pages legal documents
 └── requirements.txt     # Python dependencies list
 ```
