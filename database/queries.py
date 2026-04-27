@@ -42,6 +42,7 @@ def change_user_balance(user_id: int, platform: str, delta: Decimal) -> User:
         user = (
             session.query(User)
             .filter(User.user_id == user_id, User.user_platform == platform)
+            .with_for_update()
             .one()
         )
         user.balance = (user.balance or Decimal("0")) + delta
