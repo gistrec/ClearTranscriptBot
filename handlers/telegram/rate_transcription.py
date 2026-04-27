@@ -6,11 +6,7 @@ from database.queries import get_transcription, update_transcription
 
 from messengers.telegram import safe_edit_message_caption, safe_send_message
 from utils.sentry import sentry_bind_user, sentry_transaction
-
-FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание"
-
-
-RATING_PROMPT = "Оцените качество распознавания"
+from utils.utils import RATING_PROMPT, FEEDBACK_PROMPT
 
 
 def make_rating_keyboard(

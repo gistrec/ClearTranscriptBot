@@ -9,8 +9,6 @@ from utils.utils import format_duration
 from messengers.telegram import safe_reply_text, safe_edit_message_reply_markup
 
 
-SUMMARIZE_THRESHOLD = 300  # seconds — show button only for audio longer than this
-
 
 @sentry_bind_user
 @sentry_transaction(name="summarization.create", op="telegram.callback")

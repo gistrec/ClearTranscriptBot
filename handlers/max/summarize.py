@@ -9,8 +9,6 @@ from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
 
-SUMMARIZE_THRESHOLD = 300  # seconds
-
 
 @sentry_bind_user_max
 @sentry_transaction(name="summarization.create", op="max.callback")

@@ -8,10 +8,7 @@ from database.queries import get_transcription, update_transcription
 from handlers.max.common import make_rating_keyboard
 from messengers.max import safe_callback_answer, safe_send_message
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-
-
-RATING_PROMPT = "Оцените качество распознавания"
-FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание."
+from utils.utils import RATING_PROMPT, FEEDBACK_PROMPT
 
 _awaiting_feedback: dict[int, int] = {}  # user_id -> transcription_id
 
