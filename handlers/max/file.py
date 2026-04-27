@@ -16,13 +16,10 @@ from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.max_download import download_max_file
 from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename
-from utils.utils import format_duration
+from utils.utils import format_duration, LONG_AUDIO_THRESHOLD, MAX_AUDIO_DURATION
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import safe_send_message
 
-
-MAX_AUDIO_DURATION = 6 * 60 * 60  # seconds
-LONG_AUDIO_THRESHOLD = 120  # seconds
 
 
 @sentry_bind_user_max
@@ -140,19 +137,24 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         progress_path = out_dir / f"{safe_stem}.progress"
 
         convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
-        if convert_error == "no_audio_stream":
-            await safe_send_message(bot,
-                "❌ В этом файле не обнаружено аудио\n"
-                "Пожалуйста, отправьте файл со звуком",
-                chat_id=chat_id,
-            )
-            return
-        elif convert_error:
-            await safe_send_message(bot,
-                "❌ Не удалось обработать файл\n"
-                "Возможно, он имеет неподдерживаемый формат",
-                chat_id=chat_id,
-            )
+        if convert_error:
+            await upload_file(local_path, f"error/{user_id}/{message.body.message_id}_{local_path.name}")
+            if convert_error == "no_audio_stream":
+                error_text = (
+                    "❌ В этом файле не обнаружено аудио\n"
+                    "Пожалуйста, отправьте файл со звуком"
+                )
+            elif convert_error == "moov_atom_not_found":
+                error_text = (
+                    "❌ Файл повреждён — запись была прервана и не сохранена до конца\n"
+                    "Попробуйте записать снова"
+                )
+            else:
+                error_text = (
+                    "❌ Не удалось обработать файл\n"
+                    "Возможно, он имеет неподдерживаемый формат"
+                )
+            await safe_send_message(bot, error_text, chat_id=chat_id)
             return
 
         try:

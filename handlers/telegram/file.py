@@ -16,14 +16,11 @@ from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import is_supported_mime, sanitize_filename, extract_local_path
-from utils.utils import format_duration
+from utils.utils import format_duration, LONG_AUDIO_THRESHOLD, MAX_AUDIO_DURATION
 from messengers.telegram import safe_reply_text
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
-
-MAX_AUDIO_DURATION = 6 * 60 * 60  # seconds; files longer than this are rejected outright
-LONG_AUDIO_THRESHOLD = 120  # seconds; files longer than this use Replicate
 
 
 @sentry_bind_user
@@ -151,19 +148,24 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         progress_path = out_dir / progress_name
 
         convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
-        if convert_error == "no_audio_stream":
-            await safe_reply_text(
-                message,
-                "❌ В этом файле не обнаружено аудио\n"
-                "Пожалуйста, отправьте файл со звуком"
-            )
-            return
-        elif convert_error:
-            await safe_reply_text(
-                message,
-                "❌ Не удалось обработать файл\n"
-                "Возможно, он имеет неподдерживаемый формат"
-            )
+        if convert_error:
+            await upload_file(local_path, f"error/{user_id}/{message.message_id}_{local_path.name}")
+            if convert_error == "no_audio_stream":
+                error_text = (
+                    "❌ В этом файле не обнаружено аудио\n"
+                    "Пожалуйста, отправьте файл со звуком"
+                )
+            elif convert_error == "moov_atom_not_found":
+                error_text = (
+                    "❌ Файл повреждён — запись была прервана и не сохранена до конца\n"
+                    "Попробуйте записать снова"
+                )
+            else:
+                error_text = (
+                    "❌ Не удалось обработать файл\n"
+                    "Возможно, он имеет неподдерживаемый формат"
+                )
+            await safe_reply_text(message, error_text)
             return
 
         try:

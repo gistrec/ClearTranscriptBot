@@ -167,6 +167,8 @@ async def convert_to_ogg(
             logging.error(f"ffmpeg failed: {stderr_text}")
             if "Output file #0 does not contain any stream" in stderr_text:
                 return "no_audio_stream"
+            if "moov atom not found" in stderr_text:
+                return "moov_atom_not_found"
             return "conversion_failed"
         return None
     except Exception:
