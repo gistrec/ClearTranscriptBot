@@ -20,6 +20,11 @@ if not all([S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_BUCKET]):
         "S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT and S3_BUCKET must be set"
     )
 
+_s3 = boto3.session.Session(
+    aws_access_key_id=S3_ACCESS_KEY,
+    aws_secret_access_key=S3_SECRET_KEY,
+).client("s3", endpoint_url=S3_ENDPOINT)
+
 
 @sentry_span(op="s3.upload")
 async def upload_file(
@@ -35,18 +40,19 @@ async def upload_file(
 
     def _upload() -> Optional[str]:
         try:
-            session = boto3.session.Session(
-                aws_access_key_id=S3_ACCESS_KEY,
-                aws_secret_access_key=S3_SECRET_KEY,
-            )
-            s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
-            s3.upload_file(str(file_path), S3_BUCKET, object_name)
+            _s3.upload_file(str(file_path), S3_BUCKET, object_name)
             return f"{S3_ENDPOINT}/{S3_BUCKET}/{object_name}"
         except Exception:
             logging.exception(f"Failed to upload {file_path} to S3")
             return None
 
-    return await asyncio.to_thread(_upload)
+    for attempt in range(3):
+        result = await asyncio.to_thread(_upload)
+        if result is not None:
+            return result
+        if attempt < 2:
+            await asyncio.sleep(1)
+    return None
 
 
 @sentry_span(op="s3.signed_url")
@@ -55,12 +61,7 @@ async def get_signed_url(object_name: str, expires_in: int = 3600) -> Optional[s
 
     def _sign() -> Optional[str]:
         try:
-            session = boto3.session.Session(
-                aws_access_key_id=S3_ACCESS_KEY,
-                aws_secret_access_key=S3_SECRET_KEY,
-            )
-            s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
-            return s3.generate_presigned_url(
+            return _s3.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": S3_BUCKET, "Key": object_name},
                 ExpiresIn=expires_in,
@@ -69,7 +70,13 @@ async def get_signed_url(object_name: str, expires_in: int = 3600) -> Optional[s
             logging.exception(f"Failed to generate signed URL for {object_name}")
             return None
 
-    return await asyncio.to_thread(_sign)
+    for attempt in range(3):
+        result = await asyncio.to_thread(_sign)
+        if result is not None:
+            return result
+        if attempt < 2:
+            await asyncio.sleep(1)
+    return None
 
 
 @sentry_span(op="s3.download")
@@ -78,18 +85,19 @@ async def download_text(object_name: str) -> Optional[str]:
 
     def _download() -> Optional[str]:
         try:
-            session = boto3.session.Session(
-                aws_access_key_id=S3_ACCESS_KEY,
-                aws_secret_access_key=S3_SECRET_KEY,
-            )
-            s3 = session.client("s3", endpoint_url=S3_ENDPOINT)
-            response = s3.get_object(Bucket=S3_BUCKET, Key=object_name)
+            response = _s3.get_object(Bucket=S3_BUCKET, Key=object_name)
             return response["Body"].read().decode("utf-8")
         except Exception:
             logging.exception(f"Failed to download {object_name} from S3")
             return None
 
-    return await asyncio.to_thread(_download)
+    for attempt in range(3):
+        result = await asyncio.to_thread(_download)
+        if result is not None:
+            return result
+        if attempt < 2:
+            await asyncio.sleep(1)
+    return None
 
 
 def object_name_from_url(plain_url: str) -> str:
