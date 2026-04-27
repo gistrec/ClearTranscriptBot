@@ -138,7 +138,6 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
         convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
         if convert_error:
-            await upload_file(local_path, f"error/{user_id}/{message.body.message_id}_{local_path.name}")
             if convert_error == "no_audio_stream":
                 error_text = (
                     "❌ В этом файле не обнаружено аудио\n"
@@ -155,6 +154,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
                     "Возможно, он имеет неподдерживаемый формат"
                 )
             await safe_send_message(bot, error_text, chat_id=chat_id)
+            await upload_file(local_path, f"error/{user_id}/{message.body.message_id}_{local_path.name}")
             return
 
         try:

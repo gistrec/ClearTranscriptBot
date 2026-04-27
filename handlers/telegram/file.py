@@ -149,7 +149,6 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
         if convert_error:
-            await upload_file(local_path, f"error/{user_id}/{message.message_id}_{local_path.name}")
             if convert_error == "no_audio_stream":
                 error_text = (
                     "❌ В этом файле не обнаружено аудио\n"
@@ -166,6 +165,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                     "Возможно, он имеет неподдерживаемый формат"
                 )
             await safe_reply_text(message, error_text)
+            await upload_file(local_path, f"error/{user_id}/{message.message_id}_{local_path.name}")
             return
 
         try:
