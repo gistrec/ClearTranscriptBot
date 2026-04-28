@@ -41,6 +41,7 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinemen
 
         transcription = get_transcription(record.transcription_id)
         if transcription is None or not transcription.result_s3_path:
+            logging.warning("Refinement %s failed: transcription %s missing or has no result", record.id, record.transcription_id)
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
@@ -48,12 +49,14 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinemen
         object_name = object_name_from_url(transcription.result_s3_path)
         text = await download_text(object_name)
         if not text:
+            logging.warning("Refinement %s failed: could not download text from %s", record.id, object_name)
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         operation_id = await start_refinement(text, task_type=record.task_type)
         if not operation_id:
+            logging.warning("Refinement %s failed: start_refinement returned no operation_id", record.id)
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
@@ -96,6 +99,7 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
             continue
 
         if not result["success"]:
+            logging.warning("Refinement %s failed: provider returned unsuccessful result", record.id)
             update_refinement(record.id, status="failed", finished_at=now)
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue

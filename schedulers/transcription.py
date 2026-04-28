@@ -78,6 +78,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
         if not result_info.get("success"):
+            logging.warning("Transcription failed task=%s payload=%s", task.id, payload)
             update_transcription(task.id, status="failed")
             change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if failed
             fail_text = (
@@ -101,6 +102,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             object_name = f"result/{task.user_id}/{path.name}"
             s3_url = await upload_file(path, object_name)
             if not s3_url:
+                logging.warning("S3 upload failed task=%s object=%s", task.id, object_name)
                 update_transcription(task.id, status="failed")
                 change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
                 fail_text = (
