@@ -134,8 +134,13 @@ def make_summarize_keyboard(
     if show_summarize:
         buttons.append(CallbackButton("📝 Создать конспект", f"summarize:{transcription_id}"))
     if show_improve:
-        buttons.append(CallbackButton("✨ Улучшить текст", f"improve:{transcription_id}"))
-    return KeyboardBuilder().row(*buttons) if buttons else None
+        buttons.append(CallbackButton("✨ Убрать мусор и оформить", f"improve:{transcription_id}"))
+    if not buttons:
+        return None
+    kb = KeyboardBuilder()
+    for btn in buttons:
+        kb = kb.row(btn)
+    return kb
 
 
 def make_send_as_text_keyboard(
@@ -147,8 +152,13 @@ def make_send_as_text_keyboard(
     if show_send_as_text:
         buttons.append(CallbackButton("📄 Отправить текстом", f"send_as_text:{transcription_id}"))
     if show_improve:
-        buttons.append(CallbackButton("✨ Улучшить текст", f"improve:{transcription_id}"))
-    return KeyboardBuilder().row(*buttons) if buttons else None
+        buttons.append(CallbackButton("✨ Убрать мусор и оформить", f"improve:{transcription_id}"))
+    if not buttons:
+        return None
+    kb = KeyboardBuilder()
+    for btn in buttons:
+        kb = kb.row(btn)
+    return kb
 
 
 async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, caption: str, keyboard=None):

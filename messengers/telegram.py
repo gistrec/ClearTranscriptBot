@@ -167,8 +167,8 @@ def make_summarize_keyboard(
     if show_summarize:
         buttons.append(InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}"))
     if show_improve:
-        buttons.append(InlineKeyboardButton("✨ Улучшить текст", callback_data=f"improve:{transcription_id}"))
-    return InlineKeyboardMarkup([buttons]) if buttons else None
+        buttons.append(InlineKeyboardButton("✨ Убрать мусор и оформить", callback_data=f"improve:{transcription_id}"))
+    return InlineKeyboardMarkup([[btn] for btn in buttons]) if buttons else None
 
 
 def make_send_as_text_keyboard(
@@ -180,8 +180,8 @@ def make_send_as_text_keyboard(
     if show_send_as_text:
         buttons.append(InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{transcription_id}"))
     if show_improve:
-        buttons.append(InlineKeyboardButton("✨ Улучшить текст", callback_data=f"improve:{transcription_id}"))
-    return InlineKeyboardMarkup([buttons]) if buttons else None
+        buttons.append(InlineKeyboardButton("✨ Убрать мусор и оформить", callback_data=f"improve:{transcription_id}"))
+    return InlineKeyboardMarkup([[btn] for btn in buttons]) if buttons else None
 
 
 async def safe_remove_keyboard(bot, chat_id, message_id) -> None:
