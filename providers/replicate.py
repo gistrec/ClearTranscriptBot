@@ -54,7 +54,11 @@ async def start_transcription(audio_url: str, duration_seconds: int) -> Optional
         transcription = await asyncio.to_thread(
             client.predictions.create,
             version=model,
-            input={"audio_file": audio_url},
+            input={
+                "audio_file": audio_url,
+                "language_detection_min_prob": 0.7,
+                "language_detection_max_tries": 5,
+            },
         )
         return transcription.id
     except Exception:

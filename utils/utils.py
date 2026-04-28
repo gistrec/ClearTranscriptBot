@@ -9,7 +9,7 @@ from payment import format_payment_status
 
 
 MAX_AUDIO_DURATION = 6 * 60 * 60  # seconds; files longer than this are rejected
-LONG_AUDIO_THRESHOLD = 120  # seconds; files longer than this use Replicate
+LONG_AUDIO_THRESHOLD = 30  # seconds; files longer than this use Replicate
 SUMMARIZE_THRESHOLD = 300  # seconds; show summarize button only for audio longer than this
 RATING_PROMPT = "Оцените качество распознавания"
 FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание."
