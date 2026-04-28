@@ -3,10 +3,10 @@ import logging
 
 import aiomax
 
-from database.queries import get_transcription
+from database.queries import get_transcription, has_refinement
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
+from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message, make_send_as_text_keyboard
 
 
 _MAX_MSG_LEN = 4000
@@ -40,7 +40,9 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
         return
 
     message_id = callback.message.body.message_id
-    await safe_edit_message(bot, message_id, callback.message.body.text or "", attachments=[])
+    show_improve = not has_refinement(transcription_id, "improve")
+    improve_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=False, show_improve=show_improve)
+    await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=improve_keyboard)
 
     chat_id = callback.message.recipient.chat_id
     for i in range(0, len(text), _MAX_MSG_LEN):

@@ -5,10 +5,10 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM
-from database.queries import get_transcription
+from database.queries import get_transcription, has_refinement
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user, sentry_transaction
-from messengers.telegram import safe_reply_text, safe_edit_message_reply_markup
+from messengers.telegram import safe_reply_text, safe_edit_message_reply_markup, make_send_as_text_keyboard
 
 
 _TG_MAX_LEN = 4096
@@ -36,6 +36,7 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         await safe_reply_text(query.message, "Не удалось получить текст")
         return
 
-    await safe_edit_message_reply_markup(query, reply_markup=None)
+    show_improve = not has_refinement(transcription_id, "improve")
+    await safe_edit_message_reply_markup(query, reply_markup=make_send_as_text_keyboard(transcription_id, show_send_as_text=False, show_improve=show_improve))
     for i in range(0, len(text), _TG_MAX_LEN):
         await safe_reply_text(query.message, text[i:i + _TG_MAX_LEN])
