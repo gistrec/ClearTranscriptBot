@@ -186,7 +186,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         result_s3_path=None,
     )
 
-    from handlers.max.common import make_confirm_keyboard
+    from messengers.max import make_confirm_keyboard
     keyboard = make_confirm_keyboard(history.id)
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""

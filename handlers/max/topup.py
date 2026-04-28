@@ -17,7 +17,7 @@ from database.queries import (
 )
 from payment import init_payment, get_payment_state, cancel_payment
 from utils.utils import available_time_by_balance, build_topup_text, build_payment_text
-from handlers.max.common import make_topup_amounts_keyboard, make_payment_actions_keyboard
+from messengers.max import make_topup_amounts_keyboard, make_payment_actions_keyboard
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message
 

@@ -10,18 +10,10 @@ import messengers.max as max_sender
 from pathlib import Path
 from datetime import datetime
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_MAX, PLATFORM_TELEGRAM
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
-
-from handlers.telegram.rate_transcription import make_rating_keyboard
-from handlers.max.common import (
-    make_summarize_keyboard as make_max_summarize_keyboard,
-    make_send_as_text_keyboard as make_max_send_as_text_keyboard,
-    make_rating_keyboard as make_max_rating_keyboard,
-)
 
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, RATING_PROMPT
 from utils.transcription import check_transcription, get_result
@@ -132,15 +124,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
             # Build platform-specific action keyboard
             if task.duration_seconds > SUMMARIZE_THRESHOLD:
-                tg_action_keyboard = InlineKeyboardMarkup([[
-                    InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{task.id}")
-                ]])
-                max_action_keyboard = make_max_summarize_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+                tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id)
+                max_action_keyboard = max_sender.make_summarize_keyboard(task.id)
             else:
-                tg_action_keyboard = InlineKeyboardMarkup([[
-                    InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{task.id}")
-                ]])
-                max_action_keyboard = make_max_send_as_text_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+                tg_action_keyboard = tg_sender.make_send_as_text_keyboard(task.id)
+                max_action_keyboard = max_sender.make_send_as_text_keyboard(task.id)
 
             done_text = (
                 f"✅ Распознавание завершено\n\n"
@@ -151,14 +139,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             if task.user_platform == PLATFORM_TELEGRAM:
                 await tg_sender.safe_edit_message(context.bot, task.user_id, task.message_id, done_text, tg_action_keyboard)
             elif max_bot is not None:
-                if max_action_keyboard is None:
-                    await max_sender.safe_edit_message(max_bot, str(task.message_id), done_text, attachments=[])
-                else:
-                    await max_sender.safe_edit_message(max_bot, str(task.message_id), done_text, keyboard=max_action_keyboard)
+                await max_sender.safe_edit_message(max_bot, str(task.message_id), done_text, keyboard=max_action_keyboard)
 
             try:
-                tg_rating_keyboard = make_rating_keyboard(task.id)
-                max_rating_keyboard = make_max_rating_keyboard(task.id) if task.user_platform == PLATFORM_MAX else None
+                tg_rating_keyboard = tg_sender.make_rating_keyboard(task.id)
+                max_rating_keyboard = max_sender.make_rating_keyboard(task.id)
 
                 with path.open("rb") as f:
                     if task.user_platform == PLATFORM_TELEGRAM:

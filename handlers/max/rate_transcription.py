@@ -5,8 +5,7 @@ import aiomax
 
 from database.models import PLATFORM_MAX
 from database.queries import get_transcription, update_transcription
-from handlers.max.common import make_rating_keyboard
-from messengers.max import safe_callback_answer, safe_send_message
+from messengers.max import make_rating_keyboard, safe_callback_answer, safe_send_message
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from utils.utils import RATING_PROMPT, FEEDBACK_PROMPT
 

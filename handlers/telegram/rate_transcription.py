@@ -1,32 +1,12 @@
 """Handler for transcription rating buttons."""
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.queries import get_transcription, update_transcription
 
-from messengers.telegram import safe_edit_message_caption, safe_send_message
+from messengers.telegram import make_rating_keyboard, safe_edit_message_caption, safe_send_message
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import RATING_PROMPT, FEEDBACK_PROMPT
-
-
-def make_rating_keyboard(
-    transcription_id: int,
-    selected: int | None = None,
-    show_summarize: bool = False,
-) -> InlineKeyboardMarkup:
-    rating_buttons = [
-        InlineKeyboardButton(
-            f"✅ {i}⭐" if i == selected else f"{i}⭐",
-            callback_data=f"rate:{transcription_id}:{i}",
-        )
-        for i in range(1, 6)
-    ]
-    rows = [rating_buttons]
-    if show_summarize:
-        rows.append([
-            InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}")
-        ])
-    return InlineKeyboardMarkup(rows)
 
 
 @sentry_bind_user

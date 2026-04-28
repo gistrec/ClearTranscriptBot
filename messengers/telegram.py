@@ -1,6 +1,7 @@
 """python-telegram-bot helpers with error handling."""
 import logging
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest, Forbidden
 
 _MSG_NOT_MODIFIED = "Message is not modified"
@@ -132,6 +133,38 @@ async def safe_edit_message_reply_markup(query, *args, **kwargs):
     except Exception:
         logging.exception("TG edit_message_reply_markup failed")
         return None
+
+
+def make_rating_keyboard(
+    transcription_id: int,
+    selected: int | None = None,
+    show_summarize: bool = False,
+) -> InlineKeyboardMarkup:
+    rating_buttons = [
+        InlineKeyboardButton(
+            f"✅ {i}⭐" if i == selected else f"{i}⭐",
+            callback_data=f"rate:{transcription_id}:{i}",
+        )
+        for i in range(1, 6)
+    ]
+    rows = [rating_buttons]
+    if show_summarize:
+        rows.append([
+            InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}")
+        ])
+    return InlineKeyboardMarkup(rows)
+
+
+def make_summarize_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}"),
+    ]])
+
+
+def make_send_as_text_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{transcription_id}"),
+    ]])
 
 
 async def safe_remove_keyboard(bot, chat_id, message_id) -> None:
