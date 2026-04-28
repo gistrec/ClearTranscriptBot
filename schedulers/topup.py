@@ -1,8 +1,7 @@
 """Periodic scheduler for checking pending payment statuses."""
 import logging
 
-import messengers.telegram as tg_sender
-import messengers.max as max_sender
+import messengers.common as sender
 
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -10,7 +9,6 @@ from datetime import datetime, timedelta
 from telegram.ext import ContextTypes
 
 from payment import get_payment_state, cancel_payment
-from database.models import PLATFORM_TELEGRAM
 from database.queries import (
     get_payments_due_for_check,
     claim_payment_for_check,
@@ -48,7 +46,6 @@ async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
         sentry_drop_transaction()
         return
 
-    max_bot = context.bot_data.get("max_bot")
     now = datetime.now(MoscowTimezone)
 
     for payment in payments:
@@ -59,7 +56,7 @@ async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
             # Sentinel far in the future prevents other workers from racing on expiry
             if not claim_payment_for_check(payment.order_id, now + timedelta(days=1)):
                 continue
-            await _expire_payment(context, max_bot, payment)
+            await _expire_payment(context, payment)
             continue
 
         interval = _check_interval(age_seconds)
@@ -76,10 +73,10 @@ async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
         if payment_status not in ("CONFIRMED", "AUTHORIZED"):
             continue
 
-        await _confirm_payment(context, max_bot, payment, payment_status)
+        await _confirm_payment(context, payment, payment_status)
 
 
-async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, max_bot, payment, payment_status: str) -> None:
+async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_status: str) -> None:
     """Atomically confirm payment and notify user.
 
     Uses confirm_payment() which holds SELECT FOR UPDATE, so only one caller
@@ -90,10 +87,7 @@ async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, max_bot, payment,
         return  # another path already handled this payment
 
     if payment.message_id:
-        if payment.user_platform == PLATFORM_TELEGRAM:
-            await tg_sender.safe_remove_keyboard(context.bot, payment.user_id, payment.message_id)
-        elif max_bot is not None:
-            await max_sender.safe_remove_keyboard(max_bot, payment.message_id)
+        await sender.safe_remove_keyboard(context, payment.user_platform, payment.user_id, payment.message_id)
 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
@@ -102,13 +96,10 @@ async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, max_bot, payment,
         f"Баланс: {balance} ₽\n"
         f"Хватит на распознавание: {duration_str}"
     )
-    if payment.user_platform == PLATFORM_TELEGRAM:
-        await tg_sender.safe_send_message(context.bot, chat_id=int(payment.user_id), text=text)
-    elif max_bot is not None:
-        await max_sender.safe_send_message(max_bot, text, user_id=int(payment.user_id))
+    await sender.safe_send_message(context, payment.user_platform, payment.user_id, text)
 
 
-async def _expire_payment(context: ContextTypes.DEFAULT_TYPE, max_bot, payment) -> None:
+async def _expire_payment(context: ContextTypes.DEFAULT_TYPE, payment) -> None:
     """Check provider one last time before expiring.
 
     If the check fails (network error), reschedule a retry instead of expiring.
@@ -129,7 +120,7 @@ async def _expire_payment(context: ContextTypes.DEFAULT_TYPE, max_bot, payment) 
         return
 
     if payment_status in ("CONFIRMED", "AUTHORIZED"):
-        await _confirm_payment(context, max_bot, payment, payment_status)
+        await _confirm_payment(context, payment, payment_status)
         return
 
     if not expire_payment(payment.order_id):
@@ -137,10 +128,7 @@ async def _expire_payment(context: ContextTypes.DEFAULT_TYPE, max_bot, payment) 
 
     if payment.message_id:
         expire_text = "Пополнение отменено автоматически — прошло более 3 часов с момента создания"
-        if payment.user_platform == PLATFORM_TELEGRAM:
-            await tg_sender.safe_edit_message(context.bot, payment.user_id, payment.message_id, expire_text)
-        elif max_bot is not None:
-            await max_sender.safe_edit_message(max_bot, str(payment.message_id), expire_text, attachments=[])
+        await sender.safe_edit_message(context, payment.user_platform, payment.user_id, payment.message_id, expire_text)
 
     try:
         await cancel_payment(payment.payment_id)

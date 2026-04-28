@@ -1,15 +1,12 @@
 """Periodic scheduler for checking refinement statuses."""
-import io
 import logging
 
-import messengers.telegram as tg_sender
-import messengers.max as max_sender
+import messengers.common as sender
 
 from datetime import datetime
 
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM
 from database.queries import (
     get_refinement,
     get_refinements_by_status,
@@ -39,27 +36,26 @@ async def check_refinements(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinements) -> None:
-    max_bot = context.bot_data.get("max_bot")
     for record in pending_refinements:
         fail_text = "❌ Не удалось улучшить текст" if record.task_type == "improve" else "❌ Не удалось создать конспект"
 
         transcription = get_transcription(record.transcription_id)
         if transcription is None or not transcription.result_s3_path:
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
+            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         object_name = object_name_from_url(transcription.result_s3_path)
         text = await download_text(object_name)
         if not text:
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
+            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         operation_id = await start_refinement(text, task_type=record.task_type)
         if not operation_id:
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
+            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         update_refinement(
@@ -71,7 +67,6 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinemen
 
 
 async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinements) -> None:
-    max_bot = context.bot_data.get("max_bot")
     for record in running_refinements:
         # Re-fetch to get latest operation_id (set during pending→running transition)
         record = get_refinement(record.id)
@@ -94,44 +89,25 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
             if need_edit(context, record.id, now, cache_key="refinement_status_cache"):
                 elapsed = int((now - record.created_at.replace(tzinfo=MoscowTimezone)).total_seconds())
                 elapsed_str = format_duration(elapsed)
-                await _edit_status(
-                    context, max_bot, record.user_platform, record.user_id, record.message_id,
+                await sender.safe_edit_message(
+                    context, record.user_platform, record.user_id, record.message_id,
                     f"{in_progress_text}\n\nВремя обработки: {elapsed_str}",
                 )
             continue
 
         if not result["success"]:
             update_refinement(record.id, status="failed", finished_at=now)
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
+            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         update_refinement(record.id, status="completed", result_text=result["text"], finished_at=now)
 
         if is_improve:
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "✨ Текст улучшен")
-            file_data = io.BytesIO(result["text"].encode("utf-8"))
-            file_data.name = "improved.txt"
-            if record.user_platform == PLATFORM_TELEGRAM:
-                await tg_sender.safe_send_document(context.bot, record.user_id, None, file_data, "")
-            elif max_bot is not None:
-                await max_sender.safe_send_document(max_bot, record.user_id, file_data.getvalue(), "improved.txt", "")
+            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, "✨ Текст улучшен")
+            await sender.safe_send_document(context, record.user_platform, record.user_id, None, result["text"].encode("utf-8"), "improved.txt", "")
         else:
             message = "📝 Конспект\n\n" + result["text"]
             # Telegram message limit is 4096 characters
             if len(message) > 4096:
                 message = message[:4093] + "..."
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, message)
-
-
-async def _edit_status(
-    context: ContextTypes.DEFAULT_TYPE,
-    max_bot,
-    platform: str,
-    user_id: int,
-    message_id,
-    text: str,
-) -> None:
-    if platform == PLATFORM_TELEGRAM:
-        await tg_sender.safe_edit_message(context.bot, user_id, message_id, text)
-    elif max_bot is not None:
-        await max_sender.safe_edit_message(max_bot, str(message_id), text, attachments=[])
+            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, message)

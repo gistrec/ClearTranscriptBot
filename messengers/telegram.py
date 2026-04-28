@@ -97,7 +97,7 @@ async def safe_edit_message(bot, chat_id, message_id, text: str, reply_markup=No
         return None
 
 
-async def safe_send_document(bot, chat_id, reply_to_message_id, document, caption: str, reply_markup=None, **kwargs):
+async def safe_send_document(bot, chat_id, reply_to_message_id, document, caption: str, reply_markup=None):
     try:
         return await bot.send_document(
             chat_id=int(chat_id),
@@ -105,7 +105,8 @@ async def safe_send_document(bot, chat_id, reply_to_message_id, document, captio
             document=document,
             caption=caption,
             reply_markup=reply_markup,
-            **kwargs,
+            connect_timeout=15,
+            write_timeout=30,
         )
     except Forbidden as exc:
         if _BOT_BLOCKED in exc.message.lower():

@@ -6,8 +6,8 @@ from datetime import datetime
 
 from sqlalchemy import update
 
-from .connection import SessionLocal
-from .models import User, Transcription, Payment, Refinement
+from database.connection import SessionLocal
+from database.models import User, Transcription, Payment, Refinement
 from utils.utils import MoscowTimezone
 
 
