@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import update
 
 from .connection import SessionLocal
-from .models import User, Transcription, Payment, Summarization, PLATFORM_TELEGRAM
+from .models import User, Transcription, Payment, Refinement, PLATFORM_TELEGRAM
 from utils.utils import MoscowTimezone
 
 
@@ -122,20 +122,22 @@ def get_recent_transcriptions(user_id: int, platform: str, limit: int = 10) -> l
         )
 
 
-def create_summarization(
+def create_refinement(
     transcription_id: int,
     user_id: int,
     platform: str,
     message_id: str,
-) -> Summarization:
-    """Persist a new summarization record in pending state."""
+    task_type: str = "summarize",
+) -> Refinement:
+    """Persist a new refinement record in pending state."""
     with SessionLocal() as session:
-        record = Summarization(
+        record = Refinement(
             transcription_id=transcription_id,
             user_id=user_id,
             user_platform=platform,
             message_id=message_id,
             status="pending",
+            task_type=task_type,
         )
         session.add(record)
         session.commit()
@@ -143,28 +145,28 @@ def create_summarization(
         return record
 
 
-def get_summarization(summarization_id: int) -> Optional[Summarization]:
-    """Fetch a summarization record by its identifier."""
+def get_refinement(refinement_id: int) -> Optional[Refinement]:
+    """Fetch a refinement record by its identifier."""
     with SessionLocal() as session:
-        return session.get(Summarization, summarization_id)
+        return session.get(Refinement, refinement_id)
 
 
-def get_summarizations_by_status(status: str) -> list[Summarization]:
-    """Return all summarizations with the specified *status*."""
+def get_refinements_by_status(status: str) -> list[Refinement]:
+    """Return all refinements with the specified *status*."""
     with SessionLocal() as session:
         return (
-            session.query(Summarization)
-            .filter(Summarization.status == status)
+            session.query(Refinement)
+            .filter(Refinement.status == status)
             .all()
         )
 
 
-def update_summarization(summarization_id: int, **fields: Any) -> Optional[Summarization]:
-    """Update fields of an existing summarization record."""
+def update_refinement(refinement_id: int, **fields: Any) -> Optional[Refinement]:
+    """Update fields of an existing refinement record."""
     if not fields:
         return None
     with SessionLocal() as session:
-        record = session.get(Summarization, summarization_id)
+        record = session.get(Refinement, refinement_id)
         if record is None:
             return None
         for key, value in fields.items():

@@ -3,7 +3,7 @@ import logging
 
 import aiomax
 
-from database.queries import create_summarization, get_transcription
+from database.queries import create_refinement, get_transcription
 from database.models import PLATFORM_MAX
 from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
@@ -43,7 +43,7 @@ async def handle_max_summarize(callback: aiomax.Callback, bot: aiomax.Bot) -> No
     if msg is None:
         return
 
-    create_summarization(
+    create_refinement(
         transcription_id=transcription_id,
         user_id=user_id,
         platform=PLATFORM_MAX,

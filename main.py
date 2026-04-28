@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-from schedulers.summarization import check_summarizations
+from schedulers.refinement import check_refinements
 from schedulers.transcription import check_running_tasks
 from schedulers.topup import check_pending_payments
 
@@ -234,7 +234,7 @@ async def run_bots() -> None:
 
     # Register job queue
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
-    application.job_queue.run_repeating(check_summarizations, interval=1.0)
+    application.job_queue.run_repeating(check_refinements, interval=1.0)
     application.job_queue.run_repeating(check_pending_payments, interval=10.0)
 
     # --- Start PTB (non-blocking) ---

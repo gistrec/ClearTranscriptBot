@@ -56,8 +56,8 @@ SUMMARIZE_PROMPT = (
 )
 
 
-@sentry_span(op="summarization.start")
-async def start_summarization(text: str) -> Optional[str]:
+@sentry_span(op="refinement.start")
+async def start_refinement(text: str) -> Optional[str]:
     """Submit a summarization prediction to Replicate.
 
     Returns the prediction ID on success, or None on failure.
@@ -78,8 +78,8 @@ async def start_summarization(text: str) -> Optional[str]:
     return await asyncio.to_thread(_create)
 
 
-@sentry_span(op="summarization.check")
-async def check_summarization(operation_id: str) -> Optional[dict]:
+@sentry_span(op="refinement.check")
+async def check_refinement(operation_id: str) -> Optional[dict]:
     """Poll a Replicate prediction.
 
     Returns ``{"success": bool, "text": str}`` when finished,

@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM
-from database.queries import create_summarization, get_transcription
+from database.queries import create_refinement, get_transcription
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
 from messengers.telegram import safe_reply_text, safe_edit_message_reply_markup
@@ -37,7 +37,7 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await safe_reply_text(query.message, "Не удалось создать конспект")
         return
 
-    create_summarization(
+    create_refinement(
         transcription_id=transcription_id,
         user_id=transcription.user_id,
         platform=PLATFORM_TELEGRAM,

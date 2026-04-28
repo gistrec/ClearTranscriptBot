@@ -126,15 +126,15 @@ class Transcription(Base):
     )
 
 
-class Summarization(Base):
-    """Summarization requests for long transcriptions."""
+class Refinement(Base):
+    """Text refinement requests (summarization, improvement) for transcriptions."""
 
-    __tablename__ = "summarizations"
+    __tablename__ = "refinements"
 
-    # Identifier of summarization request
+    # Identifier of refinement request
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Transcription this summary was generated for
+    # Transcription this refinement was generated for
     transcription_id = Column(Integer, nullable=False)
 
     # Platform user identifier
@@ -152,16 +152,19 @@ class Summarization(Base):
     # Replicate prediction ID (set when status becomes "running")
     operation_id = Column(String(64), nullable=True)
 
-    # Summary text produced by the LLM
+    # Task type: "summarize" or "improve"
+    task_type = Column(String(16), nullable=False, server_default="summarize")
+
+    # Result text produced by the LLM
     result_text = Column(Text, nullable=True)
 
-    # LLM model used for summarization
+    # LLM model used
     llm_model = Column(String(64), nullable=True)
 
-    # Timestamp when the summarization was requested
+    # Timestamp when the refinement was requested
     created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 
-    # Timestamp when the summarization finished (completed or failed)
+    # Timestamp when the refinement finished (completed or failed)
     finished_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
@@ -173,9 +176,9 @@ class Summarization(Base):
             ["transcription_id"],
             ["transcriptions.id"],
         ),
-        Index("idx_summarizations_status", "status"),
-        Index("idx_summarizations_transcription_id", "transcription_id"),
-        Index("idx_summarizations_user", "user_id", "user_platform"),
+        Index("idx_refinements_status", "status"),
+        Index("idx_refinements_transcription_task", "transcription_id", "task_type"),
+        Index("idx_refinements_user", "user_id", "user_platform"),
     )
 
 
