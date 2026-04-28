@@ -29,6 +29,7 @@ from handlers.telegram.topup import handle_topup, handle_topup_callback, handle_
 from handlers.telegram.rate_transcription import handle_rate_transcription
 from handlers.telegram.summarize import handle_summarize
 from handlers.telegram.send_as_text import handle_send_as_text
+from handlers.telegram.improve import handle_improve
 
 from handlers.max.balance import handle_max_balance
 from handlers.max.cancel_task import handle_max_cancel_task
@@ -39,6 +40,7 @@ from handlers.max.price import handle_max_price
 from handlers.max.rate_transcription import handle_max_rate
 from handlers.max.summarize import handle_max_summarize
 from handlers.max.send_as_text import handle_max_send_as_text
+from handlers.max.improve import handle_max_improve
 from handlers.max.text import handle_max_text
 from handlers.max.topup import (
     handle_max_topup,
@@ -134,6 +136,9 @@ async def run_bots() -> None:
     application.add_handler(
         CallbackQueryHandler(handle_send_as_text, pattern=r"^send_as_text:\d+$")
     )
+    application.add_handler(
+        CallbackQueryHandler(handle_improve, pattern=r"^improve:\d+$")
+    )
 
     # --- Build Max bot (optional) ---
     max_bot = None
@@ -207,6 +212,8 @@ async def run_bots() -> None:
                 await handle_max_summarize(callback, max_bot)
             elif payload.startswith("send_as_text:"):
                 await handle_max_send_as_text(callback, max_bot)
+            elif payload.startswith("improve:"):
+                await handle_max_improve(callback, max_bot)
             elif payload.startswith("topup:"):
                 await handle_max_topup_callback(callback, max_bot)
             elif payload.startswith("payment:check:"):

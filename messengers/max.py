@@ -2,6 +2,8 @@
 import logging
 import aiomax
 
+from typing import Optional
+
 from aiomax.buttons import CallbackButton, KeyboardBuilder
 
 
@@ -52,7 +54,12 @@ async def safe_send_message(bot: aiomax.Bot, *args, **kwargs):
         return None
 
 
-async def safe_edit_message(bot: aiomax.Bot, *args, **kwargs):
+_KEYBOARD_NOT_SET = object()
+
+
+async def safe_edit_message(bot: aiomax.Bot, *args, keyboard=_KEYBOARD_NOT_SET, **kwargs):
+    if keyboard is not _KEYBOARD_NOT_SET:
+        kwargs["attachments"] = [_MaxKeyboardAttachment(keyboard)] if keyboard is not None else []
     try:
         return await bot.edit_message(*args, **kwargs)
     except Exception as exc:
@@ -118,16 +125,30 @@ def make_payment_actions_keyboard(order_id: str) -> KeyboardBuilder:
     )
 
 
-def make_summarize_keyboard(transcription_id: int) -> KeyboardBuilder:
-    return KeyboardBuilder().row(
-        CallbackButton("📝 Создать конспект", f"summarize:{transcription_id}")
-    )
+def make_summarize_keyboard(
+    transcription_id: int,
+    show_summarize: bool = True,
+    show_improve: bool = True,
+) -> Optional[KeyboardBuilder]:
+    buttons = []
+    if show_summarize:
+        buttons.append(CallbackButton("📝 Создать конспект", f"summarize:{transcription_id}"))
+    if show_improve:
+        buttons.append(CallbackButton("✨ Улучшить текст", f"improve:{transcription_id}"))
+    return KeyboardBuilder().row(*buttons) if buttons else None
 
 
-def make_send_as_text_keyboard(transcription_id: int) -> KeyboardBuilder:
-    return KeyboardBuilder().row(
-        CallbackButton("📄 Отправить текстом", f"send_as_text:{transcription_id}")
-    )
+def make_send_as_text_keyboard(
+    transcription_id: int,
+    show_send_as_text: bool = True,
+    show_improve: bool = True,
+) -> Optional[KeyboardBuilder]:
+    buttons = []
+    if show_send_as_text:
+        buttons.append(CallbackButton("📄 Отправить текстом", f"send_as_text:{transcription_id}"))
+    if show_improve:
+        buttons.append(CallbackButton("✨ Улучшить текст", f"improve:{transcription_id}"))
+    return KeyboardBuilder().row(*buttons) if buttons else None
 
 
 async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, caption: str, keyboard=None):

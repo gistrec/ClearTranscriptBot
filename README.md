@@ -15,6 +15,7 @@ Bot for automatic audio/video transcription, available on **Telegram** and **Max
 - 📦 Stores files in Yandex Cloud S3
 - 💬 Transcription via Yandex SpeechKit or Replicate WhisperX
 - 📝 AI-generated summaries for long recordings (via Replicate LLM)
+- ✨ AI-powered text improvement — formats transcription for readability without changing meaning
 - 💰 Balance and billing inside the bot
 - 📜 Full request history
 - 🐞 Optional error reporting via Sentry
@@ -31,7 +32,7 @@ ClearTranscriptBot
 │   ├── telegram.py      # Telegram safe send/edit helpers
 │   └── max.py           # Max messenger safe send/edit helpers
 ├── schedulers/          # Periodic task schedulers
-│   ├── summarization.py
+│   ├── refinement.py
 │   ├── topup.py
 │   └── transcription.py
 ├── handlers/            # Update handlers, grouped by platform
@@ -41,6 +42,7 @@ ClearTranscriptBot
 │   │   ├── create_task.py
 │   │   ├── file.py
 │   │   ├── history.py
+│   │   ├── improve.py
 │   │   ├── price.py
 │   │   ├── rate_transcription.py
 │   │   ├── send_as_text.py
@@ -48,12 +50,12 @@ ClearTranscriptBot
 │   │   ├── text.py
 │   │   └── topup.py
 │   └── max/             # Max messenger (aiomax) handlers
-│       ├── common.py    # Shared keyboard builders
 │       ├── balance.py
 │       ├── cancel_task.py
 │       ├── create_task.py
 │       ├── file.py
 │       ├── history.py
+│       ├── improve.py
 │       ├── price.py
 │       ├── rate_transcription.py
 │       ├── send_as_text.py
@@ -248,13 +250,14 @@ CREATE TABLE IF NOT EXISTS payments (
     INDEX idx_payments_status_check (status, next_check_at)
 );
 
--- AI summarization requests for completed transcriptions
-CREATE TABLE IF NOT EXISTS summarizations (
+-- AI refinement requests (summarization or text improvement) for completed transcriptions
+CREATE TABLE IF NOT EXISTS refinements (
     id                INTEGER         PRIMARY KEY AUTO_INCREMENT,
     transcription_id  INTEGER         NOT NULL REFERENCES transcriptions(id),
     user_id           BIGINT          NOT NULL,
     user_platform     VARCHAR(16)     NOT NULL,
     status            VARCHAR(32)     NOT NULL,
+    task_type         VARCHAR(16)     NOT NULL DEFAULT 'summarize',
     operation_id      VARCHAR(64),
     result_text       TEXT,
     llm_model         VARCHAR(64),
@@ -262,9 +265,9 @@ CREATE TABLE IF NOT EXISTS summarizations (
     created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at       TIMESTAMP,
     FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
-    INDEX idx_summarizations_transcription_id (transcription_id),
-    INDEX idx_summarizations_user (user_id, user_platform),
-    INDEX idx_summarizations_status (status)
+    INDEX idx_refinements_transcription_task (transcription_id, task_type),
+    INDEX idx_refinements_user (user_id, user_platform),
+    INDEX idx_refinements_status (status)
 );
 
 -- Trigger to maintain users.total_topped_up automatically.

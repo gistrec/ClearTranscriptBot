@@ -9,11 +9,23 @@ from typing import Optional
 from utils.sentry import sentry_span
 
 
-REPLICATE_LLM_MODEL = "openai/gpt-5-mini"
-
-REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
-
-client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+IMPROVE_PROMPT = (
+    "Ты — редактор транскрипций.\n"
+    "Сделай текст удобным для чтения:\n"
+    "- расставь знаки препинания\n"
+    "- исправь регистр\n"
+    "- разбей на короткие абзацы (1–2 предложения)\n\n"
+    "Допустимо:\n"
+    "- удалить бессмысленные повторы (эээ, ммм)\n\n"
+    "Запрещено:\n"
+    "- менять слова\n"
+    "- перефразировать\n"
+    "- добавлять или удалять смысл\n"
+    "- переводить язык\n\n"
+    "Если не уверен — оставь как есть.\n"
+    "Верни только текст.\n\n"
+    'Текст:\n"""{text}"""'
+)
 
 SUMMARIZE_PROMPT = (
     "Ты — помощник, который делает очень короткие, точные и удобные для чтения конспекты транскрипций аудио.\n\n"
@@ -55,14 +67,21 @@ SUMMARIZE_PROMPT = (
     "Транскрипция:\n{text}"
 )
 
+REPLICATE_LLM_MODEL = "openai/gpt-5-mini"
+
+REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
+
+client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+
 
 @sentry_span(op="refinement.start")
-async def start_refinement(text: str) -> Optional[str]:
+async def start_refinement(text: str, task_type: str = "summarize") -> Optional[str]:
     """Submit a summarization prediction to Replicate.
 
     Returns the prediction ID on success, or None on failure.
     """
-    prompt = SUMMARIZE_PROMPT.format(text=text)
+    template = IMPROVE_PROMPT if task_type == "improve" else SUMMARIZE_PROMPT
+    prompt = template.format(text=text)
 
     def _create() -> Optional[str]:
         try:

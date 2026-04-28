@@ -153,7 +153,7 @@ class Refinement(Base):
     operation_id = Column(String(64), nullable=True)
 
     # Task type: "summarize" or "improve"
-    task_type = Column(String(16), nullable=False, server_default="summarize")
+    task_type = Column(String(16), nullable=False)
 
     # Result text produced by the LLM
     result_text = Column(Text, nullable=True)

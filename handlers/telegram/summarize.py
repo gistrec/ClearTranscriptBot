@@ -3,11 +3,10 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM
-from database.queries import create_refinement, get_transcription
+from database.queries import create_refinement, get_transcription, has_refinement
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
-from messengers.telegram import safe_reply_text, safe_edit_message_reply_markup
-
+from messengers.telegram import make_summarize_keyboard, safe_reply_text, safe_edit_message_reply_markup
 
 
 @sentry_bind_user
@@ -26,7 +25,11 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if not transcription.result_s3_path:
         return
 
-    await safe_edit_message_reply_markup(query, reply_markup=None)
+    show_improve = not has_refinement(transcription_id, "improve")
+    await safe_edit_message_reply_markup(
+        query,
+        reply_markup=make_summarize_keyboard(transcription_id, show_summarize=False, show_improve=show_improve),
+    )
     msg = await safe_reply_text(
         query.message,
         f"⏳ Создаю конспект...\n\n"

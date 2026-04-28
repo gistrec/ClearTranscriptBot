@@ -1,6 +1,8 @@
 """python-telegram-bot helpers with error handling."""
 import logging
 
+from typing import Optional
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest, Forbidden
 
@@ -99,7 +101,7 @@ async def safe_send_document(bot, chat_id, reply_to_message_id, document, captio
     try:
         return await bot.send_document(
             chat_id=int(chat_id),
-            reply_to_message_id=int(reply_to_message_id),
+            reply_to_message_id=int(reply_to_message_id) if reply_to_message_id is not None else None,
             document=document,
             caption=caption,
             reply_markup=reply_markup,
@@ -155,16 +157,30 @@ def make_rating_keyboard(
     return InlineKeyboardMarkup(rows)
 
 
-def make_summarize_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}"),
-    ]])
+def make_summarize_keyboard(
+    transcription_id: int,
+    show_summarize: bool = True,
+    show_improve: bool = True,
+) -> Optional[InlineKeyboardMarkup]:
+    buttons = []
+    if show_summarize:
+        buttons.append(InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}"))
+    if show_improve:
+        buttons.append(InlineKeyboardButton("✨ Улучшить текст", callback_data=f"improve:{transcription_id}"))
+    return InlineKeyboardMarkup([buttons]) if buttons else None
 
 
-def make_send_as_text_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{transcription_id}"),
-    ]])
+def make_send_as_text_keyboard(
+    transcription_id: int,
+    show_send_as_text: bool = True,
+    show_improve: bool = True,
+) -> Optional[InlineKeyboardMarkup]:
+    buttons = []
+    if show_send_as_text:
+        buttons.append(InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{transcription_id}"))
+    if show_improve:
+        buttons.append(InlineKeyboardButton("✨ Улучшить текст", callback_data=f"improve:{transcription_id}"))
+    return InlineKeyboardMarkup([buttons]) if buttons else None
 
 
 async def safe_remove_keyboard(bot, chat_id, message_id) -> None:

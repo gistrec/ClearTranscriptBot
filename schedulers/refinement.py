@@ -1,4 +1,5 @@
 """Periodic scheduler for checking refinement statuses."""
+import io
 import logging
 
 import messengers.telegram as tg_sender
@@ -40,23 +41,25 @@ async def check_refinements(context: ContextTypes.DEFAULT_TYPE) -> None:
 async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinements) -> None:
     max_bot = context.bot_data.get("max_bot")
     for record in pending_refinements:
+        fail_text = "❌ Не удалось улучшить текст" if record.task_type == "improve" else "❌ Не удалось создать конспект"
+
         transcription = get_transcription(record.transcription_id)
         if transcription is None or not transcription.result_s3_path:
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         object_name = object_name_from_url(transcription.result_s3_path)
         text = await download_text(object_name)
         if not text:
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
-        operation_id = await start_refinement(text)
+        operation_id = await start_refinement(text, task_type=record.task_type)
         if not operation_id:
             update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         update_refinement(
@@ -83,32 +86,41 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
             logging.exception("Failed to check refinement for record %s", record.id)
             continue
 
+        is_improve = record.task_type == "improve"
+        in_progress_text = "⏳ Улучшаю текст..." if is_improve else "⏳ Создаю конспект..."
+        fail_text = "❌ Не удалось улучшить текст" if is_improve else "❌ Не удалось создать конспект"
+
         if result is None:
             if need_edit(context, record.id, now, cache_key="refinement_status_cache"):
                 elapsed = int((now - record.created_at.replace(tzinfo=MoscowTimezone)).total_seconds())
                 elapsed_str = format_duration(elapsed)
                 await _edit_status(
                     context, max_bot, record.user_platform, record.user_id, record.message_id,
-                    f"⏳ Создаю конспект...\n\n"
-                    f"Время обработки: {elapsed_str}",
+                    f"{in_progress_text}\n\nВремя обработки: {elapsed_str}",
                 )
             continue
 
         if not result["success"]:
             update_refinement(record.id, status="failed", finished_at=now)
-            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "❌ Не удалось создать конспект")
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
-        message = (
-            "📝 Конспект\n\n"
-            + result['text']
-        )
-        # Telegram message limit is 4096 characters
-        if len(message) > 4096:
-            message = message[:4093] + "..."
-
         update_refinement(record.id, status="completed", result_text=result["text"], finished_at=now)
-        await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, message)
+
+        if is_improve:
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, "✨ Текст улучшен")
+            file_data = io.BytesIO(result["text"].encode("utf-8"))
+            file_data.name = "improved.txt"
+            if record.user_platform == PLATFORM_TELEGRAM:
+                await tg_sender.safe_send_document(context.bot, record.user_id, None, file_data, "")
+            elif max_bot is not None:
+                await max_sender.safe_send_document(max_bot, record.user_id, file_data.getvalue(), "improved.txt", "")
+        else:
+            message = "📝 Конспект\n\n" + result["text"]
+            # Telegram message limit is 4096 characters
+            if len(message) > 4096:
+                message = message[:4093] + "..."
+            await _edit_status(context, max_bot, record.user_platform, record.user_id, record.message_id, message)
 
 
 async def _edit_status(

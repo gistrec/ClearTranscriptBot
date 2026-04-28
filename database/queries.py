@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import update
 
 from .connection import SessionLocal
-from .models import User, Transcription, Payment, Refinement, PLATFORM_TELEGRAM
+from .models import User, Transcription, Payment, Refinement
 from utils.utils import MoscowTimezone
 
 
@@ -29,11 +29,6 @@ def get_user(user_id: int, platform: str) -> Optional[User]:
             .filter(User.user_id == user_id, User.user_platform == platform)
             .one_or_none()
         )
-
-
-def get_user_by_telegram_id(telegram_id: int) -> Optional[User]:
-    """Compatibility shim — fetch a Telegram user by their identifier."""
-    return get_user(telegram_id, PLATFORM_TELEGRAM)
 
 
 def change_user_balance(user_id: int, platform: str, delta: Decimal) -> User:
@@ -149,6 +144,20 @@ def get_refinement(refinement_id: int) -> Optional[Refinement]:
     """Fetch a refinement record by its identifier."""
     with SessionLocal() as session:
         return session.get(Refinement, refinement_id)
+
+
+def has_refinement(transcription_id: int, task_type: str) -> bool:
+    """Return True if a non-failed refinement of the given type exists for the transcription."""
+    with SessionLocal() as session:
+        return (
+            session.query(Refinement)
+            .filter(
+                Refinement.transcription_id == transcription_id,
+                Refinement.task_type == task_type,
+                Refinement.status != "failed",
+            )
+            .first()
+        ) is not None
 
 
 def get_refinements_by_status(status: str) -> list[Refinement]:

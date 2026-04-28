@@ -12,7 +12,7 @@ from datetime import datetime
 
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_MAX, PLATFORM_TELEGRAM
+from database.models import PLATFORM_TELEGRAM
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
 
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, RATING_PROMPT
