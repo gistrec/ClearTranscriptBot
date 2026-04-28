@@ -2,13 +2,12 @@
 import logging
 import mimetypes
 import tempfile
-
 import aiomax
 
 from pathlib import Path
 
 from database.models import PLATFORM_MAX
-from database.queries import add_transcription, add_user, get_user
+from database.queries import add_transcription, add_user, get_user, update_transcription
 
 import providers.speechkit as speechkit_provider
 
@@ -18,7 +17,7 @@ from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename
 from utils.utils import format_duration, LONG_AUDIO_THRESHOLD, MAX_AUDIO_DURATION
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_send_message
+from messengers.max import make_confirm_keyboard, safe_send_message
 
 
 
@@ -186,7 +185,6 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         result_s3_path=None,
     )
 
-    from messengers.max import make_confirm_keyboard
     keyboard = make_confirm_keyboard(history.id)
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
@@ -202,5 +200,4 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     if confirm_msg is None:
         return
 
-    from database.queries import update_transcription
     update_transcription(history.id, message_id=str(confirm_msg.body.message_id))

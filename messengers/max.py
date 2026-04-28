@@ -1,7 +1,7 @@
 """aiomax bot helpers with error handling."""
 import logging
-
 import aiomax
+
 from aiomax.buttons import CallbackButton, KeyboardBuilder
 
 
@@ -13,7 +13,6 @@ class _MaxKeyboardAttachment:
     the keyboard as an element of attachments= it survives the retry.
     """
     def __init__(self, keyboard):
-        from aiomax.buttons import KeyboardBuilder
         if isinstance(keyboard, KeyboardBuilder):
             keyboard = keyboard.to_list()
         self._keyboard = keyboard

@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 
+from decimal import Decimal
 from telegram import BotCommand
 from telegram.ext import (
     Application,
@@ -45,6 +46,10 @@ from handlers.max.topup import (
     handle_max_check_payment,
     handle_max_cancel_payment,
 )
+
+from database.models import PLATFORM_MAX
+from database.queries import add_user, get_user
+from utils.utils import available_time_by_balance
 
 from healthcheck import start_healthcheck_server
 
@@ -148,10 +153,6 @@ async def run_bots() -> None:
         @max_bot.on_bot_start()
         async def _on_max_bot_start(event) -> None:
             logging.info("Max bot_start from user_id=%s", getattr(event, "user_id", "?"))
-            from database.models import PLATFORM_MAX
-            from database.queries import add_user, get_user
-            from utils.utils import available_time_by_balance
-            from decimal import Decimal
             try:
                 user_id = int(event.user_id)
             except (ValueError, TypeError):
