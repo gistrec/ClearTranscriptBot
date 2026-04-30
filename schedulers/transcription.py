@@ -95,6 +95,10 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
 
         source_stem = Path(task.audio_s3_path).stem
+        # Most filesystems cap filenames at 255 bytes; Cyrillic UTF-8 is 2 bytes/char,
+        # so long Russian names overflow. Truncate stem to fit ".txt" suffix safely.
+        encoded = source_stem.encode("utf-8")[:240]
+        source_stem = encoded.decode("utf-8", errors="ignore") or "transcript"
         with tempfile.TemporaryDirectory() as workdir:
             path = Path(workdir) / f"{source_stem}.txt"
             path.write_text(text, encoding="utf-8")
