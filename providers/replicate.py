@@ -8,8 +8,8 @@ from decimal import Decimal
 from typing import Any, Dict, Optional
 
 
-MODEL_SMALL = "victor-upmeet/whisperx:84d2ad2d6194fe98a17d2b60bef1c7f910c46b2f6fd38996ca457afd9c8abfcb"
-MODEL_LARGE = "victor-upmeet/whisperx-a40-large:1395a1d7aa48a01094887250475f384d4bae08fd0616f9c405bb81d4174597ea"
+MODEL_SMALL = "victor-upmeet/whisperx:655845d6190ef70573c669245f245892cd039df4b880a1e3a65852c09252f5cc"
+MODEL_LARGE = "victor-upmeet/whisperx-a40-large:8aad2534a4f2a268a80ab781928cf4bc624b0bbed25afe4d789c70c5781c47b1"
 
 ONE_HOUR = 3600
 USD_TO_RUB = Decimal("80")
