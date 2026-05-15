@@ -272,7 +272,10 @@ async def run_bots() -> None:
 
 def main() -> None:
     """Start the bot(s)."""
-    asyncio.run(run_bots())
+    try:
+        asyncio.run(run_bots())
+    except (KeyboardInterrupt, SystemExit):
+        pass
 
 
 if __name__ == "__main__":
