@@ -9,7 +9,7 @@ from database.models import PLATFORM_TELEGRAM, PLATFORM_MAX
 
 async def safe_send_message(context, platform: str, user_id, text: str) -> None:
     if platform == PLATFORM_TELEGRAM:
-        return await tg_sender.safe_send_message(context.bot, chat_id=int(user_id), text=text)
+        await tg_sender.safe_send_message(context.bot, chat_id=int(user_id), text=text)
     if platform == PLATFORM_MAX:
         max_bot = context.bot_data.get("max_bot")
         if max_bot is None:
