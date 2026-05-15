@@ -124,7 +124,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             audio_duration_str = format_duration(task.duration_seconds)
 
             # Build platform-specific action keyboard
-            if task.duration_seconds > SUMMARIZE_THRESHOLD:
+            if (task.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
                 tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id)
                 max_action_keyboard = max_sender.make_summarize_keyboard(task.id)
             else:
