@@ -23,7 +23,7 @@ def extract_start_payload(text: str) -> str | None:
 @sentry_transaction(name="message.text", op="telegram.message")
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Respond to regular text messages."""
-    message = message
+    message = update.message
     if message is None:  # edited_message updates have no .message
         return
     user_id = message.from_user.id
