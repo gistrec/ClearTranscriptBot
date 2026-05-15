@@ -16,6 +16,7 @@ requests
 httpx
 tiktoken
 replicate
+python-dotenv
 
 # Monitoring / error reporting
 sentry_sdk

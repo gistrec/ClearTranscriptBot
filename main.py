@@ -1,4 +1,9 @@
 """Bot entry point — starts Telegram and Max bots concurrently."""
+# ruff: noqa: E402
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import aiomax
 import asyncio
 import logging

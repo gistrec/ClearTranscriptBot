@@ -86,6 +86,8 @@ ClearTranscriptBot
 
 ## Environment variables
 
+The bot loads variables from a `.env` file in the project root via `python-dotenv`. Alternatively, export them in your shell or set them in the systemd unit.
+
 ### Telegram
 
 | Variable             | Description                                                       |
@@ -301,6 +303,25 @@ chmod 0600 ~/.mysql/root.crt
 ```
 
 The certificate will be saved to `~/.mysql/root.crt` and will be used automatically by MySQL clients to establish a secure connection.
+
+## Running as a systemd service
+
+A unit file is provided at `scripts/cleartranscriptbot.service` to keep the bot running and auto-start it on boot.
+
+1. Put env vars into `/home/gistrec/ClearTranscriptBot/.env` (loaded automatically via `python-dotenv`).
+2. Install and enable the unit:
+   ```bash
+   sudo cp scripts/cleartranscriptbot.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now cleartranscriptbot
+   ```
+3. Check status and follow logs:
+   ```bash
+   sudo systemctl status cleartranscriptbot
+   journalctl -u cleartranscriptbot -f
+   ```
+
+The default unit assumes the project lives at `/home/gistrec/ClearTranscriptBot`, runs under user `gistrec`, and uses the venv at `.venv/`. Adjust `WorkingDirectory`, `User`, and `ExecStart` if your layout differs. The `After=mysql.service` line can be removed (or renamed to e.g. `mariadb.service`) if MySQL runs on a different host or under a different unit name.
 
 ## Known issues (mysqlclient)
 

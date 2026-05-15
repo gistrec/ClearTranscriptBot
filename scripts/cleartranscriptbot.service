@@ -1,0 +1,17 @@
+[Unit]
+Description=ClearTranscriptBot (Telegram + Max)
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gistrec
+WorkingDirectory=/home/gistrec/ClearTranscriptBot
+ExecStart=/home/gistrec/ClearTranscriptBot/.venv/bin/python main.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

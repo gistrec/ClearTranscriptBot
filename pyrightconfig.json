@@ -1,0 +1,7 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "reportOptionalMemberAccess": "none",
+  "reportArgumentType": "none",
+  "reportMissingImports": "none",
+}
