@@ -22,7 +22,7 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
         transcription_id = int(transcription_id_str)
         user_id = int(callback.user.user_id)
     except (ValueError, AttributeError):
-        logging.error("Max send_as_text: cannot parse callback payload: %s", callback.payload)
+        logging.warning("Max send_as_text: cannot parse callback payload: %s", callback.payload)
         return
 
     transcription = get_transcription(transcription_id)
@@ -34,7 +34,7 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
 
     text = await download_text(object_name_from_url(transcription.result_s3_path))
     if not text:
-        logging.error("Max send_as_text: failed to download text for transcription %s", transcription_id)
+        logging.warning("Max send_as_text: failed to download text for transcription %s", transcription_id)
         chat_id = callback.message.recipient.chat_id
         await safe_send_message(bot, "Не удалось получить текст", chat_id=chat_id)
         return

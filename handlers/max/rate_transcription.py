@@ -21,7 +21,7 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
         rating = int(rating_str)
         user_id = int(callback.user.user_id)
     except (ValueError, AttributeError):
-        logging.error("Max rate: cannot parse callback payload: %s", callback.payload)
+        logging.warning("Max rate: cannot parse callback payload: %s", callback.payload)
         return
 
     transcription = get_transcription(transcription_id)

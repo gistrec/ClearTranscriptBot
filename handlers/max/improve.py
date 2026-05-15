@@ -20,7 +20,7 @@ async def handle_max_improve(callback: aiomax.Callback, bot: aiomax.Bot) -> None
         transcription_id = int(transcription_id_str)
         user_id = int(callback.user.user_id)
     except (ValueError, AttributeError):
-        logging.error("Max improve: cannot parse callback payload: %s", callback.payload)
+        logging.warning("Max improve: cannot parse callback payload: %s", callback.payload)
         return
 
     transcription = get_transcription(transcription_id)

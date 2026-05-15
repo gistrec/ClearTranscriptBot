@@ -32,7 +32,7 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     text = await download_text(object_name_from_url(transcription.result_s3_path))
     if not text:
-        logging.error("send_as_text: failed to download text for transcription %s", transcription_id)
+        logging.warning("send_as_text: failed to download text for transcription %s", transcription_id)
         await safe_reply_text(query.message, "Не удалось получить текст")
         return
 

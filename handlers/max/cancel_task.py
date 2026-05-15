@@ -24,7 +24,7 @@ async def handle_max_cancel_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     try:
         user_id = int(callback.user.user_id)
     except (ValueError, TypeError, AttributeError):
-        logging.error("Max cancel_task: cannot parse user_id from callback")
+        logging.warning("Max cancel_task: cannot parse user_id from callback")
         return
 
     message_id = callback.message.body.message_id

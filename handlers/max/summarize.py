@@ -20,7 +20,7 @@ async def handle_max_summarize(callback: aiomax.Callback, bot: aiomax.Bot) -> No
         transcription_id = int(transcription_id_str)
         user_id = int(callback.user.user_id)
     except (ValueError, AttributeError):
-        logging.error("Max summarize: cannot parse callback payload: %s", callback.payload)
+        logging.warning("Max summarize: cannot parse callback payload: %s", callback.payload)
         return
 
     transcription = get_transcription(transcription_id)

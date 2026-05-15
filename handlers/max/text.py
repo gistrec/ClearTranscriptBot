@@ -19,7 +19,7 @@ async def handle_max_text(message: aiomax.Message, bot: aiomax.Bot) -> None:
     try:
         user_id = int(message.sender.user_id)
     except (ValueError, TypeError):
-        logging.error("Max: cannot parse user_id from sender: %s", message.sender)
+        logging.warning("Max: cannot parse user_id from sender: %s", message.sender)
         return
 
     text = message.body.text or ""

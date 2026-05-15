@@ -17,7 +17,7 @@ async def handle_max_history(message: aiomax.Message, bot: aiomax.Bot) -> None:
     try:
         user_id = int(message.sender.user_id)
     except (ValueError, TypeError):
-        logging.error("Max: cannot parse user_id: %s", message.sender)
+        logging.warning("Max: cannot parse user_id: %s", message.sender)
         return
 
     items = get_recent_transcriptions(user_id, PLATFORM_MAX, limit=10)

@@ -34,7 +34,7 @@ async def handle_max_topup(message: aiomax.Message, bot: aiomax.Bot) -> None:
     try:
         user_id = int(message.sender.user_id)
     except (ValueError, TypeError):
-        logging.error("Max topup: cannot parse user_id: %s", message.sender)
+        logging.warning("Max topup: cannot parse user_id: %s", message.sender)
         return
 
     user = get_user(user_id, PLATFORM_MAX)
@@ -58,7 +58,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     try:
         user_id = int(callback.user.user_id)
     except (ValueError, TypeError, AttributeError):
-        logging.error("Max topup_callback: cannot parse user_id")
+        logging.warning("Max topup_callback: cannot parse user_id")
         return
 
     message_id = callback.message.body.message_id
@@ -72,12 +72,12 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
         _, amount_str = (callback.payload or "").split(":", 1)
         amount = int(amount_str)
     except (ValueError, AttributeError):
-        logging.exception("Max topup: invalid callback payload: %s", callback.payload)
+        logging.warning("Max topup: invalid callback payload: %s", callback.payload)
         await safe_edit_message(bot, message_id, "Некорректная сумма пополнения", attachments=[])
         return
 
     if amount not in TOPUP_AMOUNTS:
-        logging.error("Max topup: unavailable amount: %s", amount)
+        logging.warning("Max topup: unavailable amount: %s", amount)
         await safe_edit_message(bot, message_id, "Сумма пополнения недоступна", attachments=[])
         return
 
@@ -150,7 +150,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         order_id = callback.payload.split(":", 2)[2]
         user_id = int(callback.user.user_id)
     except (IndexError, ValueError, AttributeError):
-        logging.exception("Max check_payment: invalid callback data: %s", callback.payload)
+        logging.warning("Max check_payment: invalid callback data: %s", callback.payload)
         await safe_edit_message(bot, callback.message.body.message_id, "Некорректные данные платежа", attachments=[])
         return
 
@@ -159,7 +159,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
 
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.user_id != user_id:
-        logging.error("Max check_payment: payment not found for order_id: %s", order_id)
+        logging.warning("Max check_payment: payment not found for order_id: %s", order_id)
         await safe_edit_message(bot, message_id, "Платёж не найден", attachments=[])
         return
 
@@ -213,7 +213,7 @@ async def handle_max_cancel_payment(callback: aiomax.Callback, bot: aiomax.Bot) 
         order_id = callback.payload.split(":", 2)[2]
         user_id = int(callback.user.user_id)
     except (IndexError, ValueError, AttributeError):
-        logging.exception("Max cancel_payment: invalid callback data: %s", callback.payload)
+        logging.warning("Max cancel_payment: invalid callback data: %s", callback.payload)
         await safe_edit_message(bot, callback.message.body.message_id, "Некорректные данные платежа", attachments=[])
         return
 

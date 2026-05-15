@@ -89,12 +89,12 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         _, amount_str = (query.data or "").split(":", 1)
         amount = int(amount_str)
     except (ValueError, AttributeError):
-        logging.exception(f"Invalid topup callback data: {query.data}")
+        logging.warning(f"Invalid topup callback data: {query.data}")
         await safe_edit_message_text(query, "Некорректная сумма пополнения")
         return
 
     if amount not in TOPUP_AMOUNTS:
-        logging.error(f"Unavailable topup amount selected: {amount}")
+        logging.warning(f"Unavailable topup amount selected: {amount}")
         await safe_edit_message_text(query, "Сумма пополнения недоступна")
         return
 
@@ -175,13 +175,13 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         order_id = query.data.split(":", 2)[2]
     except (IndexError, AttributeError):
-        logging.exception(f"Invalid payment check callback data: {query.data}")
+        logging.warning(f"Invalid payment check callback data: {query.data}")
         await safe_edit_message_text(query, "Некорректные данные платежа", reply_markup=None)
         return
 
     payment = get_payment_by_order_id(order_id)
     if payment is None or payment.user_id != query.from_user.id:
-        logging.error(f"Payment not found for order_id: {order_id}")
+        logging.warning(f"Payment not found for order_id: {order_id}")
         await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
         return
 
@@ -251,7 +251,7 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         order_id = query.data.split(":", 2)[2]
     except (IndexError, AttributeError):
-        logging.exception(f"Invalid payment cancel callback data: {query.data}")
+        logging.warning(f"Invalid payment cancel callback data: {query.data}")
         await safe_edit_message_text(query, "Некорректные данные платежа", reply_markup=None)
         return
 
