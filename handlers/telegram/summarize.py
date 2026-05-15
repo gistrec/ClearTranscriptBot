@@ -6,14 +6,14 @@ from database.models import PLATFORM_TELEGRAM
 from database.queries import create_refinement, get_transcription, has_refinement
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
-from messengers.telegram import make_summarize_keyboard, safe_reply_text, safe_edit_message_reply_markup
+from messengers.telegram import make_summarize_keyboard, safe_query_answer, safe_reply_text, safe_edit_message_reply_markup
 
 
 @sentry_bind_user
 @sentry_transaction(name="summarization.create", op="telegram.callback")
 async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await safe_query_answer(query)
 
     _, transcription_id_str = query.data.split(":")
     transcription_id = int(transcription_id_str)

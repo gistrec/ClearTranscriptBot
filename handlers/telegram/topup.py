@@ -14,7 +14,7 @@ from database.queries import add_user, get_user, \
 
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance, build_topup_text, build_payment_text
-from messengers.telegram import safe_edit_message_text, safe_reply_text
+from messengers.telegram import safe_edit_message_text, safe_query_answer, safe_reply_text
 
 
 BOT_URL = "https://t.me/ClearTranscriptBot"
@@ -74,7 +74,7 @@ async def handle_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 @sentry_transaction(name="topup_callback", op="telegram.callback")
 async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await safe_query_answer(query)
 
     if query.data == "topup:cancel":
         await safe_edit_message_text(query,
@@ -170,7 +170,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
 @sentry_transaction(name="payment.check", op="telegram.callback")
 async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await safe_query_answer(query)
 
     try:
         order_id = query.data.split(":", 2)[2]
@@ -246,7 +246,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
 @sentry_transaction(name="payment.cancel", op="telegram.callback")
 async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await safe_query_answer(query)
 
     try:
         order_id = query.data.split(":", 2)[2]

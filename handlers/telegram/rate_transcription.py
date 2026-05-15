@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 
 from database.queries import get_transcription, update_transcription
 
-from messengers.telegram import make_rating_keyboard, safe_edit_message_caption, safe_send_message
+from messengers.telegram import make_rating_keyboard, safe_edit_message_caption, safe_query_answer, safe_send_message
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import RATING_PROMPT, FEEDBACK_PROMPT
 
@@ -13,7 +13,7 @@ from utils.utils import RATING_PROMPT, FEEDBACK_PROMPT
 @sentry_transaction(name="transcription.rate", op="telegram.callback")
 async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer("Спасибо за оценку!")
+    await safe_query_answer(query, "Спасибо за оценку!")
 
     _, transcription_id_str, rating_str = query.data.split(":")
     transcription_id = int(transcription_id_str)

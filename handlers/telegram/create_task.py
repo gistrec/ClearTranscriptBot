@@ -12,7 +12,7 @@ from database.queries import (
     update_transcription,
 )
 
-from messengers.telegram import safe_edit_message_text
+from messengers.telegram import safe_edit_message_text, safe_query_answer
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import start_transcription, get_model_name
@@ -22,7 +22,7 @@ from utils.transcription import start_transcription, get_model_name
 @sentry_transaction(name="transcription.create", op="telegram.callback")
 async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await safe_query_answer(query)
 
     try:
         _, id_str = query.data.split(":", 1)

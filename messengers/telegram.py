@@ -8,6 +8,21 @@ from telegram.error import BadRequest, Forbidden
 
 _MSG_NOT_MODIFIED = "Message is not modified"
 _BOT_BLOCKED = "bot was blocked by the user"
+_QUERY_TOO_OLD = "query is too old"
+
+
+async def safe_query_answer(query, *args, **kwargs):
+    try:
+        return await query.answer(*args, **kwargs)
+    except BadRequest as exc:
+        if _QUERY_TOO_OLD in exc.message.lower():
+            logging.warning("TG query.answer skipped (too old): %s", exc)
+            return None
+        logging.exception("TG query.answer failed")
+        return None
+    except Exception:
+        logging.exception("TG query.answer failed")
+        return None
 
 
 async def safe_reply_text(message, *args, **kwargs):

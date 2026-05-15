@@ -8,7 +8,7 @@ from database.models import PLATFORM_TELEGRAM
 from database.queries import get_transcription, has_refinement
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user, sentry_transaction
-from messengers.telegram import safe_reply_text, safe_edit_message_reply_markup, make_send_as_text_keyboard
+from messengers.telegram import safe_query_answer, safe_reply_text, safe_edit_message_reply_markup, make_send_as_text_keyboard
 
 
 _TG_MAX_LEN = 4096
@@ -18,7 +18,7 @@ _TG_MAX_LEN = 4096
 @sentry_transaction(name="send_as_text", op="telegram.callback")
 async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await safe_query_answer(query)
 
     _, transcription_id_str = query.data.split(":")
     transcription_id = int(transcription_id_str)
