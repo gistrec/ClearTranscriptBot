@@ -6,7 +6,7 @@ from typing import Optional
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest, Forbidden
 
-_MSG_NOT_MODIFIED = "Message is not modified"
+_MSG_NOT_MODIFIED = "message is not modified"
 _BOT_BLOCKED = "bot was blocked by the user"
 _QUERY_TOO_OLD = "query is too old"
 
@@ -144,7 +144,7 @@ async def safe_edit_message_reply_markup(query, *args, **kwargs):
             logging.exception("TG edit_message_reply_markup failed (Forbidden): %s", exc)
         return None
     except BadRequest as exc:
-        if exc.message.startswith(_MSG_NOT_MODIFIED):
+        if exc.message.lower().startswith(_MSG_NOT_MODIFIED):
             return None
         logging.exception("TG edit_message_reply_markup failed")
         return None
