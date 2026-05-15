@@ -51,6 +51,7 @@ from handlers.max.topup import (
 
 from database.models import PLATFORM_MAX
 from database.queries import add_user, get_user
+from messengers.max import safe_send_message as max_safe_send_message
 from utils.utils import available_time_by_balance
 
 from healthcheck import start_healthcheck_server
@@ -167,7 +168,8 @@ async def run_bots() -> None:
                 user = add_user(user_id, PLATFORM_MAX)
             balance = Decimal(user.balance or 0)
             duration_str = available_time_by_balance(balance)
-            await event.send(
+            await max_safe_send_message(
+                max_bot,
                 "Отправьте видео или аудио — вернём текст\n\n"
                 "Поддерживаем все популярные форматы:\n"
                 "• Видео: mp4, mov, mkv, webm и другие\n"
@@ -178,7 +180,8 @@ async def run_bots() -> None:
                 "• /history — история распознаваний\n"
                 "• /balance — текущий баланс\n"
                 "• /topup — пополнить баланс\n"
-                "• /price — стоимость"
+                "• /price — стоимость",
+                user_id=user_id,
             )
 
         @max_bot.on_message()
