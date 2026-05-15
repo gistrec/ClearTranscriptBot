@@ -99,7 +99,7 @@ async def get_media_duration(source: str | Path) -> float:
         )
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
-            logging.error(f"ffmpeg failed: {stderr.decode().strip()}")
+            logging.warning(f"ffprobe failed for {source}: {stderr.decode().strip()}")
             return 0.0
         out = stdout.decode().strip()
         return float(out)
@@ -164,7 +164,7 @@ async def convert_to_ogg(
         _, stderr = await process.communicate()
         if process.returncode != 0:
             stderr_text = stderr.decode().strip()
-            logging.error(f"ffmpeg failed: {stderr_text}")
+            logging.warning(f"ffmpeg failed for {source}: {stderr_text}")
             if "Output file #0 does not contain any stream" in stderr_text:
                 return "no_audio_stream"
             if "moov atom not found" in stderr_text:
