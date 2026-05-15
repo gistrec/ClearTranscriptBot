@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM
 from database.queries import (
     change_user_balance,
+    claim_transcription_for_run,
     get_transcription,
     get_user,
     update_transcription,
@@ -56,6 +57,12 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
+    now = datetime.now(MoscowTimezone)
+    model = get_model_name(task.provider, task.duration_seconds)
+
+    if not claim_transcription_for_run(task.id, now, model, str(query.message.message_id)):
+        return
+
     change_user_balance(user_id, PLATFORM_TELEGRAM, -price_for_user)
 
     operation_id = await start_transcription(
@@ -64,6 +71,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         duration_seconds=task.duration_seconds,
     )
     if not operation_id:
+        update_transcription(task.id, status="failed")
         change_user_balance(user_id, PLATFORM_TELEGRAM, price_for_user)
         await safe_edit_message_text(query,
             "Не удалось запустить распознавание\n"
@@ -80,14 +88,4 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"Время обработки: {elapsed_str}"
     )
 
-    now = datetime.now(MoscowTimezone)
-    model = get_model_name(task.provider, task.duration_seconds)
-
-    update_transcription(
-        task.id,
-        status="running",
-        operation_id=operation_id,
-        message_id=str(query.message.message_id),
-        model=model,
-        started_at=now,
-    )
+    update_transcription(task.id, operation_id=operation_id)

@@ -37,6 +37,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     prune_edit_cache(context, {task.id for task in tasks})
 
     for task in tasks:
+        # Task may be in the brief window between status='running' (set by claim_transcription_for_run)
+        # and operation_id being written. Skip until the create_task handler finishes initialization.
+        if task.operation_id is None:
+            continue
+
         started_at = task.started_at.replace(tzinfo=MoscowTimezone)
 
         duration = int((now - started_at).total_seconds())

@@ -95,6 +95,36 @@ def update_transcription(transcription_id: int, **fields: Any) -> Optional[Trans
         return history
 
 
+def claim_transcription_for_run(
+    transcription_id: int,
+    started_at: datetime,
+    model: str,
+    message_id: str,
+) -> bool:
+    """Atomically transition transcription pending → running.
+
+    Returns True if this caller won the race (proceed with starting the job);
+    False if the transcription is no longer in 'pending' state (another caller
+    already claimed it, or it was cancelled).
+    """
+    with SessionLocal() as session:
+        result = session.execute(
+            update(Transcription)
+            .where(
+                Transcription.id == transcription_id,
+                Transcription.status == "pending",
+            )
+            .values(
+                status="running",
+                started_at=started_at,
+                model=model,
+                message_id=message_id,
+            )
+        )
+        session.commit()
+        return result.rowcount > 0
+
+
 def get_transcriptions_by_status(status: str) -> list[Transcription]:
     """Return all transcriptions with the specified *status*."""
     with SessionLocal() as session:

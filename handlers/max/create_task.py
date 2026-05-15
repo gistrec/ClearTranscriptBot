@@ -8,6 +8,7 @@ import aiomax
 from database.models import PLATFORM_MAX
 from database.queries import (
     change_user_balance,
+    claim_transcription_for_run,
     get_transcription,
     get_user,
     update_transcription,
@@ -32,7 +33,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     try:
         user_id = int(callback.user.user_id)
     except (ValueError, TypeError, AttributeError):
-        logging.error("Max create_task: cannot parse user_id from callback")
+        logging.warning("Max create_task: cannot parse user_id from callback")
         return
 
     message_id = callback.message.body.message_id
@@ -62,6 +63,12 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         )
         return
 
+    now = datetime.now(MoscowTimezone)
+    model = get_model_name(task.provider, task.duration_seconds)
+
+    if not claim_transcription_for_run(task.id, now, model, str(message_id)):
+        return
+
     change_user_balance(user_id, PLATFORM_MAX, -price_for_user)
 
     operation_id = await start_transcription(
@@ -70,6 +77,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         duration_seconds=task.duration_seconds,
     )
     if not operation_id:
+        update_transcription(task.id, status="failed")
         change_user_balance(user_id, PLATFORM_MAX, price_for_user)
         await safe_edit_message(bot,
             message_id,
@@ -90,14 +98,4 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         attachments=[],
     )
 
-    now = datetime.now(MoscowTimezone)
-    model = get_model_name(task.provider, task.duration_seconds)
-
-    update_transcription(
-        task.id,
-        status="running",
-        operation_id=operation_id,
-        message_id=message_id,
-        model=model,
-        started_at=now,
-    )
+    update_transcription(task.id, operation_id=operation_id)
