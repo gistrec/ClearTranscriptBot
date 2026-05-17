@@ -74,6 +74,29 @@ def sanitize_filename(name: str) -> str:
     return sanitized or "audio"
 
 
+def truncate_filename(name: str, max_bytes: int = 200) -> str:
+    """Truncate *name* to *max_bytes* UTF-8 bytes, keeping the extension.
+
+    Linux NAME_MAX is 255 bytes per path component; default budget leaves
+    room for suffixes like ``.progress`` added downstream.
+    """
+    if len(name.encode("utf-8")) <= max_bytes:
+        return name
+
+    from pathlib import Path
+
+    suffix = Path(name).suffix
+    stem = name[: -len(suffix)] if suffix else name
+
+    suffix_bytes = suffix.encode("utf-8")
+    budget = max_bytes - len(suffix_bytes)
+    if budget <= 0:
+        return name.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore") or "audio"
+
+    truncated_stem = stem.encode("utf-8")[:budget].decode("utf-8", errors="ignore")
+    return (truncated_stem + suffix) if truncated_stem else ("audio" + suffix)
+
+
 def is_supported_mime(mime: str) -> bool:
     return mime.startswith("audio/") or mime.startswith("video/")
 

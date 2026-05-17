@@ -15,7 +15,7 @@ from database.queries import add_transcription, add_user, get_user
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
-from utils.tg import is_supported_mime, sanitize_filename, extract_local_path
+from utils.tg import is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
 from utils.utils import format_duration, LONG_AUDIO_THRESHOLD, MAX_AUDIO_DURATION
 from messengers.telegram import safe_reply_text
 
@@ -93,7 +93,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         in_dir.mkdir()
         out_dir.mkdir()
 
-        local_path = in_dir / Path(file_name).name
+        local_path = in_dir / truncate_filename(Path(file_name).name)
 
         try:
             if USE_LOCAL_PTB:

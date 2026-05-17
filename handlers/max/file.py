@@ -14,7 +14,7 @@ import providers.speechkit as speechkit_provider
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.max_download import download_max_file
 from utils.s3 import upload_file
-from utils.tg import is_supported_mime, sanitize_filename
+from utils.tg import is_supported_mime, sanitize_filename, truncate_filename
 from utils.utils import format_duration, LONG_AUDIO_THRESHOLD, MAX_AUDIO_DURATION
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import make_confirm_keyboard, safe_send_message
@@ -61,6 +61,8 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     if attachment is None:
         return  # no supported attachment, ignore
+
+    file_name = truncate_filename(file_name)
 
     ack = await safe_send_message(bot,
         "📥 Файл получен\n\n"
