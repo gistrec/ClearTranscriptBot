@@ -7,6 +7,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.scrubber import EventScrubber
 
 
 ENABLE_SENTRY = os.getenv("ENABLE_SENTRY") == "1"
@@ -17,6 +18,11 @@ if ENABLE_SENTRY:
         enable_logs=True,
         send_default_pii=False,
         traces_sample_rate=1.0,
+        # Default EventScrubber only scrubs top-level keys; nested dicts in
+        # frame locals (e.g. headers={"Authorization": "Api-Key …"}) slip
+        # through. recursive=True walks into nested dicts so credentials in
+        # captured locals are redacted.
+        event_scrubber=EventScrubber(recursive=True),
         integrations=[
             LoggingIntegration(
                 level=logging.INFO,
