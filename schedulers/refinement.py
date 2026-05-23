@@ -37,7 +37,7 @@ async def check_refinements(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinements) -> None:
     for record in pending_refinements:
-        fail_text = "❌ Не удалось улучшить текст" if record.task_type == "improve" else "❌ Не удалось создать конспект"
+        fail_text = "❌ Не удалось оформить текст" if record.task_type == "improve" else "❌ Не удалось создать конспект"
 
         transcription = get_transcription(record.transcription_id)
         if transcription is None or not transcription.result_s3_path:
@@ -85,8 +85,8 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
             continue
 
         is_improve = record.task_type == "improve"
-        in_progress_text = "⏳ Улучшаю текст..." if is_improve else "⏳ Создаю конспект..."
-        fail_text = "❌ Не удалось улучшить текст" if is_improve else "❌ Не удалось создать конспект"
+        in_progress_text = "⏳ Оформляю текст..." if is_improve else "⏳ Создаю конспект..."
+        fail_text = "❌ Не удалось оформить текст" if is_improve else "❌ Не удалось создать конспект"
 
         if result is None:
             if need_edit(context, record.id, now, cache_key="refinement_status_cache"):
@@ -107,7 +107,7 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
         update_refinement(record.id, status="completed", result_text=result["text"], finished_at=now)
 
         if is_improve:
-            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, "✨ Текст улучшен")
+            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, "✏️ Текст оформлен")
             await sender.safe_send_document(context, record.user_platform, record.user_id, None, result["text"].encode("utf-8"), "improved.txt", "")
         else:
             message = "📝 Конспект\n\n" + result["text"]

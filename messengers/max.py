@@ -164,7 +164,7 @@ def make_summarize_keyboard(
     if show_timecodes:
         buttons.append(CallbackButton("⏱ С таймкодами", f"tc:{transcription_id}"))
     if show_improve:
-        buttons.append(CallbackButton("✨ Убрать мусор и оформить", f"improve:{transcription_id}"))
+        buttons.append(CallbackButton("✏️ Знаки препинания и абзацы", f"improve:{transcription_id}"))
     if not buttons:
         return None
     kb = KeyboardBuilder()
@@ -185,7 +185,7 @@ def make_send_as_text_keyboard(
     if show_timecodes:
         buttons.append(CallbackButton("⏱ С таймкодами", f"tc:{transcription_id}"))
     if show_improve:
-        buttons.append(CallbackButton("✨ Убрать мусор и оформить", f"improve:{transcription_id}"))
+        buttons.append(CallbackButton("✏️ Знаки препинания и абзацы", f"improve:{transcription_id}"))
     if not buttons:
         return None
     kb = KeyboardBuilder()

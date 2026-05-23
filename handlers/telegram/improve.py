@@ -35,12 +35,12 @@ async def handle_improve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await safe_edit_message_reply_markup(query, reply_markup=remaining_keyboard)
     msg = await safe_reply_text(
         query.message,
-        f"⏳ Улучшаю текст...\n\n"
+        f"⏳ Оформляю текст...\n\n"
         f"Время обработки: {format_duration(0)}"
     )
 
     if msg is None:
-        await safe_reply_text(query.message, "Не удалось улучшить текст")
+        await safe_reply_text(query.message, "Не удалось оформить текст")
         return
 
     create_refinement(

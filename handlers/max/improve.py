@@ -43,7 +43,7 @@ async def handle_max_improve(callback: aiomax.Callback, bot: aiomax.Bot) -> None
     await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=remaining_keyboard)
 
     msg = await safe_send_message(bot,
-        f"⏳ Улучшаю текст...\n\n"
+        f"⏳ Оформляю текст...\n\n"
         f"Время обработки: {format_duration(0)}",
         chat_id=chat_id,
     )
