@@ -12,6 +12,20 @@ from sentry_sdk.scrubber import EventScrubber
 
 ENABLE_SENTRY = os.getenv("ENABLE_SENTRY") == "1"
 
+
+def _drop_known_noise(event, hint):
+    record = hint.get("log_record")
+    if record is not None:
+        # PTB logs this at CRITICAL during graceful shutdown when an
+        # in-flight handler awaits getUpdates; it explicitly notes the
+        # exception is suppressed, so it's not actionable.
+        if record.name == "telegram.ext.Application":
+            msg = record.getMessage()
+            if "Fetching updates was aborted" in msg and "graceful shutdown" in msg:
+                return None
+    return event
+
+
 if ENABLE_SENTRY:
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
@@ -23,6 +37,7 @@ if ENABLE_SENTRY:
         # through. recursive=True walks into nested dicts so credentials in
         # captured locals are redacted.
         event_scrubber=EventScrubber(recursive=True),
+        before_send=_drop_known_noise,
         integrations=[
             LoggingIntegration(
                 level=logging.INFO,
