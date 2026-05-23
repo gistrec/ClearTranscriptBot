@@ -49,38 +49,41 @@ def _is_aiomax_upload_failure(exc: Exception) -> bool:
     return isinstance(exc, KeyError) and exc.args == ("token",)
 
 
+def _log_aiomax_failure(label: str, ident: str, exc: Exception) -> None:
+    """Log a known-noisy aiomax failure at warning, everything else at exception."""
+    if _is_chat_denied(exc):
+        logging.warning("%s skipped %s (suspended dialog): %s", label, ident, exc)
+        return
+    if isinstance(exc, InternalError):
+        logging.warning("%s upstream error %s id=%s", label, ident, exc.id)
+        return
+    if _is_aiomax_null_raise(exc):
+        logging.warning("%s no-op response %s (aiomax null raise)", label, ident)
+        return
+    if _is_aiomax_upload_failure(exc):
+        logging.warning("%s upload returned no token %s", label, ident)
+        return
+    logging.exception("%s failed %s", label, ident)
+
+
 async def safe_callback_answer(callback: aiomax.Callback, **kwargs):
     try:
         return await callback.answer(**kwargs)
     except Exception as exc:
-        if _is_chat_denied(exc):
-            logging.warning("Max callback.answer skipped (suspended dialog): %s", exc)
-            return None
-        if isinstance(exc, InternalError):
-            logging.warning("Max callback.answer upstream error id=%s", exc.id)
-            return None
-        if _is_aiomax_null_raise(exc):
-            logging.warning("Max callback.answer no-op response (aiomax null raise)")
-            return None
-        logging.exception("Max callback.answer failed user=%s", getattr(callback.user, "user_id", "?"))
+        _log_aiomax_failure(
+            "Max callback.answer",
+            f"user={getattr(callback.user, 'user_id', '?')}",
+            exc,
+        )
         return None
 
 
 async def safe_send_message(bot: aiomax.Bot, *args, **kwargs):
+    chat_id = kwargs.get("chat_id") or kwargs.get("user_id") or (args[1] if len(args) > 1 else "?")
     try:
         return await bot.send_message(*args, **kwargs)
     except Exception as exc:
-        chat_id = kwargs.get("chat_id") or kwargs.get("user_id") or (args[1] if len(args) > 1 else "?")
-        if _is_chat_denied(exc):
-            logging.warning("Max send_message skipped chat=%s (suspended dialog): %s", chat_id, exc)
-            return None
-        if isinstance(exc, InternalError):
-            logging.warning("Max send_message upstream error chat=%s id=%s", chat_id, exc.id)
-            return None
-        if _is_aiomax_null_raise(exc):
-            logging.warning("Max send_message no-op response chat=%s (aiomax null raise)", chat_id)
-            return None
-        logging.exception("Max send_message failed chat=%s", chat_id)
+        _log_aiomax_failure("Max send_message", f"chat={chat_id}", exc)
         return None
 
 
@@ -93,16 +96,7 @@ async def safe_edit_message(bot: aiomax.Bot, *args, keyboard=_KEYBOARD_NOT_SET, 
     try:
         return await bot.edit_message(*args, **kwargs)
     except Exception as exc:
-        if _is_chat_denied(exc):
-            logging.warning("Max edit_message skipped (suspended dialog): %s", exc)
-            return None
-        if isinstance(exc, InternalError):
-            logging.warning("Max edit_message upstream error args=%s id=%s", args[:1], exc.id)
-            return None
-        if _is_aiomax_null_raise(exc):
-            logging.warning("Max edit_message no-op response args=%s (aiomax null raise)", args[:1])
-            return None
-        logging.exception("Max edit_message failed args=%s", args[:1])
+        _log_aiomax_failure("Max edit_message", f"args={args[:1]}", exc)
         return None
 
 
@@ -110,16 +104,7 @@ async def safe_remove_keyboard(bot: aiomax.Bot, message_id):
     try:
         return await bot.edit_message(str(message_id), attachments=[])
     except Exception as exc:
-        if _is_chat_denied(exc):
-            logging.warning("Max remove_keyboard skipped (suspended dialog): %s", exc)
-            return None
-        if isinstance(exc, InternalError):
-            logging.warning("Max remove_keyboard upstream error msg=%s id=%s", message_id, exc.id)
-            return None
-        if _is_aiomax_null_raise(exc):
-            logging.warning("Max remove_keyboard no-op response msg=%s (aiomax null raise)", message_id)
-            return None
-        logging.exception("Max remove_keyboard failed msg=%s", message_id)
+        _log_aiomax_failure("Max remove_keyboard", f"msg={message_id}", exc)
         return None
 
 
@@ -212,17 +197,5 @@ async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, capt
         attachments.append(file_attachment)
         return await bot.send_message(caption, user_id=int(chat_id), attachments=attachments)
     except Exception as exc:
-        if _is_chat_denied(exc):
-            logging.warning("Max send_document skipped (suspended dialog): %s", exc)
-            return None
-        if isinstance(exc, InternalError):
-            logging.warning("Max send_document upstream error chat=%s id=%s", chat_id, exc.id)
-            return None
-        if _is_aiomax_null_raise(exc):
-            logging.warning("Max send_document no-op response chat=%s (aiomax null raise)", chat_id)
-            return None
-        if _is_aiomax_upload_failure(exc):
-            logging.warning("Max upload_file returned no token chat=%s file=%s", chat_id, filename)
-            return None
-        logging.exception("Max send_document failed chat=%s", chat_id)
+        _log_aiomax_failure("Max send_document", f"chat={chat_id} file={filename}", exc)
         return None
