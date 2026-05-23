@@ -23,6 +23,14 @@ def _drop_known_noise(event, hint):
             msg = record.getMessage()
             if "Fetching updates was aborted" in msg and "graceful shutdown" in msg:
                 return None
+
+        # PTB's network_retry_loop logs every transient getUpdates failure
+        # at ERROR and retries internally. When the local bot-api restarts
+        # this can produce dozens of duplicate events per outage.
+        if record.name == "telegram.ext.Updater" and (
+            "Exception happened while polling for updates" in record.getMessage()
+        ):
+            return None
     return event
 
 
