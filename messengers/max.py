@@ -50,10 +50,10 @@ async def safe_send_message(bot: aiomax.Bot, *args, **kwargs):
     try:
         return await bot.send_message(*args, **kwargs)
     except Exception as exc:
-        if _is_chat_denied(exc):
-            logging.warning("Max send_message skipped (suspended dialog): %s", exc)
-            return None
         chat_id = kwargs.get("chat_id") or kwargs.get("user_id") or (args[1] if len(args) > 1 else "?")
+        if _is_chat_denied(exc):
+            logging.warning("Max send_message skipped chat=%s (suspended dialog): %s", chat_id, exc)
+            return None
         if isinstance(exc, InternalError):
             logging.warning("Max send_message upstream error chat=%s id=%s", chat_id, exc.id)
             return None
