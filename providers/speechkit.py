@@ -96,7 +96,13 @@ async def check_transcription(operation_id: str) -> Optional[dict]:
             return data
 
         return None
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, httpx.HTTPStatusError) and 500 <= exc.response.status_code < 600:
+            logging.warning(
+                "SpeechKit check_transcription upstream %s for %s",
+                exc.response.status_code, operation_id,
+            )
+            return None
         logging.exception(f"Failed to fetch transcription result for {operation_id}")
         return None
 
@@ -129,6 +135,12 @@ async def start_transcription(s3_uri: str, duration_seconds: int) -> Optional[st
         #     'modifiedAt': '2025-08-09T20:48:53Z'
         # }
         return response.json()["id"]
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, httpx.HTTPStatusError) and 500 <= exc.response.status_code < 600:
+            logging.warning(
+                "SpeechKit start_transcription upstream %s for %s",
+                exc.response.status_code, s3_uri,
+            )
+            return None
         logging.exception(f"Failed to start transcription for {s3_uri}")
         return None
