@@ -31,6 +31,13 @@ def _drop_known_noise(event, hint):
             "Exception happened while polling for updates" in record.getMessage()
         ):
             return None
+
+        # aiomax's start_polling loop catches every exception via
+        # bot_logger.exception(e) and sleeps 3s before retrying. It's the
+        # only ERROR-level user of the aiomax.bot logger in the library,
+        # so drop those — surfaced errors propagate via our safe_* helpers.
+        if record.name == "aiomax.bot" and record.exc_info is not None:
+            return None
     return event
 
 
