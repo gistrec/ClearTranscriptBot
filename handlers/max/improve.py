@@ -1,4 +1,4 @@
-"""Handler for the 'Улучшить текст' callback on Max messenger."""
+"""Handler for the 'Знаки препинания и абзацы' callback on Max messenger."""
 import logging
 
 import aiomax

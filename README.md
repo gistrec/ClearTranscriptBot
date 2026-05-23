@@ -15,7 +15,7 @@ Bot for automatic audio/video transcription, available on **Telegram** and **Max
 - 📦 Stores files in Yandex Cloud S3
 - 💬 Transcription via Yandex SpeechKit or Replicate WhisperX
 - 📝 AI-generated summaries for long recordings (via Replicate LLM)
-- ✨ AI-powered text improvement — formats transcription for readability without changing meaning
+- ✏️ AI-powered punctuation and paragraph formatting (via Replicate LLM)
 - 💰 Balance and billing inside the bot
 - 📜 Full request history
 - 🐞 Optional error reporting via Sentry
