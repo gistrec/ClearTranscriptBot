@@ -36,6 +36,15 @@ async def download_max_file(url: str, destination: str | Path) -> bool:
                 continue
             logging.warning("Max file CDN closed mid-stream after retry: %s", exc)
             break
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            if 400 <= status < 500:
+                # Most often Max's signed URL expired before we fetched it;
+                # the user just needs to send the file again.
+                logging.warning("Max file CDN returned %s for %s...", status, url[:80])
+                break
+            logging.exception("Failed to download Max file from %s...", url[:80])
+            break
         except Exception:
             logging.exception("Failed to download Max file from %s...", url[:80])
             break
