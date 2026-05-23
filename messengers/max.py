@@ -5,6 +5,7 @@ import aiomax
 from typing import Optional
 
 from aiomax.buttons import CallbackButton, KeyboardBuilder
+from aiomax.exceptions import InternalError
 
 
 class _MaxKeyboardAttachment:
@@ -38,6 +39,9 @@ async def safe_callback_answer(callback: aiomax.Callback, **kwargs):
         if _is_chat_denied(exc):
             logging.warning("Max callback.answer skipped (suspended dialog): %s", exc)
             return None
+        if isinstance(exc, InternalError):
+            logging.warning("Max callback.answer upstream error id=%s", exc.id)
+            return None
         logging.exception("Max callback.answer failed user=%s", getattr(callback.user, "user_id", "?"))
         return None
 
@@ -50,6 +54,9 @@ async def safe_send_message(bot: aiomax.Bot, *args, **kwargs):
             logging.warning("Max send_message skipped (suspended dialog): %s", exc)
             return None
         chat_id = kwargs.get("chat_id") or kwargs.get("user_id") or (args[1] if len(args) > 1 else "?")
+        if isinstance(exc, InternalError):
+            logging.warning("Max send_message upstream error chat=%s id=%s", chat_id, exc.id)
+            return None
         logging.exception("Max send_message failed chat=%s", chat_id)
         return None
 
@@ -66,6 +73,9 @@ async def safe_edit_message(bot: aiomax.Bot, *args, keyboard=_KEYBOARD_NOT_SET, 
         if _is_chat_denied(exc):
             logging.warning("Max edit_message skipped (suspended dialog): %s", exc)
             return None
+        if isinstance(exc, InternalError):
+            logging.warning("Max edit_message upstream error args=%s id=%s", args[:1], exc.id)
+            return None
         logging.exception("Max edit_message failed args=%s", args[:1])
         return None
 
@@ -76,6 +86,9 @@ async def safe_remove_keyboard(bot: aiomax.Bot, message_id):
     except Exception as exc:
         if _is_chat_denied(exc):
             logging.warning("Max remove_keyboard skipped (suspended dialog): %s", exc)
+            return None
+        if isinstance(exc, InternalError):
+            logging.warning("Max remove_keyboard upstream error msg=%s id=%s", message_id, exc.id)
             return None
         logging.exception("Max remove_keyboard failed msg=%s", message_id)
         return None
@@ -172,6 +185,9 @@ async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, capt
     except Exception as exc:
         if _is_chat_denied(exc):
             logging.warning("Max send_document skipped (suspended dialog): %s", exc)
+            return None
+        if isinstance(exc, InternalError):
+            logging.warning("Max send_document upstream error chat=%s id=%s", chat_id, exc.id)
             return None
         logging.exception("Max send_document failed chat=%s", chat_id)
         return None
