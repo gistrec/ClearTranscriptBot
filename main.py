@@ -35,6 +35,7 @@ from handlers.telegram.rate_transcription import handle_rate_transcription
 from handlers.telegram.summarize import handle_summarize
 from handlers.telegram.send_as_text import handle_send_as_text
 from handlers.telegram.improve import handle_improve
+from handlers.telegram.timecodes import handle_timecodes, handle_timecodes_back, handle_timecodes_format
 
 from handlers.max.balance import handle_max_balance
 from handlers.max.cancel_task import handle_max_cancel_task
@@ -46,6 +47,7 @@ from handlers.max.rate_transcription import handle_max_rate
 from handlers.max.summarize import handle_max_summarize
 from handlers.max.send_as_text import handle_max_send_as_text
 from handlers.max.improve import handle_max_improve
+from handlers.max.timecodes import handle_max_timecodes, handle_max_timecodes_back, handle_max_timecodes_format
 from handlers.max.text import handle_max_text
 from handlers.max.topup import (
     handle_max_topup,
@@ -145,6 +147,15 @@ async def run_bots() -> None:
     application.add_handler(
         CallbackQueryHandler(handle_improve, pattern=r"^improve:\d+$")
     )
+    application.add_handler(
+        CallbackQueryHandler(handle_timecodes, pattern=r"^tc:\d+$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_timecodes_back, pattern=r"^tc_back:\d+$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_timecodes_format, pattern=r"^tc_fmt:\d+:(txt|srt|vtt)$")
+    )
 
     # --- Build Max bot (optional) ---
     max_bot = None
@@ -222,6 +233,12 @@ async def run_bots() -> None:
                 await handle_max_send_as_text(callback, max_bot)
             elif payload.startswith("improve:"):
                 await handle_max_improve(callback, max_bot)
+            elif payload.startswith("tc_fmt:"):
+                await handle_max_timecodes_format(callback, max_bot)
+            elif payload.startswith("tc_back:"):
+                await handle_max_timecodes_back(callback, max_bot)
+            elif payload.startswith("tc:"):
+                await handle_max_timecodes(callback, max_bot)
             elif payload.startswith("topup:"):
                 await handle_max_topup_callback(callback, max_bot)
             elif payload.startswith("payment:check:"):

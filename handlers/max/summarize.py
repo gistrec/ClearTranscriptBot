@@ -34,7 +34,8 @@ async def handle_max_summarize(callback: aiomax.Callback, bot: aiomax.Bot) -> No
     chat_id = callback.message.recipient.chat_id
 
     show_improve = not has_refinement(transcription_id, "improve")
-    remaining_keyboard = make_summarize_keyboard(transcription_id, show_summarize=False, show_improve=show_improve)
+    show_timecodes = transcription.provider == "replicate"
+    remaining_keyboard = make_summarize_keyboard(transcription_id, show_summarize=False, show_improve=show_improve, show_timecodes=show_timecodes)
     await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=remaining_keyboard)
 
     msg = await safe_send_message(bot,

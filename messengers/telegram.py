@@ -177,10 +177,13 @@ def make_summarize_keyboard(
     transcription_id: int,
     show_summarize: bool = True,
     show_improve: bool = True,
+    show_timecodes: bool = False,
 ) -> Optional[InlineKeyboardMarkup]:
     buttons = []
     if show_summarize:
         buttons.append(InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}"))
+    if show_timecodes:
+        buttons.append(InlineKeyboardButton("⏱ С таймкодами", callback_data=f"tc:{transcription_id}"))
     if show_improve:
         buttons.append(InlineKeyboardButton("✨ Убрать мусор и оформить", callback_data=f"improve:{transcription_id}"))
     return InlineKeyboardMarkup([[btn] for btn in buttons]) if buttons else None
@@ -190,13 +193,25 @@ def make_send_as_text_keyboard(
     transcription_id: int,
     show_send_as_text: bool = True,
     show_improve: bool = True,
+    show_timecodes: bool = False,
 ) -> Optional[InlineKeyboardMarkup]:
     buttons = []
     if show_send_as_text:
         buttons.append(InlineKeyboardButton("📄 Отправить текстом", callback_data=f"send_as_text:{transcription_id}"))
+    if show_timecodes:
+        buttons.append(InlineKeyboardButton("⏱ С таймкодами", callback_data=f"tc:{transcription_id}"))
     if show_improve:
         buttons.append(InlineKeyboardButton("✨ Убрать мусор и оформить", callback_data=f"improve:{transcription_id}"))
     return InlineKeyboardMarkup([[btn] for btn in buttons]) if buttons else None
+
+
+def make_timecodes_format_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📄 .txt с таймкодами", callback_data=f"tc_fmt:{transcription_id}:txt")],
+        [InlineKeyboardButton("🎬 .srt субтитры", callback_data=f"tc_fmt:{transcription_id}:srt")],
+        [InlineKeyboardButton("🎞 .vtt", callback_data=f"tc_fmt:{transcription_id}:vtt")],
+        [InlineKeyboardButton("← Назад", callback_data=f"tc_back:{transcription_id}")],
+    ])
 
 
 async def safe_remove_keyboard(bot, chat_id, message_id) -> None:

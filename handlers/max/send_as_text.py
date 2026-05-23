@@ -41,7 +41,8 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
 
     message_id = callback.message.body.message_id
     show_improve = not has_refinement(transcription_id, "improve")
-    improve_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=False, show_improve=show_improve)
+    show_timecodes = transcription.provider == "replicate"
+    improve_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=False, show_improve=show_improve, show_timecodes=show_timecodes)
     await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=improve_keyboard)
 
     chat_id = callback.message.recipient.chat_id

@@ -156,10 +156,13 @@ def make_summarize_keyboard(
     transcription_id: int,
     show_summarize: bool = True,
     show_improve: bool = True,
+    show_timecodes: bool = False,
 ) -> Optional[KeyboardBuilder]:
     buttons = []
     if show_summarize:
         buttons.append(CallbackButton("📝 Создать конспект", f"summarize:{transcription_id}"))
+    if show_timecodes:
+        buttons.append(CallbackButton("⏱ С таймкодами", f"tc:{transcription_id}"))
     if show_improve:
         buttons.append(CallbackButton("✨ Убрать мусор и оформить", f"improve:{transcription_id}"))
     if not buttons:
@@ -174,10 +177,13 @@ def make_send_as_text_keyboard(
     transcription_id: int,
     show_send_as_text: bool = True,
     show_improve: bool = True,
+    show_timecodes: bool = False,
 ) -> Optional[KeyboardBuilder]:
     buttons = []
     if show_send_as_text:
         buttons.append(CallbackButton("📄 Отправить текстом", f"send_as_text:{transcription_id}"))
+    if show_timecodes:
+        buttons.append(CallbackButton("⏱ С таймкодами", f"tc:{transcription_id}"))
     if show_improve:
         buttons.append(CallbackButton("✨ Убрать мусор и оформить", f"improve:{transcription_id}"))
     if not buttons:
@@ -186,6 +192,16 @@ def make_send_as_text_keyboard(
     for btn in buttons:
         kb = kb.row(btn)
     return kb
+
+
+def make_timecodes_format_keyboard(transcription_id: int) -> KeyboardBuilder:
+    return (
+        KeyboardBuilder()
+        .row(CallbackButton("📄 .txt с таймкодами", f"tc_fmt:{transcription_id}:txt"))
+        .row(CallbackButton("🎬 .srt субтитры", f"tc_fmt:{transcription_id}:srt"))
+        .row(CallbackButton("🎞 .vtt", f"tc_fmt:{transcription_id}:vtt"))
+        .row(CallbackButton("← Назад", f"tc_back:{transcription_id}"))
+    )
 
 
 async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, caption: str, keyboard=None):

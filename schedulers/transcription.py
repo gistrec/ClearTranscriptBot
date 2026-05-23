@@ -124,12 +124,13 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             audio_duration_str = format_duration(task.duration_seconds)
 
             # Build platform-specific action keyboard
+            show_timecodes = task.provider == "replicate"
             if (task.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
-                tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id)
-                max_action_keyboard = max_sender.make_summarize_keyboard(task.id)
+                tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
+                max_action_keyboard = max_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
             else:
-                tg_action_keyboard = tg_sender.make_send_as_text_keyboard(task.id)
-                max_action_keyboard = max_sender.make_send_as_text_keyboard(task.id)
+                tg_action_keyboard = tg_sender.make_send_as_text_keyboard(task.id, show_timecodes=show_timecodes)
+                max_action_keyboard = max_sender.make_send_as_text_keyboard(task.id, show_timecodes=show_timecodes)
 
             done_text = (
                 f"✅ Распознавание завершено\n\n"

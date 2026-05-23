@@ -26,9 +26,10 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     show_improve = not has_refinement(transcription_id, "improve")
+    show_timecodes = transcription.provider == "replicate"
     await safe_edit_message_reply_markup(
         query,
-        reply_markup=make_summarize_keyboard(transcription_id, show_summarize=False, show_improve=show_improve),
+        reply_markup=make_summarize_keyboard(transcription_id, show_summarize=False, show_improve=show_improve, show_timecodes=show_timecodes),
     )
     msg = await safe_reply_text(
         query.message,

@@ -37,6 +37,7 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     show_improve = not has_refinement(transcription_id, "improve")
-    await safe_edit_message_reply_markup(query, reply_markup=make_send_as_text_keyboard(transcription_id, show_send_as_text=False, show_improve=show_improve))
+    show_timecodes = transcription.provider == "replicate"
+    await safe_edit_message_reply_markup(query, reply_markup=make_send_as_text_keyboard(transcription_id, show_send_as_text=False, show_improve=show_improve, show_timecodes=show_timecodes))
     for i in range(0, len(text), _TG_MAX_LEN):
         await safe_reply_text(query.message, text[i:i + _TG_MAX_LEN])
