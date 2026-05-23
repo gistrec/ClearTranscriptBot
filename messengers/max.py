@@ -32,6 +32,16 @@ def _is_chat_denied(exc: Exception) -> bool:
     return bool(args) and args[0] == "chat.denied"
 
 
+def _is_aiomax_null_raise(exc: Exception) -> bool:
+    # aiomax/bot.py executes `raise await utils.get_exception(response)` for
+    # 2xx responses whose body has success=false. get_exception returns None
+    # for any 2xx status, so `raise None` surfaces as this TypeError.
+    return (
+        isinstance(exc, TypeError)
+        and exc.args == ("exceptions must derive from BaseException",)
+    )
+
+
 async def safe_callback_answer(callback: aiomax.Callback, **kwargs):
     try:
         return await callback.answer(**kwargs)
@@ -41,6 +51,9 @@ async def safe_callback_answer(callback: aiomax.Callback, **kwargs):
             return None
         if isinstance(exc, InternalError):
             logging.warning("Max callback.answer upstream error id=%s", exc.id)
+            return None
+        if _is_aiomax_null_raise(exc):
+            logging.warning("Max callback.answer no-op response (aiomax null raise)")
             return None
         logging.exception("Max callback.answer failed user=%s", getattr(callback.user, "user_id", "?"))
         return None
@@ -56,6 +69,9 @@ async def safe_send_message(bot: aiomax.Bot, *args, **kwargs):
             return None
         if isinstance(exc, InternalError):
             logging.warning("Max send_message upstream error chat=%s id=%s", chat_id, exc.id)
+            return None
+        if _is_aiomax_null_raise(exc):
+            logging.warning("Max send_message no-op response chat=%s (aiomax null raise)", chat_id)
             return None
         logging.exception("Max send_message failed chat=%s", chat_id)
         return None
@@ -76,6 +92,9 @@ async def safe_edit_message(bot: aiomax.Bot, *args, keyboard=_KEYBOARD_NOT_SET, 
         if isinstance(exc, InternalError):
             logging.warning("Max edit_message upstream error args=%s id=%s", args[:1], exc.id)
             return None
+        if _is_aiomax_null_raise(exc):
+            logging.warning("Max edit_message no-op response args=%s (aiomax null raise)", args[:1])
+            return None
         logging.exception("Max edit_message failed args=%s", args[:1])
         return None
 
@@ -89,6 +108,9 @@ async def safe_remove_keyboard(bot: aiomax.Bot, message_id):
             return None
         if isinstance(exc, InternalError):
             logging.warning("Max remove_keyboard upstream error msg=%s id=%s", message_id, exc.id)
+            return None
+        if _is_aiomax_null_raise(exc):
+            logging.warning("Max remove_keyboard no-op response msg=%s (aiomax null raise)", message_id)
             return None
         logging.exception("Max remove_keyboard failed msg=%s", message_id)
         return None
@@ -188,6 +210,9 @@ async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, capt
             return None
         if isinstance(exc, InternalError):
             logging.warning("Max send_document upstream error chat=%s id=%s", chat_id, exc.id)
+            return None
+        if _is_aiomax_null_raise(exc):
+            logging.warning("Max send_document no-op response chat=%s (aiomax null raise)", chat_id)
             return None
         logging.exception("Max send_document failed chat=%s", chat_id)
         return None
