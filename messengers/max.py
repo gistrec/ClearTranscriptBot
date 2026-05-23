@@ -42,6 +42,13 @@ def _is_aiomax_null_raise(exc: Exception) -> bool:
     )
 
 
+def _is_aiomax_upload_failure(exc: Exception) -> bool:
+    # aiomax.Bot.upload_file blindly reads raw_file["token"]; if Max's
+    # upload endpoint returns an error response without the token key,
+    # this surfaces as KeyError('token').
+    return isinstance(exc, KeyError) and exc.args == ("token",)
+
+
 async def safe_callback_answer(callback: aiomax.Callback, **kwargs):
     try:
         return await callback.answer(**kwargs)
@@ -213,6 +220,9 @@ async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, capt
             return None
         if _is_aiomax_null_raise(exc):
             logging.warning("Max send_document no-op response chat=%s (aiomax null raise)", chat_id)
+            return None
+        if _is_aiomax_upload_failure(exc):
+            logging.warning("Max upload_file returned no token chat=%s file=%s", chat_id, filename)
             return None
         logging.exception("Max send_document failed chat=%s", chat_id)
         return None
