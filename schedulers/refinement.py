@@ -108,7 +108,7 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
 
         if is_improve:
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, "✏️ Текст оформлен")
-            await sender.safe_send_document(context, record.user_platform, record.user_id, None, result["text"].encode("utf-8"), "improved.txt", "")
+            await sender.safe_send_document(context, record.user_platform, record.user_id, None, result["text"].encode("utf-8"), "formatted.txt", "")
         else:
             message = "📝 Конспект\n\n" + result["text"]
             # Telegram message limit is 4096 characters
