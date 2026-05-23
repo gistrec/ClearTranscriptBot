@@ -141,12 +141,16 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, done_text, tg_keyboard=tg_action_keyboard, max_keyboard=max_action_keyboard)
 
             try:
-                tg_rating_keyboard = tg_sender.make_rating_keyboard(task.id)
-                max_rating_keyboard = max_sender.make_rating_keyboard(task.id)
-
                 await sender.safe_send_document(
                     context, task.user_platform, task.user_id, task.message_id,
-                    text.encode("utf-8"), path.name, RATING_PROMPT,
+                    text.encode("utf-8"), path.name, "",
+                )
+
+                tg_rating_keyboard = tg_sender.make_rating_keyboard(task.id)
+                max_rating_keyboard = max_sender.make_rating_keyboard(task.id)
+                await sender.safe_send_message_with_keyboard(
+                    context, task.user_platform, task.user_id,
+                    RATING_PROMPT,
                     tg_keyboard=tg_rating_keyboard, max_keyboard=max_rating_keyboard,
                 )
 

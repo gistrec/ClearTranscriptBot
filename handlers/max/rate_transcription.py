@@ -30,17 +30,12 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
 
     update_transcription(transcription_id, rating=rating)
 
-    file_attachments = [
-        att for att in (callback.message.body.attachments or [])
-        if att.type == "file"
-    ]
     keyboard = make_rating_keyboard(transcription_id, selected=rating)
     await safe_callback_answer(
         callback,
         notification="Спасибо за оценку!",
         text=RATING_PROMPT,
         keyboard=keyboard,
-        attachments=file_attachments if file_attachments else None,
     )
 
     if rating <= 2:
