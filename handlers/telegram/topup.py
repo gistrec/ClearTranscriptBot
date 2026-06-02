@@ -185,7 +185,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
         return
 
-    if payment.status in ("CONFIRMED", "AUTHORIZED"):
+    if payment.status == "CONFIRMED":
         logging.info(f"Payment already completed for order_id: {order_id}")
 
         await safe_edit_message_text(query,
@@ -208,7 +208,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
 
     payment_status = tinkoff_response.get("Status", None)
 
-    if payment_status in ("CONFIRMED", "AUTHORIZED"):
+    if payment_status == "CONFIRMED":
         won, user = confirm_payment(order_id, payment_status)
         if not won:
             await safe_edit_message_text(query, "Платёж уже завершён ранее", reply_markup=None)

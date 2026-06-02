@@ -70,7 +70,7 @@ async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
             continue
 
         payment_status = tinkoff_response.get("Status")
-        if payment_status not in ("CONFIRMED", "AUTHORIZED"):
+        if payment_status != "CONFIRMED":
             continue
 
         await _confirm_payment(context, payment, payment_status)
@@ -119,7 +119,7 @@ async def _expire_payment(context: ContextTypes.DEFAULT_TYPE, payment) -> None:
         )
         return
 
-    if payment_status in ("CONFIRMED", "AUTHORIZED"):
+    if payment_status == "CONFIRMED":
         await _confirm_payment(context, payment, payment_status)
         return
 

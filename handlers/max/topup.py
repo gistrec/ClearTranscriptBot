@@ -163,7 +163,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
         await safe_edit_message(bot, message_id, "Платёж не найден", attachments=[])
         return
 
-    if payment.status in ("CONFIRMED", "AUTHORIZED"):
+    if payment.status == "CONFIRMED":
         await safe_edit_message(bot, message_id, "Платёж уже завершён ранее", attachments=[])
         return
 
@@ -180,7 +180,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
 
     payment_status = tinkoff_response.get("Status", None)
 
-    if payment_status in ("CONFIRMED", "AUTHORIZED"):
+    if payment_status == "CONFIRMED":
         won, user = confirm_payment(order_id, payment_status)
         if not won:
             await safe_edit_message(bot, message_id, "Платёж уже завершён ранее", attachments=[])

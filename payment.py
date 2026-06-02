@@ -25,7 +25,7 @@ BASE_URL = (
 PAYMENT_STATUSES = {
     "NEW": "не оплачен",
     "CONFIRMED": "оплачен",
-    "AUTHORIZED": "оплачен",
+    "AUTHORIZED": "обрабатывается",
     "CANCELED": "отменён",
     "EXPIRED": "истёк",
 }
@@ -33,7 +33,7 @@ PAYMENT_STATUSES = {
 PAYMENT_STATUS_EMOJI = {
     "NEW": "🕓",
     "CONFIRMED": "✅",
-    "AUTHORIZED": "✅",
+    "AUTHORIZED": "🕓",
     "CANCELED": "🚫",
     "EXPIRED": "⌛",
 }
