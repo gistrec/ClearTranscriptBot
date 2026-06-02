@@ -115,7 +115,7 @@ async def check_refinement(operation_id: str) -> Optional[dict]:
             prediction = client.predictions.get(operation_id)
         except Exception:
             logging.exception(f"Failed to fetch summarization prediction {operation_id}")
-            return {"success": False, "text": ""}
+            return None
 
         if prediction.status not in {"succeeded", "failed", "canceled"}:
             return None
