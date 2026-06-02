@@ -2,7 +2,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM, is_owner
+from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, is_owner
 from database.queries import create_refinement, get_transcription, has_refinement
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
@@ -26,7 +26,7 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     show_improve = not has_refinement(transcription_id, "improve")
-    show_timecodes = transcription.provider == "replicate"
+    show_timecodes = transcription.provider == PROVIDER_REPLICATE
     await safe_edit_message_reply_markup(
         query,
         reply_markup=make_summarize_keyboard(transcription_id, show_summarize=False, show_improve=show_improve, show_timecodes=show_timecodes),

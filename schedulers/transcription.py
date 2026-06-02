@@ -13,6 +13,7 @@ from datetime import datetime
 
 from telegram.ext import ContextTypes
 
+from database.models import PROVIDER_REPLICATE, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED
 from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
 
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, RATING_PROMPT
@@ -27,7 +28,7 @@ from utils.sentry import sentry_transaction, sentry_drop_transaction
 @sentry_transaction(name="transcription.poll", op="task.check")
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
-    tasks = get_transcriptions_by_status("running")
+    tasks = get_transcriptions_by_status(STATUS_RUNNING)
     if not tasks:
         sentry_drop_transaction()
         return
@@ -70,7 +71,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         payload = result_info.get("payload") or {}
         predict_time = payload.get("predict_time")
-        if result_info.get("provider") == "replicate" and predict_time:
+        if result_info.get("provider") == PROVIDER_REPLICATE and predict_time:
             actual_price = replicate_provider.cost_in_rub(predict_time, task.model)
         else:
             actual_price = speechkit_provider.cost_in_rub(task.duration_seconds)
@@ -84,7 +85,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if not result_info.get("success"):
             logging.warning("Transcription failed task=%s payload=%s", task.id, payload)
-            update_transcription(task.id, status="failed")
+            update_transcription(task.id, status=STATUS_FAILED)
             change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if failed
             fail_text = (
                 "❌ Распознавание завершилось с ошибкой\n\n"
@@ -112,7 +113,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             s3_url = await upload_file(path, object_name)
             if not s3_url:
                 logging.warning("S3 upload failed task=%s object=%s", task.id, object_name)
-                update_transcription(task.id, status="failed")
+                update_transcription(task.id, status=STATUS_FAILED)
                 change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
                 fail_text = (
                     "❌ Распознавание завершилось с ошибкой\n\n"
@@ -124,7 +125,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             audio_duration_str = format_duration(task.duration_seconds)
 
             # Build platform-specific action keyboard
-            show_timecodes = task.provider == "replicate"
+            show_timecodes = task.provider == PROVIDER_REPLICATE
             if (task.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
                 tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
                 max_action_keyboard = max_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
@@ -156,7 +157,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
                 update_transcription(
                     task.id,
-                    status="completed",
+                    status=STATUS_COMPLETED,
                     result_s3_path=s3_url,
                     llm_tokens_by_encoding=token_counts,
                 )
@@ -164,7 +165,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 logging.exception(f"Failed to send result for task {task.id}")
                 update_transcription(
                     task.id,
-                    status="failed",
+                    status=STATUS_FAILED,
                     result_s3_path=s3_url,
                     llm_tokens_by_encoding=token_counts,
                 )

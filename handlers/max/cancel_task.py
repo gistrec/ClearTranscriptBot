@@ -3,7 +3,7 @@ import logging
 
 import aiomax
 
-from database.models import PLATFORM_MAX, is_owner
+from database.models import PLATFORM_MAX, STATUS_PENDING, STATUS_CANCELLED, is_owner
 from database.queries import get_transcription, update_transcription
 from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
@@ -34,11 +34,11 @@ async def handle_max_cancel_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         await safe_edit_message(bot, message_id, "Задача не найдена", attachments=[])
         return
 
-    if task.status != "pending":
+    if task.status != STATUS_PENDING:
         await safe_edit_message(bot, message_id, "Задача уже обработана", attachments=[])
         return
 
-    update_transcription(task.id, status="cancelled")
+    update_transcription(task.id, status=STATUS_CANCELLED)
 
     duration_str = format_duration(task.duration_seconds)
     await safe_edit_message(bot,

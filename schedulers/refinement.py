@@ -7,6 +7,7 @@ from datetime import datetime
 
 from telegram.ext import ContextTypes
 
+from database.models import STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED
 from database.queries import (
     get_refinement,
     get_refinements_by_status,
@@ -23,8 +24,8 @@ from utils.sentry import sentry_transaction, sentry_drop_transaction
 @sentry_transaction(name="refinement.poll", op="task.check")
 async def check_refinements(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Pick up pending refinements and poll running ones."""
-    pending_refinements = get_refinements_by_status("pending")
-    running_refinements = get_refinements_by_status("running")
+    pending_refinements = get_refinements_by_status(STATUS_PENDING)
+    running_refinements = get_refinements_by_status(STATUS_RUNNING)
     if not pending_refinements and not running_refinements:
         sentry_drop_transaction()
         return
@@ -42,7 +43,7 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinemen
         transcription = get_transcription(record.transcription_id)
         if transcription is None or not transcription.result_s3_path:
             logging.warning("Refinement %s failed: transcription %s missing or has no result", record.id, record.transcription_id)
-            update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
+            update_refinement(record.id, status=STATUS_FAILED, finished_at=datetime.now(MoscowTimezone))
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
@@ -50,20 +51,20 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinemen
         text = await download_text(object_name)
         if not text:
             logging.warning("Refinement %s failed: could not download text from %s", record.id, object_name)
-            update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
+            update_refinement(record.id, status=STATUS_FAILED, finished_at=datetime.now(MoscowTimezone))
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         operation_id = await start_refinement(text, task_type=record.task_type)
         if not operation_id:
             logging.warning("Refinement %s failed: start_refinement returned no operation_id", record.id)
-            update_refinement(record.id, status="failed", finished_at=datetime.now(MoscowTimezone))
+            update_refinement(record.id, status=STATUS_FAILED, finished_at=datetime.now(MoscowTimezone))
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
         update_refinement(
             record.id,
-            status="running",
+            status=STATUS_RUNNING,
             operation_id=operation_id,
             llm_model=REPLICATE_LLM_MODEL,
         )
@@ -100,11 +101,11 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
 
         if not result["success"]:
             logging.warning("Refinement %s failed: provider returned unsuccessful result", record.id)
-            update_refinement(record.id, status="failed", finished_at=now)
+            update_refinement(record.id, status=STATUS_FAILED, finished_at=now)
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue
 
-        update_refinement(record.id, status="completed", result_text=result["text"], finished_at=now)
+        update_refinement(record.id, status=STATUS_COMPLETED, result_text=result["text"], finished_at=now)
 
         if is_improve:
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, "✏️ Текст оформлен")

@@ -4,6 +4,8 @@ import logging
 from providers import replicate as replicate_provider
 from providers import speechkit as speechkit_provider
 
+from database.models import PROVIDER_REPLICATE, PROVIDER_SPEECHKIT
+
 from utils.s3 import get_signed_url, object_name_from_url
 from utils.sentry import sentry_span
 
@@ -11,9 +13,9 @@ from typing import Any, Dict, Optional
 
 
 def get_model_name(provider: str, duration_seconds: int) -> str:
-    if provider == "replicate":
+    if provider == PROVIDER_REPLICATE:
         return replicate_provider.get_model_name(duration_seconds)
-    elif provider == "speechkit":
+    elif provider == PROVIDER_SPEECHKIT:
         return speechkit_provider.get_model_name(duration_seconds)
     else:
         return "Unknown Provider"
@@ -28,7 +30,7 @@ async def start_transcription(
     """Start transcription and return the operation id, or ``None`` on any failure."""
 
     try:
-        if provider == "replicate":
+        if provider == PROVIDER_REPLICATE:
             signed_url = await get_signed_url(object_name_from_url(audio_url))
             if not signed_url:
                 return None
@@ -41,10 +43,10 @@ async def start_transcription(
 
 
 @sentry_span(op="transcription.check")
-async def check_transcription(operation_id: str, provider: str = "speechkit") -> Optional[Dict[str, Any]]:
+async def check_transcription(operation_id: str, provider: str = PROVIDER_SPEECHKIT) -> Optional[Dict[str, Any]]:
     """Return transcription info if finished, otherwise ``None``."""
 
-    if provider == "replicate":
+    if provider == PROVIDER_REPLICATE:
         payload = await replicate_provider.check_transcription(operation_id)
     else:
         payload = await speechkit_provider.check_transcription(operation_id)
@@ -52,7 +54,7 @@ async def check_transcription(operation_id: str, provider: str = "speechkit") ->
     if payload is None:
         return None
 
-    if provider == "replicate":
+    if provider == PROVIDER_REPLICATE:
         success = payload.get("status") == "succeeded" and bool(payload.get("output"))
     else:
         success = "response" in payload
@@ -73,7 +75,7 @@ def get_result(check_info: Dict[str, Any]) -> Optional[str]:
     provider = check_info.get("provider")
     payload = check_info.get("payload") or {}
 
-    if provider == "replicate":
+    if provider == PROVIDER_REPLICATE:
         return replicate_provider.get_text(payload)
     else:
         return speechkit_provider.get_text(payload)

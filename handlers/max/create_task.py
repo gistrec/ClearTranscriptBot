@@ -5,7 +5,7 @@ from datetime import datetime
 
 import aiomax
 
-from database.models import PLATFORM_MAX, is_owner
+from database.models import PLATFORM_MAX, STATUS_PENDING, STATUS_FAILED, is_owner
 from database.queries import (
     change_user_balance,
     claim_transcription_for_run,
@@ -43,7 +43,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         await safe_edit_message(bot, message_id, "Задача не найдена", attachments=[])
         return
 
-    if task.status != "pending":
+    if task.status != STATUS_PENDING:
         await safe_edit_message(bot, message_id, "Задача уже запущена", attachments=[])
         return
 
@@ -77,7 +77,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         duration_seconds=task.duration_seconds,
     )
     if not operation_id:
-        update_transcription(task.id, status="failed")
+        update_transcription(task.id, status=STATUS_FAILED)
         change_user_balance(user_id, PLATFORM_MAX, price_for_user)
         await safe_edit_message(bot,
             message_id,

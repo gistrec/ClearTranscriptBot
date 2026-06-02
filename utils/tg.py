@@ -3,6 +3,14 @@ import re
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from database.models import (
+    STATUS_PENDING,
+    STATUS_RUNNING,
+    STATUS_COMPLETED,
+    STATUS_FAILED,
+    STATUS_CANCELLED,
+)
+
 
 EDIT_INTERVAL_SEC = 5
 
@@ -41,11 +49,11 @@ def prune_edit_cache(context, active_ids: set, cache_key: str = "status_cache") 
 ANCHOR = "/var/lib/telegram-bot-api"
 
 STATUS_EMOJI = {
-    "pending": "🕓",
-    "running": "⏳",
-    "completed": "✅",
-    "failed": "❌",
-    "cancelled": "🚫",
+    STATUS_PENDING: "🕓",
+    STATUS_RUNNING: "⏳",
+    STATUS_COMPLETED: "✅",
+    STATUS_FAILED: "❌",
+    STATUS_CANCELLED: "🚫",
 }
 
 

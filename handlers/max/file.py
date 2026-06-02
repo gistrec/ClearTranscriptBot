@@ -6,7 +6,7 @@ import aiomax
 
 from pathlib import Path
 
-from database.models import PLATFORM_MAX
+from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, PROVIDER_SPEECHKIT, STATUS_PENDING
 from database.queries import add_transcription, add_user, get_user, update_transcription
 
 import providers.speechkit as speechkit_provider
@@ -174,12 +174,12 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             )
             return
 
-    provider = "replicate" if duration > LONG_AUDIO_THRESHOLD else "speechkit"
+    provider = PROVIDER_REPLICATE if duration > LONG_AUDIO_THRESHOLD else PROVIDER_SPEECHKIT
 
     history = add_transcription(
         user_id=user_id,
         platform=PLATFORM_MAX,
-        status="pending",
+        status=STATUS_PENDING,
         audio_s3_path=s3_url,
         provider=provider,
         duration_seconds=int(duration),

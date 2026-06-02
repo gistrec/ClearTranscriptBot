@@ -9,7 +9,7 @@ from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM
+from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, PROVIDER_SPEECHKIT, STATUS_PENDING
 from database.queries import add_transcription, add_user, get_user
 
 from utils.ffmpeg import convert_to_ogg, get_media_duration
@@ -185,12 +185,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-    provider = "replicate" if duration > LONG_AUDIO_THRESHOLD else "speechkit"
+    provider = PROVIDER_REPLICATE if duration > LONG_AUDIO_THRESHOLD else PROVIDER_SPEECHKIT
 
     history = add_transcription(
         user_id=user_id,
         platform=PLATFORM_TELEGRAM,
-        status="pending",
+        status=STATUS_PENDING,
         audio_s3_path=s3_url,
         provider=provider,
         duration_seconds=int(duration),

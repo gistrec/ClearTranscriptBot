@@ -23,6 +23,17 @@ Base = declarative_base()
 PLATFORM_TELEGRAM = "telegram"
 PLATFORM_MAX = "max"
 
+# Transcription provider names
+PROVIDER_REPLICATE = "replicate"
+PROVIDER_SPEECHKIT = "speechkit"
+
+# Transcription and refinement processing statuses
+STATUS_PENDING = "pending"
+STATUS_RUNNING = "running"
+STATUS_COMPLETED = "completed"
+STATUS_FAILED = "failed"
+STATUS_CANCELLED = "cancelled"
+
 
 def is_owner(record, user_id: int, platform: str) -> bool:
     """True if ``record`` exists and belongs to ``user_id`` on ``platform``."""

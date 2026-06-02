@@ -4,7 +4,7 @@ import logging
 import aiomax
 
 from database.queries import create_refinement, get_transcription, has_refinement
-from database.models import PLATFORM_MAX, is_owner
+from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, is_owner
 from utils.utils import format_duration, SUMMARIZE_THRESHOLD
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import make_summarize_keyboard, make_send_as_text_keyboard, safe_callback_answer, safe_send_message, safe_edit_message
@@ -34,7 +34,7 @@ async def handle_max_improve(callback: aiomax.Callback, bot: aiomax.Bot) -> None
     chat_id = callback.message.recipient.chat_id
 
     show_summarize = not has_refinement(transcription_id, "summarize")
-    show_timecodes = transcription.provider == "replicate"
+    show_timecodes = transcription.provider == PROVIDER_REPLICATE
     duration = transcription.duration_seconds or 0
     if duration > SUMMARIZE_THRESHOLD:
         remaining_keyboard = make_summarize_keyboard(transcription_id, show_summarize=show_summarize, show_improve=False, show_timecodes=show_timecodes)

@@ -3,7 +3,7 @@ import logging
 
 import aiomax
 
-from database.models import PLATFORM_MAX, is_owner
+from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, is_owner
 from database.queries import get_transcription, has_refinement
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user_max, sentry_transaction
@@ -42,7 +42,7 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
 
     message_id = callback.message.body.message_id
     show_improve = not has_refinement(transcription_id, "improve")
-    show_timecodes = transcription.provider == "replicate"
+    show_timecodes = transcription.provider == PROVIDER_REPLICATE
     improve_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=False, show_improve=show_improve, show_timecodes=show_timecodes)
     await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=improve_keyboard)
 

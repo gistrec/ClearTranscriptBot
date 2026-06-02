@@ -2,7 +2,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM, is_owner
+from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, is_owner
 from database.queries import create_refinement, get_transcription, has_refinement
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration, SUMMARIZE_THRESHOLD
@@ -26,7 +26,7 @@ async def handle_improve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     show_summarize = not has_refinement(transcription_id, "summarize")
-    show_timecodes = transcription.provider == "replicate"
+    show_timecodes = transcription.provider == PROVIDER_REPLICATE
     duration = transcription.duration_seconds or 0
     if duration > SUMMARIZE_THRESHOLD:
         remaining_keyboard = make_summarize_keyboard(transcription_id, show_summarize=show_summarize, show_improve=False, show_timecodes=show_timecodes)

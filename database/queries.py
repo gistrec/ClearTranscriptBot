@@ -7,7 +7,10 @@ from datetime import datetime
 from sqlalchemy import update
 
 from database.connection import SessionLocal
-from database.models import User, Transcription, Payment, Refinement
+from database.models import (
+    User, Transcription, Payment, Refinement,
+    STATUS_PENDING, STATUS_RUNNING, STATUS_FAILED,
+)
 from utils.utils import MoscowTimezone
 
 
@@ -112,10 +115,10 @@ def claim_transcription_for_run(
             update(Transcription)
             .where(
                 Transcription.id == transcription_id,
-                Transcription.status == "pending",
+                Transcription.status == STATUS_PENDING,
             )
             .values(
-                status="running",
+                status=STATUS_RUNNING,
                 started_at=started_at,
                 model=model,
                 message_id=message_id,
@@ -161,7 +164,7 @@ def create_refinement(
             user_id=user_id,
             user_platform=platform,
             message_id=message_id,
-            status="pending",
+            status=STATUS_PENDING,
             task_type=task_type,
         )
         session.add(record)
@@ -184,7 +187,7 @@ def has_refinement(transcription_id: int, task_type: str) -> bool:
             .filter(
                 Refinement.transcription_id == transcription_id,
                 Refinement.task_type == task_type,
-                Refinement.status != "failed",
+                Refinement.status != STATUS_FAILED,
             )
             .first()
         ) is not None
