@@ -10,7 +10,8 @@ from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM, is_owner
 from database.queries import add_user, get_user, \
-    create_payment, get_payment_by_order_id, update_payment, confirm_payment
+    create_payment, get_payment_by_order_id, update_payment, confirm_payment, \
+    cancel_payment_record
 
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import available_time_by_balance, build_topup_text, build_payment_text
@@ -260,12 +261,14 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
         await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
         return
 
+    if not cancel_payment_record(order_id):
+        await safe_edit_message_text(query, "Платёж уже завершён ранее", reply_markup=None)
+        return
+
     await safe_edit_message_text(query,
         text="🚫 Пополнение отменено",
         reply_markup=None,
     )
-
-    update_payment(order_id, status="CANCELED")
 
     try:
         tinkoff_response = await cancel_payment(payment.payment_id)

@@ -14,6 +14,7 @@ from database.queries import (
     get_payment_by_order_id,
     update_payment,
     confirm_payment,
+    cancel_payment_record,
 )
 from payment import init_payment, get_payment_state, cancel_payment
 from utils.utils import available_time_by_balance, build_topup_text, build_payment_text
@@ -224,8 +225,11 @@ async def handle_max_cancel_payment(callback: aiomax.Callback, bot: aiomax.Bot) 
         await safe_edit_message(bot, message_id, "Платёж не найден", attachments=[])
         return
 
+    if not cancel_payment_record(order_id):
+        await safe_edit_message(bot, message_id, "Платёж уже завершён ранее", attachments=[])
+        return
+
     await safe_edit_message(bot, message_id, "🚫 Пополнение отменено", attachments=[])
-    update_payment(order_id, status="CANCELED")
 
     try:
         tinkoff_response = await cancel_payment(payment.payment_id)

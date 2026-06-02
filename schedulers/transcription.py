@@ -139,6 +139,15 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}\n\n"
             )
+            # Persist final state before delivering the action keyboard so the
+            # buttons (send-as-text / summarize / timecodes) see result_s3_path
+            # the moment they become clickable.
+            update_transcription(
+                task.id,
+                status=STATUS_COMPLETED,
+                result_s3_path=s3_url,
+                llm_tokens_by_encoding=token_counts,
+            )
             await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, done_text, tg_keyboard=tg_action_keyboard, max_keyboard=max_action_keyboard)
 
             try:
@@ -154,24 +163,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                     RATING_PROMPT,
                     tg_keyboard=tg_rating_keyboard, max_keyboard=max_rating_keyboard,
                 )
-
-                update_transcription(
-                    task.id,
-                    status=STATUS_COMPLETED,
-                    result_s3_path=s3_url,
-                    llm_tokens_by_encoding=token_counts,
-                )
             except Exception:
-                logging.exception(f"Failed to send result for task {task.id}")
-                update_transcription(
-                    task.id,
-                    status=STATUS_FAILED,
-                    result_s3_path=s3_url,
-                    llm_tokens_by_encoding=token_counts,
-                )
-                change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if sending failed
-                fail_text = (
-                    "❌ Распознавание завершилось с ошибкой\n\n"
-                    "Попробуйте ещё раз"
-                )
-                await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, fail_text)
+                # Best-effort delivery: transcription succeeded and result lives
+                # in S3 — user can re-fetch via the "Отправить текстом" button.
+                logging.exception(f"Failed to deliver result for task {task.id}")

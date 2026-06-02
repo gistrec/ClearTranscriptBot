@@ -349,6 +349,22 @@ def expire_payment(order_id: str) -> bool:
         return result.rowcount > 0
 
 
+def cancel_payment_record(order_id: str) -> bool:
+    """Set payment status to CANCELED only if it is still NEW.
+
+    Returns True if this caller performed the transition; False if the payment
+    was already handled (e.g. confirmed and credited by the scheduler).
+    """
+    with SessionLocal() as session:
+        result = session.execute(
+            update(Payment)
+            .where(Payment.order_id == order_id, Payment.status == "NEW")
+            .values(status="CANCELED")
+        )
+        session.commit()
+        return result.rowcount > 0
+
+
 def get_payment_by_order_id(order_id: str) -> Optional[Payment]:
     with SessionLocal() as session:
         return session.query(Payment).filter(Payment.order_id == order_id).one_or_none()
