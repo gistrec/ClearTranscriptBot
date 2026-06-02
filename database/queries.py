@@ -324,6 +324,7 @@ def confirm_payment(order_id: str, payment_status: str) -> tuple[bool, Optional[
         user = (
             session.query(User)
             .filter(User.user_id == payment.user_id, User.user_platform == payment.user_platform)
+            .with_for_update()
             .one()
         )
         user.balance = (user.balance or Decimal("0")) + payment.amount
