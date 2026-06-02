@@ -25,6 +25,9 @@ async def handle_improve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not transcription.result_s3_path:
         return
 
+    if has_refinement(transcription_id, "improve"):
+        return
+
     show_summarize = not has_refinement(transcription_id, "summarize")
     show_timecodes = transcription.provider == PROVIDER_REPLICATE
     duration = transcription.duration_seconds or 0

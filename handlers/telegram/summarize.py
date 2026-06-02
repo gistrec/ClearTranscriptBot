@@ -25,6 +25,9 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if not transcription.result_s3_path:
         return
 
+    if has_refinement(transcription_id, "summarize"):
+        return
+
     show_improve = not has_refinement(transcription_id, "improve")
     show_timecodes = transcription.provider == PROVIDER_REPLICATE
     await safe_edit_message_reply_markup(

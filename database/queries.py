@@ -365,6 +365,22 @@ def cancel_payment_record(order_id: str) -> bool:
         return result.rowcount > 0
 
 
+def fail_payment_record(order_id: str, status: str) -> bool:
+    """Move a still-NEW payment to a terminal failure *status* reported by Tinkoff.
+
+    Returns True if this caller performed the transition; False if the payment
+    was already handled (confirmed, cancelled, or expired) by another path.
+    """
+    with SessionLocal() as session:
+        result = session.execute(
+            update(Payment)
+            .where(Payment.order_id == order_id, Payment.status == "NEW")
+            .values(status=status)
+        )
+        session.commit()
+        return result.rowcount > 0
+
+
 def get_payment_by_order_id(order_id: str) -> Optional[Payment]:
     with SessionLocal() as session:
         return session.query(Payment).filter(Payment.order_id == order_id).one_or_none()

@@ -30,6 +30,9 @@ async def handle_max_improve(callback: aiomax.Callback, bot: aiomax.Bot) -> None
     if not transcription.result_s3_path:
         return
 
+    if has_refinement(transcription_id, "improve"):
+        return
+
     message_id = callback.message.body.message_id
     chat_id = callback.message.recipient.chat_id
 

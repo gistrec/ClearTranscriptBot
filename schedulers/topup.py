@@ -14,6 +14,7 @@ from database.queries import (
     claim_payment_for_check,
     confirm_payment,
     expire_payment,
+    fail_payment_record,
     update_payment,
 )
 from utils.utils import MoscowTimezone, available_time_by_balance
@@ -28,6 +29,17 @@ _PHASE3_END = 180 * 60  # 60–180 min → every 60 s; after this → expire
 _PHASE1_INTERVAL = 10
 _PHASE2_INTERVAL = 30
 _PHASE3_INTERVAL = 60
+
+# Terminal Tinkoff statuses that mean the payment will never be confirmed.
+# AUTHORIZED is intentionally excluded — it is a transient in-progress state.
+_TERMINAL_FAILURE_STATUSES = {"REJECTED", "AUTH_FAIL", "CANCELED", "DEADLINE_EXPIRED"}
+
+_FAILURE_MESSAGES = {
+    "REJECTED": "🚫 Платёж отклонён банком",
+    "AUTH_FAIL": "🚫 Не удалось провести платёж",
+    "CANCELED": "🚫 Платёж отменён",
+    "DEADLINE_EXPIRED": "⌛ Время на оплату истекло",
+}
 
 
 def _check_interval(age_seconds: float) -> int:
@@ -70,10 +82,11 @@ async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
             continue
 
         payment_status = tinkoff_response.get("Status")
-        if payment_status != "CONFIRMED":
-            continue
-
-        await _confirm_payment(context, payment, payment_status)
+        if payment_status == "CONFIRMED":
+            await _confirm_payment(context, payment, payment_status)
+        elif payment_status in _TERMINAL_FAILURE_STATUSES:
+            await _fail_payment(context, payment, payment_status)
+        # Otherwise still in progress (NEW / AUTHORIZED / ...) → poll again next tick
 
 
 async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_status: str) -> None:
@@ -97,6 +110,21 @@ async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_
         f"Хватит на распознавание: {duration_str}"
     )
     await sender.safe_send_message(context, payment.user_platform, payment.user_id, text)
+
+
+async def _fail_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_status: str) -> None:
+    """Stop polling a payment that reached a terminal failure status on Tinkoff.
+
+    Atomically moves the record out of NEW so it is no longer due for checking,
+    then informs the user. No Tinkoff Cancel is needed — the payment is already
+    terminal on their side.
+    """
+    if not fail_payment_record(payment.order_id, payment_status):
+        return  # already handled by another path
+
+    if payment.message_id:
+        text = _FAILURE_MESSAGES.get(payment_status, "🚫 Платёж не прошёл")
+        await sender.safe_edit_message(context, payment.user_platform, payment.user_id, payment.message_id, text)
 
 
 async def _expire_payment(context: ContextTypes.DEFAULT_TYPE, payment) -> None:

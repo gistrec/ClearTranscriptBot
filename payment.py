@@ -28,6 +28,9 @@ PAYMENT_STATUSES = {
     "AUTHORIZED": "обрабатывается",
     "CANCELED": "отменён",
     "EXPIRED": "истёк",
+    "REJECTED": "отклонён банком",
+    "AUTH_FAIL": "ошибка оплаты",
+    "DEADLINE_EXPIRED": "истёк срок оплаты",
 }
 
 PAYMENT_STATUS_EMOJI = {
@@ -36,6 +39,9 @@ PAYMENT_STATUS_EMOJI = {
     "AUTHORIZED": "🕓",
     "CANCELED": "🚫",
     "EXPIRED": "⌛",
+    "REJECTED": "🚫",
+    "AUTH_FAIL": "🚫",
+    "DEADLINE_EXPIRED": "⌛",
 }
 
 
