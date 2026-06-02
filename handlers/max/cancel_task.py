@@ -3,7 +3,7 @@ import logging
 
 import aiomax
 
-from database.models import PLATFORM_MAX
+from database.models import PLATFORM_MAX, is_owner
 from database.queries import get_transcription, update_transcription
 from utils.utils import format_duration
 from utils.sentry import sentry_bind_user_max, sentry_transaction
@@ -30,7 +30,7 @@ async def handle_max_cancel_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     message_id = callback.message.body.message_id
 
     task = get_transcription(task_id)
-    if task is None or task.user_id != user_id or task.user_platform != PLATFORM_MAX:
+    if not is_owner(task, user_id, PLATFORM_MAX):
         await safe_edit_message(bot, message_id, "Задача не найдена", attachments=[])
         return
 

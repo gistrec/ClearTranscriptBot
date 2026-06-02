@@ -4,7 +4,7 @@ import logging
 import aiomax
 
 from database.queries import create_refinement, get_transcription, has_refinement
-from database.models import PLATFORM_MAX
+from database.models import PLATFORM_MAX, is_owner
 from utils.utils import format_duration, SUMMARIZE_THRESHOLD
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import make_summarize_keyboard, make_send_as_text_keyboard, safe_callback_answer, safe_send_message, safe_edit_message
@@ -24,7 +24,7 @@ async def handle_max_improve(callback: aiomax.Callback, bot: aiomax.Bot) -> None
         return
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != user_id:
+    if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
 
     if not transcription.result_s3_path:

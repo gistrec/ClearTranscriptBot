@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import aiomax
 
-from database.models import PLATFORM_MAX
+from database.models import PLATFORM_MAX, is_owner
 from database.queries import (
     add_user,
     get_user,
@@ -158,7 +158,7 @@ async def handle_max_check_payment(callback: aiomax.Callback, bot: aiomax.Bot) -
     chat_id = callback.message.recipient.chat_id
 
     payment = get_payment_by_order_id(order_id)
-    if payment is None or payment.user_id != user_id:
+    if not is_owner(payment, user_id, PLATFORM_MAX):
         logging.warning("Max check_payment: payment not found for order_id: %s", order_id)
         await safe_edit_message(bot, message_id, "Платёж не найден", attachments=[])
         return
@@ -220,7 +220,7 @@ async def handle_max_cancel_payment(callback: aiomax.Callback, bot: aiomax.Bot) 
     message_id = callback.message.body.message_id
 
     payment = get_payment_by_order_id(order_id)
-    if payment is None or payment.user_id != user_id:
+    if not is_owner(payment, user_id, PLATFORM_MAX):
         await safe_edit_message(bot, message_id, "Платёж не найден", attachments=[])
         return
 

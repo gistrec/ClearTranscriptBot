@@ -8,7 +8,7 @@ from payment import init_payment, get_payment_state, cancel_payment
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM
+from database.models import PLATFORM_TELEGRAM, is_owner
 from database.queries import add_user, get_user, \
     create_payment, get_payment_by_order_id, update_payment, confirm_payment
 
@@ -180,7 +180,7 @@ async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     payment = get_payment_by_order_id(order_id)
-    if payment is None or payment.user_id != query.from_user.id:
+    if not is_owner(payment, query.from_user.id, PLATFORM_TELEGRAM):
         logging.warning(f"Payment not found for order_id: {order_id}")
         await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
         return
@@ -256,7 +256,7 @@ async def handle_cancel_payment(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     payment = get_payment_by_order_id(order_id)
-    if payment is None or payment.user_id != query.from_user.id:
+    if not is_owner(payment, query.from_user.id, PLATFORM_TELEGRAM):
         await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
         return
 

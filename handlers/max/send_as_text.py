@@ -3,6 +3,7 @@ import logging
 
 import aiomax
 
+from database.models import PLATFORM_MAX, is_owner
 from database.queries import get_transcription, has_refinement
 from utils.s3 import download_text, object_name_from_url
 from utils.sentry import sentry_bind_user_max, sentry_transaction
@@ -26,7 +27,7 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
         return
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != user_id:
+    if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
 
     if not transcription.result_s3_path:

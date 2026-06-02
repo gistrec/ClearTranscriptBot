@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM
+from database.models import PLATFORM_TELEGRAM, is_owner
 from database.queries import get_transcription, update_transcription
 
 from messengers.telegram import safe_edit_message_text, safe_query_answer
@@ -24,7 +24,7 @@ async def handle_cancel_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     task = get_transcription(task_id)
     user_id = query.from_user.id
-    if task is None or task.user_id != user_id or task.user_platform != PLATFORM_TELEGRAM:
+    if not is_owner(task, user_id, PLATFORM_TELEGRAM):
         await safe_edit_message_text(query, "Задача не найдена")
         return
     if task.status != "pending":

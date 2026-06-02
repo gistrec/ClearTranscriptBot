@@ -6,7 +6,7 @@ from pathlib import Path
 from telegram import InputFile, Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM
+from database.models import PLATFORM_TELEGRAM, is_owner
 from database.queries import get_transcription, has_refinement
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import SUMMARIZE_THRESHOLD
@@ -40,7 +40,7 @@ async def handle_timecodes(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     transcription_id = int(transcription_id_str)
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != query.from_user.id or transcription.user_platform != PLATFORM_TELEGRAM:
+    if not is_owner(transcription, query.from_user.id, PLATFORM_TELEGRAM):
         return
     if transcription.provider != "replicate":
         return
@@ -58,7 +58,7 @@ async def handle_timecodes_back(update: Update, context: ContextTypes.DEFAULT_TY
     transcription_id = int(transcription_id_str)
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != query.from_user.id or transcription.user_platform != PLATFORM_TELEGRAM:
+    if not is_owner(transcription, query.from_user.id, PLATFORM_TELEGRAM):
         return
 
     await safe_edit_message_reply_markup(query, reply_markup=_restore_main_keyboard(transcription))
@@ -74,7 +74,7 @@ async def handle_timecodes_format(update: Update, context: ContextTypes.DEFAULT_
     transcription_id = int(transcription_id_str)
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != query.from_user.id or transcription.user_platform != PLATFORM_TELEGRAM:
+    if not is_owner(transcription, query.from_user.id, PLATFORM_TELEGRAM):
         return
     if transcription.provider != "replicate":
         return

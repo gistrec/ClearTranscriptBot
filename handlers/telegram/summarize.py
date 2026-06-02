@@ -2,7 +2,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM
+from database.models import PLATFORM_TELEGRAM, is_owner
 from database.queries import create_refinement, get_transcription, has_refinement
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration
@@ -19,7 +19,7 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     transcription_id = int(transcription_id_str)
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != query.from_user.id or transcription.user_platform != PLATFORM_TELEGRAM:
+    if not is_owner(transcription, query.from_user.id, PLATFORM_TELEGRAM):
         return
 
     if not transcription.result_s3_path:

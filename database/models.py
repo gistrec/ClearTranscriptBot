@@ -24,6 +24,11 @@ PLATFORM_TELEGRAM = "telegram"
 PLATFORM_MAX = "max"
 
 
+def is_owner(record, user_id: int, platform: str) -> bool:
+    """True if ``record`` exists and belongs to ``user_id`` on ``platform``."""
+    return record is not None and record.user_id == user_id and record.user_platform == platform
+
+
 class User(Base):
     """User interacting with the bot (Telegram or Max)."""
 

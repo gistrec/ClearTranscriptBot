@@ -5,6 +5,7 @@ from pathlib import Path
 
 import aiomax
 
+from database.models import PLATFORM_MAX, is_owner
 from database.queries import get_transcription, has_refinement
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from utils.utils import SUMMARIZE_THRESHOLD
@@ -42,7 +43,7 @@ async def handle_max_timecodes(callback: aiomax.Callback, bot: aiomax.Bot) -> No
         return
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != user_id:
+    if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
     if transcription.provider != "replicate":
         return
@@ -65,7 +66,7 @@ async def handle_max_timecodes_back(callback: aiomax.Callback, bot: aiomax.Bot) 
         return
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != user_id:
+    if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
 
     message_id = callback.message.body.message_id
@@ -86,7 +87,7 @@ async def handle_max_timecodes_format(callback: aiomax.Callback, bot: aiomax.Bot
         return
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != user_id:
+    if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
     if transcription.provider != "replicate":
         return

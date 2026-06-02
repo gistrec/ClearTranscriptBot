@@ -3,7 +3,7 @@ import logging
 
 import aiomax
 
-from database.models import PLATFORM_MAX
+from database.models import PLATFORM_MAX, is_owner
 from database.queries import get_transcription, update_transcription
 from messengers.max import make_rating_keyboard, safe_callback_answer, safe_send_message
 from utils.sentry import sentry_bind_user_max, sentry_transaction
@@ -25,7 +25,7 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
         return
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != user_id or transcription.user_platform != PLATFORM_MAX:
+    if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
 
     update_transcription(transcription_id, rating=rating)
