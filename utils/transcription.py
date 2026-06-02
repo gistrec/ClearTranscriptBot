@@ -1,4 +1,6 @@
 """Unified interface for transcription providers."""
+import logging
+
 from providers import replicate as replicate_provider
 from providers import speechkit as speechkit_provider
 
@@ -23,15 +25,19 @@ async def start_transcription(
     provider: str,
     duration_seconds: int
 ) -> Optional[str]:
-    """Start transcription and return the operation id."""
+    """Start transcription and return the operation id, or ``None`` on any failure."""
 
-    if provider == "replicate":
-        signed_url = await get_signed_url(object_name_from_url(audio_url))
-        if not signed_url:
-            return None
-        return await replicate_provider.start_transcription(signed_url, duration_seconds)
+    try:
+        if provider == "replicate":
+            signed_url = await get_signed_url(object_name_from_url(audio_url))
+            if not signed_url:
+                return None
+            return await replicate_provider.start_transcription(signed_url, duration_seconds)
 
-    return await speechkit_provider.start_transcription(audio_url, duration_seconds)
+        return await speechkit_provider.start_transcription(audio_url, duration_seconds)
+    except Exception:
+        logging.exception(f"Failed to start transcription (provider={provider})")
+        return None
 
 
 @sentry_span(op="transcription.check")

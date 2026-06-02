@@ -2,6 +2,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from database.models import PLATFORM_TELEGRAM
 from database.queries import get_transcription, update_transcription
 
 from messengers.telegram import make_rating_keyboard, safe_edit_message_text, safe_query_answer, safe_send_message
@@ -20,7 +21,7 @@ async def handle_rate_transcription(update: Update, context: ContextTypes.DEFAUL
     rating = int(rating_str)
 
     transcription = get_transcription(transcription_id)
-    if transcription is None or transcription.user_id != query.from_user.id:
+    if transcription is None or transcription.user_id != query.from_user.id or transcription.user_platform != PLATFORM_TELEGRAM:
         return
 
     update_transcription(transcription_id, rating=rating)
