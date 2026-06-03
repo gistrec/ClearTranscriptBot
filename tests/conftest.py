@@ -1,11 +1,6 @@
 """Test configuration.
 
-payment.py reads TERMINAL_KEY / TERMINAL_PASSWORD from the environment at
-import time, and utils.utils transitively imports payment. Set dummy values
-before any test module is collected so those imports succeed without real
-credentials.
+Credentials are read lazily in config.py and validated only via
+config.validate() at startup, so importing the modules under test needs no
+real environment. This file intentionally has no setup.
 """
-import os
-
-os.environ.setdefault("TERMINAL_KEY", "test-terminal-key")
-os.environ.setdefault("TERMINAL_PASSWORD", "test-terminal-password")

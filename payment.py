@@ -1,13 +1,14 @@
-import os
 import httpx
 import hashlib
+
+import config
 
 from utils.sentry import sentry_span
 
 
-TERMINAL_KEY = os.environ["TERMINAL_KEY"]
-TERMINAL_PASSWORD = os.environ["TERMINAL_PASSWORD"]
-ENV = os.getenv("TERMINAL_ENV", "test")
+TERMINAL_KEY = config.TERMINAL_KEY
+TERMINAL_PASSWORD = config.TERMINAL_PASSWORD
+ENV = config.TERMINAL_ENV
 
 BASE_URL = (
     "https://securepay.tinkoff.ru/v2"

@@ -6,6 +6,7 @@ load_dotenv()
 
 import aiomax
 import asyncio
+import config
 import logging
 import os
 
@@ -73,14 +74,10 @@ logging.getLogger("apscheduler").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-MAX_BOT_TOKEN = os.environ.get("MAX_BOT_TOKEN")
-
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+MAX_BOT_TOKEN = config.MAX_BOT_TOKEN
+TELEGRAM_BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
 ENABLE_HEALTHCHECK = os.environ.get("ENABLE_HEALTHCHECK") == "1"
-
-if not TELEGRAM_BOT_TOKEN:
-    raise RuntimeError("TELEGRAM_BOT_TOKEN must be set")
 
 
 async def register_commands(application: Application) -> None:
@@ -304,6 +301,7 @@ async def run_bots() -> None:
 
 def main() -> None:
     """Start the bot(s)."""
+    config.validate()
     try:
         asyncio.run(run_bots())
     except (KeyboardInterrupt, SystemExit):
