@@ -1,5 +1,4 @@
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from utils.sentry import sentry_bind_user, sentry_transaction
@@ -11,10 +10,9 @@ from messengers.telegram import safe_reply_text
 async def handle_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await safe_reply_text(
         update.message,
-        "Мы используем Yandex SpeechKit (асинхронное распознавание файлов)\n"
-        "Цена: 0,15 ₽ за каждые 15 секунд аудио\n\n"
-        "<a href=\"https://yandex.cloud/ru/docs/speechkit/pricing#prices-stt\">"
-        "Подробнее о тарификации Yandex SpeechKit</a>",
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True,
+        "Стоимость распознавания речи:\n\n"
+        "Цена: 0,01 ₽ за 1 секунду аудио, например:\n\n"
+        "• 0,60 ₽ за минуту\n"
+        "• 36 ₽ за час\n\n"
+        "Минимальная стоимость одной записи — 1 ₽",
     )

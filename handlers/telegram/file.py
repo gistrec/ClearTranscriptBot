@@ -9,14 +9,14 @@ from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, PROVIDER_SPEECHKIT, STATUS_PENDING
+from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, STATUS_PENDING
 from database.queries import add_transcription, add_user, get_user
 
 from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
-from utils.utils import format_duration, LONG_AUDIO_THRESHOLD, MAX_AUDIO_DURATION
+from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
 from messengers.telegram import safe_reply_text
 
 
@@ -129,7 +129,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-        price_for_user = speechkit_provider.cost_in_rub(duration)
+        price_for_user = max(MIN_PRICE_RUB, speechkit_provider.cost_in_rub(duration))
         if user.balance < price_for_user:
             await safe_reply_text(
                 message,
@@ -185,14 +185,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-    provider = PROVIDER_REPLICATE if duration > LONG_AUDIO_THRESHOLD else PROVIDER_SPEECHKIT
-
     history = add_transcription(
         user_id=user_id,
         platform=PLATFORM_TELEGRAM,
         status=STATUS_PENDING,
         audio_s3_path=s3_url,
-        provider=provider,
+        provider=PROVIDER_REPLICATE,
         duration_seconds=int(duration),
         price_for_user=price_for_user,
         result_s3_path=None,

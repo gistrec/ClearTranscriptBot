@@ -6,7 +6,7 @@ import aiomax
 
 from pathlib import Path
 
-from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, PROVIDER_SPEECHKIT, STATUS_PENDING
+from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, STATUS_PENDING
 from database.queries import add_transcription, add_user, get_user, update_transcription
 
 import providers.speechkit as speechkit_provider
@@ -15,7 +15,7 @@ from utils.ffmpeg import convert_to_ogg, get_media_duration
 from utils.max_download import download_max_file
 from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename
-from utils.utils import format_duration, LONG_AUDIO_THRESHOLD, MAX_AUDIO_DURATION
+from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import make_confirm_keyboard, safe_send_message
 
@@ -122,7 +122,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             )
             return
 
-        price_for_user = speechkit_provider.cost_in_rub(duration)
+        price_for_user = max(MIN_PRICE_RUB, speechkit_provider.cost_in_rub(duration))
         if user.balance < price_for_user:
             await safe_send_message(bot,
                 f"❌ Недостаточно средств\n"
@@ -174,14 +174,12 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             )
             return
 
-    provider = PROVIDER_REPLICATE if duration > LONG_AUDIO_THRESHOLD else PROVIDER_SPEECHKIT
-
     history = add_transcription(
         user_id=user_id,
         platform=PLATFORM_MAX,
         status=STATUS_PENDING,
         audio_s3_path=s3_url,
-        provider=provider,
+        provider=PROVIDER_REPLICATE,
         duration_seconds=int(duration),
         price_for_user=price_for_user,
         result_s3_path=None,
