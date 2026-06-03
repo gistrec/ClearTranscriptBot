@@ -59,6 +59,7 @@ from handlers.max.topup import (
 from database.models import PLATFORM_MAX
 from database.queries import add_user, get_user
 from messengers.max import safe_send_message as max_safe_send_message
+from messengers.max import patch_aiomax
 from utils.utils import available_time_by_balance
 
 from healthcheck import start_healthcheck_server
@@ -160,6 +161,7 @@ async def run_bots() -> None:
     # --- Build Max bot (optional) ---
     max_bot = None
     if MAX_BOT_TOKEN:
+        patch_aiomax()
         max_bot = aiomax.Bot(access_token=MAX_BOT_TOKEN)
 
         @max_bot.on_ready()

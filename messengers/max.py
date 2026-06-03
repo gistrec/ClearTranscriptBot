@@ -8,6 +8,29 @@ from aiomax.buttons import CallbackButton, KeyboardBuilder
 from aiomax.exceptions import InternalError
 
 
+def patch_aiomax() -> None:
+    """Apply runtime fixes for aiomax bugs that crash update parsing.
+
+    LinkedMessage.from_json reads data["message"] unconditionally, but Max
+    sends links without a message body (e.g. forwards), raising KeyError
+    before any handler runs. Fall back to None, which MessageBody tolerates.
+    """
+    from aiomax.types import LinkedMessage, MessageBody, User
+
+    @staticmethod
+    def _linked_message_from_json(data):
+        if data is None:
+            return None
+        return LinkedMessage(
+            type=data["type"],
+            message=MessageBody.from_json(data.get("message")),
+            sender=User.from_json(data.get("sender")),
+            chat_id=data.get("chat_id"),
+        )
+
+    LinkedMessage.from_json = _linked_message_from_json
+
+
 class _MaxKeyboardAttachment:
     """Wraps an aiomax KeyboardBuilder as an attachment-like object.
 
