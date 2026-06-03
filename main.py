@@ -218,6 +218,20 @@ async def run_bots() -> None:
             if any(type(a).__name__ in _file_types for a in _all_atts):
                 await handle_max_file(message, max_bot)
                 return
+            if (
+                message.link is not None
+                and getattr(message.link, "type", None) == "forward"
+                and _linked is None
+                and not (message.body.text or "").strip()
+            ):
+                await max_safe_send_message(
+                    max_bot,
+                    "⚠️ Пересланное голосовое не дошло\n\n"
+                    "Max не передаёт ботам голосовые сообщения при пересылке.\n"
+                    "Отправьте голосовое или аудио боту напрямую — без «Переслать».",
+                    chat_id=message.recipient.chat_id,
+                )
+                return
             await handle_max_text(message, max_bot)
 
         @max_bot.on_button_callback()

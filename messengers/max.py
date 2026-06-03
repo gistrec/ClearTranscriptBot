@@ -15,8 +15,7 @@ def patch_aiomax() -> None:
     sends links without a message body (e.g. forwards), raising KeyError
     before any handler runs. Fall back to None, which MessageBody tolerates.
     """
-    import json as _json
-    from aiomax.types import LinkedMessage, MessageBody, Message, User
+    from aiomax.types import LinkedMessage, MessageBody, User
 
     @staticmethod
     def _linked_message_from_json(data):
@@ -30,22 +29,6 @@ def patch_aiomax() -> None:
         )
 
     LinkedMessage.from_json = _linked_message_from_json
-
-    # TEMP diagnostic: dump raw update when a message has no attachments but
-    # carries a link, to locate where Max puts forwarded audio.
-    _orig_message_from_json = Message.from_json
-
-    @staticmethod
-    def _message_from_json(data):
-        body = data.get("body") or {}
-        if not body.get("attachments") and data.get("link"):
-            logging.warning(
-                "Max forward raw update: %s",
-                _json.dumps(data, ensure_ascii=False),
-            )
-        return _orig_message_from_json(data)
-
-    Message.from_json = _message_from_json
 
 
 class _MaxKeyboardAttachment:
