@@ -10,9 +10,10 @@ from messengers.telegram import safe_reply_text
 async def handle_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await safe_reply_text(
         update.message,
-        "Стоимость распознавания речи:\n\n"
-        "Цена: 0,01 ₽ за 1 секунду аудио, например:\n"
-        "* 0,60 ₽ за минуту\n"
-        "* 36 ₽ за час\n\n"
+        "Стоимость распознавания\n\n"
+        "Цена — 0,01 ₽ за 1 секунду аудио, например:\n"
+        "* 3 ₽ за 5 минут\n"
+        "* 18 ₽ за 30 минут\n"
+        "* 36 ₽ за 1 час\n\n"
         "Минимальная стоимость одного распознавания — 1 ₽",
     )
