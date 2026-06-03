@@ -100,6 +100,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if not text:
             text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
 
+        low_quality = (
+            result_info.get("provider") == PROVIDER_REPLICATE
+            and replicate_provider.looks_like_hallucination(payload)
+        )
+
         source_stem = Path(task.audio_s3_path).stem
         # Most filesystems cap filenames at 255 bytes; Cyrillic UTF-8 is 2 bytes/char,
         # so long Russian names overflow. Truncate stem to fit ".txt" suffix safely.
@@ -139,6 +144,11 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}\n\n"
             )
+            if low_quality:
+                done_text += (
+                    "⚠️ Запись похожа на зашумлённую или неразборчивую — "
+                    "проверьте результат, распознавание может быть неточным\n\n"
+                )
             # Persist final state before delivering the action keyboard so the
             # buttons (send-as-text / summarize / timecodes) see result_s3_path
             # the moment they become clickable.

@@ -88,19 +88,48 @@ async def check_transcription(operation_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def get_text(payload: Dict[str, Any]) -> str:
-    """Extract transcription text from a Replicate transcription result."""
+def _segments(payload: Dict[str, Any]) -> list:
     output = payload.get("output")
     if isinstance(output, dict):
-        segments = output.get("segments") or []
-    elif isinstance(output, list) and output and isinstance(output[0], dict):
-        segments = output
-    else:
-        segments = []
+        return output.get("segments") or []
+    if isinstance(output, list) and output and isinstance(output[0], dict):
+        return output
+    return []
 
+
+def get_text(payload: Dict[str, Any]) -> str:
+    """Extract transcription text from a Replicate transcription result."""
     parts = []
-    for segment in segments:
+    for segment in _segments(payload):
         text = (segment.get("text") or "").strip()
         if text:
             parts.append(text)
     return "\n".join(parts)
+
+
+def looks_like_hallucination(payload: Dict[str, Any]) -> bool:
+    """Heuristic flag for likely-garbage WhisperX output.
+
+    Two orthogonal signals observed in real misrecognitions: a low mean
+    ``avg_logprob`` (genuine speech stays above -0.17, hallucinations fall
+    below -0.38), and a long segment text repeated several times (looping).
+    """
+    segments = _segments(payload)
+
+    logprobs = [
+        s["avg_logprob"]
+        for s in segments
+        if isinstance(s.get("avg_logprob"), (int, float))
+    ]
+    if logprobs and sum(logprobs) / len(logprobs) < -0.30:
+        return True
+
+    counts: Dict[str, int] = {}
+    for segment in segments:
+        text = (segment.get("text") or "").strip()
+        if len(text) >= 15:
+            counts[text] = counts.get(text, 0) + 1
+            if counts[text] >= 3:
+                return True
+
+    return False
