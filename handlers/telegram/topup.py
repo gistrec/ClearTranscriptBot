@@ -3,18 +3,18 @@ import time
 
 from decimal import Decimal
 
-from payment import init_payment, get_payment_state, cancel_payment
+from payment import init_payment, cancel_payment
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM, is_owner
 from database.queries import add_user, get_user, \
-    create_payment, get_payment_by_order_id, update_payment, confirm_payment, \
+    create_payment, get_payment_by_order_id, update_payment, \
     cancel_payment_record
 
 from utils.sentry import sentry_bind_user, sentry_transaction
-from utils.utils import available_time_by_balance, build_topup_text, build_payment_text
+from utils.utils import build_topup_text, build_payment_text
 from messengers.telegram import safe_edit_message_text, safe_query_answer, safe_reply_text
 
 
@@ -41,10 +41,10 @@ def _build_topup_amounts_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def _build_payment_actions_keyboard(order_id: str) -> InlineKeyboardMarkup:
+def _build_payment_actions_keyboard(order_id: str, payment_url: str) -> InlineKeyboardMarkup:
     buttons = [
         [
-            InlineKeyboardButton("Проверить платёж", callback_data=f"payment:check:{order_id}"),
+            InlineKeyboardButton("💳 Оплатить", url=payment_url),
         ],
         [
             InlineKeyboardButton("Отменить платёж", callback_data=f"payment:cancel:{order_id}"),
@@ -107,7 +107,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         disable_web_page_preview=True,
     )
 
-    order_id = f"tg-{query.from_user.id}-{int(time.time() * 1000)}"
+    order_id = f"tg-v2-{query.from_user.id}-{int(time.time() * 1000)}"
 
     if get_payment_by_order_id(order_id) is not None:
         logging.warning("Duplicate topup callback for order_id: %s", order_id)
@@ -157,90 +157,14 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     message = await safe_reply_text(
         query.message,
-        text=build_payment_text(amount, payment_status, payment_url, strikethrough_url=False, escape_url=True),
-        reply_markup=_build_payment_actions_keyboard(order_id),
+        text=build_payment_text(amount, payment_status),
+        reply_markup=_build_payment_actions_keyboard(order_id, payment_url),
         parse_mode="MarkdownV2",
         disable_web_page_preview=True,
     )
 
     if message is not None:
         update_payment(order_id, message_id=str(message.message_id))
-
-
-@sentry_bind_user
-@sentry_transaction(name="payment.check", op="telegram.callback")
-async def handle_check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await safe_query_answer(query)
-
-    try:
-        order_id = query.data.split(":", 2)[2]
-    except (IndexError, AttributeError):
-        logging.warning(f"Invalid payment check callback data: {query.data}")
-        await safe_edit_message_text(query, "Некорректные данные платежа", reply_markup=None)
-        return
-
-    payment = get_payment_by_order_id(order_id)
-    if not is_owner(payment, query.from_user.id, PLATFORM_TELEGRAM):
-        logging.warning(f"Payment not found for order_id: {order_id}")
-        await safe_edit_message_text(query, "Платёж не найден", reply_markup=None)
-        return
-
-    if payment.status == "CONFIRMED":
-        logging.info(f"Payment already completed for order_id: {order_id}")
-
-        await safe_edit_message_text(query,
-            "Платёж уже завершён ранее",
-            reply_markup=None
-        )
-        return
-
-    try:
-        tinkoff_response = await get_payment_state(payment.payment_id)
-        logging.info(f"Tinkoff response: {tinkoff_response}")
-    except Exception:
-        logging.exception(f"Failed to get payment state for order_id: {order_id}")
-        await safe_reply_text(
-            query.message,
-            "Не удалось проверить статус платежа\n"
-            "Попробуйте ещё раз"
-        )
-        return
-
-    payment_status = tinkoff_response.get("Status", None)
-
-    if payment_status == "CONFIRMED":
-        won, user = confirm_payment(order_id, payment_status)
-        if not won:
-            await safe_edit_message_text(query, "Платёж уже завершён ранее", reply_markup=None)
-            return
-
-        balance = Decimal(user.balance or 0)
-        duration_str = available_time_by_balance(balance)
-
-        # Изменяем сообщение со ссылкой для оплаты
-        await safe_edit_message_text(query,
-            text=build_payment_text(
-                int(payment.amount),
-                payment_status,
-                payment.payment_url,
-                strikethrough_url=True,
-                escape_url=True,
-            ),
-            reply_markup=None,
-            parse_mode="MarkdownV2",
-            disable_web_page_preview=True,
-        )
-
-        await safe_reply_text(
-            query.message,
-            f"✅ Платёж на {int(payment.amount)} ₽ успешно завершён\n\n"
-            f"Баланс: {balance} ₽\n"
-            f"Хватит на распознавание: {duration_str}",
-        )
-        return
-    else:
-        await safe_reply_text(query.message, "❌ Платёж не завершён")
 
 
 @sentry_bind_user

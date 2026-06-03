@@ -4,7 +4,7 @@ import aiomax
 
 from typing import Optional
 
-from aiomax.buttons import CallbackButton, KeyboardBuilder
+from aiomax.buttons import CallbackButton, LinkButton, KeyboardBuilder
 from aiomax.exceptions import InternalError
 
 
@@ -167,10 +167,10 @@ def make_topup_amounts_keyboard() -> KeyboardBuilder:
     )
 
 
-def make_payment_actions_keyboard(order_id: str) -> KeyboardBuilder:
+def make_payment_actions_keyboard(order_id: str, payment_url: str) -> KeyboardBuilder:
     return (
         KeyboardBuilder()
-        .row(CallbackButton("Проверить платёж", f"payment:check:{order_id}"))
+        .row(LinkButton("💳 Оплатить", payment_url))
         .row(CallbackButton("Отменить платёж", f"payment:cancel:{order_id}"))
     )
 

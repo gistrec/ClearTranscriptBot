@@ -3,8 +3,6 @@ from decimal import Decimal
 
 from typing import Optional
 
-from telegram.helpers import escape_markdown
-
 from payment import format_payment_status
 
 
@@ -18,20 +16,21 @@ _OFFER_URL = "https://clear-transcript-bot.ru/user-agreement"
 _PRIVACY_URL = "https://clear-transcript-bot.ru/privacy-policy"
 
 
-def build_payment_text(
-    amount: int,
-    status: str,
-    payment_url: str,
-    strikethrough_url: bool = False,  # set True to strike through the URL when payment is confirmed
-    escape_url: bool = False,  # set True when sending via Telegram MarkdownV2
-) -> str:
-    payment_url = escape_markdown(payment_url, version=2) if escape_url else payment_url
-    payment_url = f"~{payment_url}~" if strikethrough_url else payment_url
+def build_payment_text(amount: int, status: str) -> str:
+    # The payment link is rendered as a button, so the body carries no URL.
+    if status == "CONFIRMED":
+        return (
+            f"Счёт на {amount} ₽\n"
+            f"Статус: {format_payment_status(status)}"
+        )
 
     return (
-        f"Счёт на {amount} ₽ создан\n"
-        f"Статус: {format_payment_status(status)}\n\n"
-        f"Оплатить: {payment_url}"
+        f"Счёт на {amount} ₽ создан\n\n"
+        "Безопасная оплата через Т‑Банк \\(Тинькофф\\):\n"
+        "\\* Банковские карты \\(Visa, MasterCard, Мир\\)\n"
+        "\\* Система быстрых платежей \\(СБП\\)\n\n"
+        "Данные карты вводятся на стороне банка — бот их не видит\n"
+        "После оплаты баланс пополнится автоматически"
     )
 
 
@@ -40,7 +39,7 @@ def build_topup_text(last_line: str) -> str:
         "Пополняя баланс, вы соглашаетесь с условиями "
         f"[публичной оферты]({_OFFER_URL}) "
         f"и [политикой обработки персональных данных]({_PRIVACY_URL})\n\n"
-        "Доступные способы оплаты:\n"
+        "Безопасная оплата через Т‑Банк \\(Тинькофф\\):\n"
         "\\* Банковские карты \\(Visa, MasterCard, Мир\\)\n"
         "\\* Система быстрых платежей \\(СБП\\)\n\n"
         f"{last_line}"

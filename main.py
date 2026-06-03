@@ -30,7 +30,7 @@ from handlers.telegram.file import handle_file
 from handlers.telegram.history import handle_history
 from handlers.telegram.price import handle_price
 from handlers.telegram.text import handle_text
-from handlers.telegram.topup import handle_topup, handle_topup_callback, handle_check_payment, handle_cancel_payment
+from handlers.telegram.topup import handle_topup, handle_topup_callback, handle_cancel_payment
 from handlers.telegram.rate_transcription import handle_rate_transcription
 from handlers.telegram.summarize import handle_summarize
 from handlers.telegram.send_as_text import handle_send_as_text
@@ -52,7 +52,6 @@ from handlers.max.text import handle_max_text
 from handlers.max.topup import (
     handle_max_topup,
     handle_max_topup_callback,
-    handle_max_check_payment,
     handle_max_cancel_payment,
 )
 
@@ -129,9 +128,6 @@ async def run_bots() -> None:
     )
     application.add_handler(
         CallbackQueryHandler(handle_topup_callback, pattern=r"^topup:(cancel|\d+)$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(handle_check_payment, pattern=r"^payment:check:.+$")
     )
     application.add_handler(
         CallbackQueryHandler(handle_cancel_payment, pattern=r"^payment:cancel:.+$")
@@ -257,8 +253,6 @@ async def run_bots() -> None:
                 await handle_max_timecodes(callback, max_bot)
             elif payload.startswith("topup:"):
                 await handle_max_topup_callback(callback, max_bot)
-            elif payload.startswith("payment:check:"):
-                await handle_max_check_payment(callback, max_bot)
             elif payload.startswith("payment:cancel:"):
                 await handle_max_cancel_payment(callback, max_bot)
 
