@@ -1,0 +1,2 @@
+# Test-only dependencies (not installed in production)
+pytest
