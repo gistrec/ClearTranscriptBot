@@ -99,7 +99,7 @@
         /* === Layout === */
         .container {
             display: grid;
-            grid-template-rows: 68px 1fr auto;
+            grid-template-rows: 68px 1fr;
             width: 100%;
             min-height: 100vh;
             background: var(--theme-background);
@@ -368,25 +368,28 @@
             color: var(--text-secondary);
         }
 
-        /* === Footer === */
-        .footer {
+        /* === Legal links under the card === */
+        .legal {
+            position: relative;
+            z-index: 1;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 16px;
+            margin-top: 16px;
             font-size: 13px;
             line-height: 16px;
             color: var(--text-secondary);
+            text-align: center;
         }
 
-        .footer a {
+        .legal a {
             color: var(--text-secondary);
             transition: color .2s ease;
         }
 
-        .footer a:hover {
+        .legal a:hover {
             color: var(--text-themed);
         }
 
@@ -487,14 +490,14 @@
 
                 <p class="notice">Если у вас установлено приложение MAX или Telegram, можно сразу запустить бота</p>
             </div>
-        </div>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <a href="user-agreement.html">Публичная оферта</a>
-            <span>·</span>
-            <a href="privacy-policy.html">Политика конфиденциальности</a>
-        </footer>
+            <!-- Legal links -->
+            <div class="legal">
+                <a href="user-agreement.html">Публичная оферта</a>
+                <span>·</span>
+                <a href="privacy-policy.html">Политика конфиденциальности</a>
+            </div>
+        </div>
     </div>
 
     <!-- Yandex.Metrika goal on "Запустить бота" button click -->
