@@ -180,7 +180,7 @@ async def run_bots() -> None:
                 return
             user = get_user(user_id, PLATFORM_MAX)
             if user is None:
-                user = add_user(user_id, PLATFORM_MAX)
+                user = add_user(user_id, PLATFORM_MAX, yclid=yclid)
             balance = Decimal(user.balance or 0)
             duration_str = available_time_by_balance(balance)
             await max_safe_send_message(

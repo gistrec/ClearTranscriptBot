@@ -39,14 +39,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
     user = get_user(user_id, PLATFORM_TELEGRAM)
-    if user is None:
-        user = add_user(user_id, PLATFORM_TELEGRAM)
 
+    yclid = None
     if text.startswith("/start"):
         yclid = extract_start_payload(text)
         logging.info("Telegram /start user=%s payload=%r", user_id, yclid)
         if yclid:
             context.application.create_task(track_goal(yclid, "startbot"))
+
+    if user is None:
+        user = add_user(user_id, PLATFORM_TELEGRAM, yclid=yclid)
 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)

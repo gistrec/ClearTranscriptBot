@@ -14,10 +14,10 @@ from database.models import (
 from utils.utils import MoscowTimezone
 
 
-def add_user(user_id: int, platform: str) -> User:
+def add_user(user_id: int, platform: str, yclid: str | None = None) -> User:
     """Create and persist a new user."""
     with SessionLocal() as session:
-        user = User(user_id=user_id, user_platform=platform)
+        user = User(user_id=user_id, user_platform=platform, yclid=yclid)
         session.add(user)
         session.commit()
         session.refresh(user)

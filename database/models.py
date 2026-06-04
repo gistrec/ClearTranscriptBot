@@ -53,6 +53,9 @@ class User(Base):
     # Platform: "telegram" or "max"
     user_platform = Column(String(16), nullable=False)
 
+    # Yandex Click ID from the /start deeplink, captured at registration for ad attribution
+    yclid = Column(String(64), nullable=True)
+
     # Account balance
     balance = Column(Numeric(10, 2), nullable=False, default=Decimal("50.00"))
 
