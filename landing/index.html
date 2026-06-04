@@ -540,6 +540,20 @@
                 actions.appendChild(groupMax);
             }
         })();
+
+        // Relay the Yandex yclid from this page's URL into the bot start payload
+        // (Telegram and MAX both use ?start=), so the bot attributes the user to
+        // the ad click on first launch.
+        (function() {
+            var yclid = new URLSearchParams(window.location.search).get('yclid');
+            if (!yclid) return;
+            var links = document.querySelectorAll('#actions a');
+            for (var i = 0; i < links.length; i++) {
+                var href = links[i].getAttribute('href');
+                var sep = href.indexOf('?') === -1 ? '?' : '&';
+                links[i].setAttribute('href', href + sep + 'start=' + encodeURIComponent(yclid));
+            }
+        })();
     </script>
 
 </body>

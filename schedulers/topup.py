@@ -19,6 +19,7 @@ from database.queries import (
 )
 from utils.utils import MoscowTimezone, available_time_by_balance
 from utils.sentry import sentry_transaction, sentry_drop_transaction
+from utils.marketing import track_goal
 
 
 # Age thresholds (seconds) that determine polling frequency
@@ -110,6 +111,13 @@ async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_
         f"Хватит на распознавание: {duration_str}"
     )
     await sender.safe_send_message(context, payment.user_platform, payment.user_id, text)
+
+    # Report the ad-attributed user's first payment to Metrika as the "paid"
+    # conversion. total_topped_up is trigger-maintained and already includes this
+    # payment (confirm_payment refreshes the row), so equality with this payment's
+    # amount means no earlier confirmed payment existed.
+    if user.yclid and user.total_topped_up == payment.amount:
+        context.application.create_task(track_goal(user.yclid, "paid"))
 
 
 async def _fail_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_status: str) -> None:
