@@ -112,12 +112,12 @@ async def _confirm_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_
     )
     await sender.safe_send_message(context, payment.user_platform, payment.user_id, text)
 
-    # Report the ad-attributed user's first payment to Metrika as the "paid"
-    # conversion. total_topped_up is trigger-maintained and already includes this
-    # payment (confirm_payment refreshes the row), so equality with this payment's
-    # amount means no earlier confirmed payment existed.
+    # Report the ad-attributed user's first payment to Metrika as a per-platform
+    # paid conversion. total_topped_up is trigger-maintained and already includes
+    # this payment (confirm_payment refreshes the row), so equality with this
+    # payment's amount means no earlier confirmed payment existed.
     if user.yclid and user.total_topped_up == payment.amount:
-        context.application.create_task(track_goal(user.yclid, "paid"))
+        context.application.create_task(track_goal(user.yclid, f"{payment.user_platform}_paid"))
 
 
 async def _fail_payment(context: ContextTypes.DEFAULT_TYPE, payment, payment_status: str) -> None:

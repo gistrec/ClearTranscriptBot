@@ -173,7 +173,7 @@ async def run_bots() -> None:
             yclid = (getattr(event, "payload", None) or "").strip() or None
             logging.info("Max bot_start from user_id=%s payload=%r", getattr(event, "user_id", "?"), yclid)
             if yclid:
-                application.create_task(track_goal(yclid, "startbot"))
+                application.create_task(track_goal(yclid, "max_startbot"))
             try:
                 user_id = int(event.user_id)
             except (ValueError, TypeError):

@@ -471,31 +471,19 @@
     <!-- Yandex.Metrika goal on "Запустить бота" button click -->
     <script>
         function handleStartBot() {
-            if (typeof ym === 'function') {
-                ym(108310004, 'reachGoal', 'start_bot');
-                ym(108310004, 'reachGoal', 'start_bot_max');
-            }
+            if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_max_app');
         }
 
         function handleStartBotTelegram() {
-            if (typeof ym === 'function') {
-                ym(108310004, 'reachGoal', 'start_bot');
-                ym(108310004, 'reachGoal', 'start_bot_telegram');
-            }
+            if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_telegram_app');
         }
 
         function handleOpenInBrowser() {
-            if (typeof ym === 'function') {
-                ym(108310004, 'reachGoal', 'open_in_browser');
-                ym(108310004, 'reachGoal', 'open_in_browser_max');
-            }
+            if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_max_web');
         }
 
         function handleOpenInBrowserTelegram() {
-            if (typeof ym === 'function') {
-                ym(108310004, 'reachGoal', 'open_in_browser');
-                ym(108310004, 'reachGoal', 'open_in_browser_telegram');
-            }
+            if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_telegram_web');
         }
 
         // Counter animation

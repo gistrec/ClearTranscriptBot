@@ -45,7 +45,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         yclid = extract_start_payload(text)
         logging.info("Telegram /start user=%s payload=%r", user_id, yclid)
         if yclid:
-            context.application.create_task(track_goal(yclid, "startbot"))
+            context.application.create_task(track_goal(yclid, "telegram_startbot"))
 
     if user is None:
         user = add_user(user_id, PLATFORM_TELEGRAM, yclid=yclid)
