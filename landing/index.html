@@ -448,10 +448,10 @@
                     <div class="platform-divider" id="platform-divider-top"></div>
                     <div class="platform-group" id="group-max">
                         <span class="platform-label">MAX</span>
-                        <a href="max://max.ru/id420529656333_bot" id="startBotLink" onclick="handleStartBot()" style="width:100%">
+                        <a href="max://max.ru/id420529656333_bot" id="startBotLink" onclick="handleStartBotMax()" style="width:100%">
                             <button class="startButton" type="button">Запустить в MAX</button>
                         </a>
-                        <a href="https://web.max.ru/id420529656333_bot" class="openInBrowser" onclick="handleOpenInBrowser()">Открыть в браузере</a>
+                        <a href="https://web.max.ru/id420529656333_bot" class="openInBrowser" onclick="handleOpenInBrowserMax()">Открыть в браузере</a>
                     </div>
                     <div class="platform-divider" id="platform-divider"></div>
                     <div class="platform-group" id="group-telegram">
@@ -470,7 +470,7 @@
 
     <!-- Yandex.Metrika goal on "Запустить бота" button click -->
     <script>
-        function handleStartBot() {
+        function handleStartBotMax() {
             if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_max_app');
         }
 
@@ -478,7 +478,7 @@
             if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_telegram_app');
         }
 
-        function handleOpenInBrowser() {
+        function handleOpenInBrowserMax() {
             if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_max_web');
         }
 
