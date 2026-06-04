@@ -5,7 +5,7 @@ import aiomax
 from typing import Optional
 
 from aiomax.buttons import CallbackButton, LinkButton, KeyboardBuilder
-from aiomax.exceptions import InternalError
+from aiomax.exceptions import ChatNotFound, InternalError
 
 
 def patch_aiomax() -> None:
@@ -50,9 +50,16 @@ class _MaxKeyboardAttachment:
         }
 
 
-def _is_chat_denied(exc: Exception) -> bool:
+# Max API conditions meaning the recipient is simply unreachable (dialog
+# suspended, deleted, or never opened) — expected, not actionable bugs.
+_DIALOG_GONE_CODES = ("chat.denied", "dialog.not.found")
+
+
+def _is_dialog_unavailable(exc: Exception) -> bool:
+    if isinstance(exc, ChatNotFound):
+        return True
     args = getattr(exc, "args", ())
-    return bool(args) and args[0] == "chat.denied"
+    return bool(args) and args[0] in _DIALOG_GONE_CODES
 
 
 def _is_aiomax_null_raise(exc: Exception) -> bool:
@@ -74,8 +81,8 @@ def _is_aiomax_upload_failure(exc: Exception) -> bool:
 
 def _log_aiomax_failure(label: str, ident: str, exc: Exception) -> None:
     """Log a known-noisy aiomax failure at warning, everything else at exception."""
-    if _is_chat_denied(exc):
-        logging.warning("%s skipped %s (suspended dialog): %s", label, ident, exc)
+    if _is_dialog_unavailable(exc):
+        logging.warning("%s skipped %s (recipient unreachable): %s", label, ident, exc)
         return
     if isinstance(exc, InternalError):
         logging.warning("%s upstream error %s id=%s", label, ident, exc.id)

@@ -9,6 +9,7 @@ from telegram.error import BadRequest, Forbidden
 _MSG_NOT_MODIFIED = "message is not modified"
 _BOT_BLOCKED = "bot was blocked by the user"
 _QUERY_TOO_OLD = "query is too old"
+_CHAT_NOT_FOUND = "chat not found"
 
 
 async def safe_query_answer(query, *args, **kwargs):
@@ -34,6 +35,12 @@ async def safe_reply_text(message, *args, **kwargs):
             return None
         logging.exception("TG reply_text failed")
         return None
+    except BadRequest as exc:
+        if _CHAT_NOT_FOUND in exc.message.lower():
+            logging.warning("TG reply_text skipped (chat not found): %s", exc)
+            return None
+        logging.exception("TG reply_text failed")
+        return None
     except Exception:
         logging.exception("TG reply_text failed")
         return None
@@ -45,6 +52,12 @@ async def safe_send_message(bot, *args, **kwargs):
     except Forbidden as exc:
         if _BOT_BLOCKED in exc.message.lower():
             logging.warning("TG send_message skipped (bot blocked): %s", exc)
+            return None
+        logging.exception("TG send_message failed")
+        return None
+    except BadRequest as exc:
+        if _CHAT_NOT_FOUND in exc.message.lower():
+            logging.warning("TG send_message skipped (chat not found): %s", exc)
             return None
         logging.exception("TG send_message failed")
         return None
@@ -126,6 +139,12 @@ async def safe_send_document(bot, chat_id, reply_to_message_id, document, captio
     except Forbidden as exc:
         if _BOT_BLOCKED in exc.message.lower():
             logging.warning("TG send_document skipped (bot blocked) chat=%s: %s", chat_id, exc)
+            return None
+        logging.exception("TG send_document failed")
+        return None
+    except BadRequest as exc:
+        if _CHAT_NOT_FOUND in exc.message.lower():
+            logging.warning("TG send_document skipped (chat not found) chat=%s: %s", chat_id, exc)
             return None
         logging.exception("TG send_document failed")
         return None
