@@ -99,7 +99,7 @@
         /* === Layout === */
         .container {
             display: grid;
-            grid-template-rows: 68px 1fr;
+            grid-template-rows: 68px 1fr auto;
             width: 100%;
             min-height: 100vh;
             background: var(--theme-background);
@@ -368,6 +368,28 @@
             color: var(--text-secondary);
         }
 
+        /* === Footer === */
+        .footer {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px;
+            font-size: 13px;
+            line-height: 16px;
+            color: var(--text-secondary);
+        }
+
+        .footer a {
+            color: var(--text-secondary);
+            transition: color .2s ease;
+        }
+
+        .footer a:hover {
+            color: var(--text-themed);
+        }
+
         /* === Mobile === */
         @media (max-width: 500px) {
             .card {
@@ -466,6 +488,13 @@
                 <p class="notice">Если у вас установлено приложение MAX или Telegram, можно сразу запустить бота</p>
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <a href="user-agreement.html">Публичная оферта</a>
+            <span>·</span>
+            <a href="privacy-policy.html">Политика конфиденциальности</a>
+        </footer>
     </div>
 
     <!-- Yandex.Metrika goal on "Запустить бота" button click -->
