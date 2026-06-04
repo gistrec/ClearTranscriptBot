@@ -146,7 +146,6 @@ The bot loads variables from a `.env` file in the project root via `python-doten
 |----------------|---------------------------------------------------------------------|
 | `COUNTER_ID`   | Yandex.Metrica counter ID                                           |
 | `MEAS_TOKEN`   | Measurement Protocol token (generated in Metrica counter settings)  |
-| `BOT_URL`      | Public URL of your bot (e.g. `https://t.me/ClearTranscriptBot`)     |
 
 ### Tinkoff acquiring
 

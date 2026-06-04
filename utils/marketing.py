@@ -8,7 +8,7 @@ from typing import Dict, Any
 
 COUNTER_ID   = os.getenv("COUNTER_ID")  # ID счётчика Яндекс.Метрики
 MEAS_TOKEN   = os.getenv("MEAS_TOKEN")  # Measurement Protocol токен (создаётся в настройках счётчика)
-BOT_URL      = os.getenv("BOT_URL", "https://t.me/ClearTranscriptBot")  # Публичный URL бота
+SITE_URL     = "https://clear-transcript-bot.ru/"  # Домен счётчика Метрики — идёт в dl (document location)
 MP_COLLECT   = "https://mc.yandex.ru/collect/"
 HTTP_TIMEOUT = 5.0
 
@@ -28,7 +28,7 @@ async def track_goal(yclid: str, goal: str) -> bool:
         return False
 
     ts = int(time.time())
-    dl = f"{BOT_URL}?yclid={yclid}"
+    dl = f"{SITE_URL}?yclid={yclid}"
     dr = "https://yabs.yandex.ru"
 
     # 1) pageview — создаём/дополняем визит
