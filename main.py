@@ -60,6 +60,7 @@ from database.models import PLATFORM_MAX
 from database.queries import add_user, get_user
 from messengers.max import safe_send_message as max_safe_send_message
 from messengers.max import patch_aiomax
+from utils.marketing import track_goal
 from utils.utils import available_time_by_balance
 
 from healthcheck import start_healthcheck_server
@@ -169,7 +170,10 @@ async def run_bots() -> None:
 
         @max_bot.on_bot_start()
         async def _on_max_bot_start(event) -> None:
-            logging.info("Max bot_start from user_id=%s", getattr(event, "user_id", "?"))
+            yclid = (getattr(event, "payload", None) or "").strip() or None
+            logging.info("Max bot_start from user_id=%s payload=%r", getattr(event, "user_id", "?"), yclid)
+            if yclid:
+                application.create_task(track_goal(yclid, "startbot"))
             try:
                 user_id = int(event.user_id)
             except (ValueError, TypeError):
