@@ -31,6 +31,11 @@ from utils.sentry import sentry_transaction, sentry_drop_transaction
 # comfortably above that so we never cancel a job that would have succeeded.
 MAX_PROCESSING_SECONDS = 2 * 60 * 60
 
+# Once a task has run this long without a result, the periodic status message
+# apologises for the unusual delay (Replicate's queue is backed up). The job
+# still completes — this only manages the user's expectations.
+DELAY_APOLOGY_SECONDS = 15 * 60
+
 
 @sentry_transaction(name="transcription.poll", op="task.check")
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -64,6 +69,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}"
             )
+            if duration > DELAY_APOLOGY_SECONDS:
+                status_text += (
+                    "\n\nИзвините за задержку 🙏 Сейчас большая очередь, "
+                    "обработка идёт дольше обычного — мы продолжаем работать "
+                    "над вашим файлом, результат придёт."
+                )
             await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, status_text)
 
         try:
