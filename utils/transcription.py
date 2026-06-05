@@ -31,7 +31,8 @@ async def start_transcription(
 
     try:
         if provider == PROVIDER_REPLICATE:
-            signed_url = await get_signed_url(object_name_from_url(audio_url))
+            # URL must outlive Replicate's queue wait (can exceed 1h) or the fetch 403s
+            signed_url = await get_signed_url(object_name_from_url(audio_url), expires_in=6 * 3600)
             if not signed_url:
                 return None
             return await replicate_provider.start_transcription(signed_url, duration_seconds)
