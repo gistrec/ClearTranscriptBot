@@ -322,6 +322,27 @@ A unit file is provided at `scripts/cleartranscriptbot.service` to keep the bot 
 
 The default unit assumes the project lives at `/home/gistrec/ClearTranscriptBot`, runs under user `gistrec`, and uses the venv at `.venv/`. Adjust `WorkingDirectory`, `User`, and `ExecStart` if your layout differs. The `After=mysql.service` line can be removed (or renamed to e.g. `mariadb.service`) if MySQL runs on a different host or under a different unit name.
 
+## Admin scripts
+
+One-off operational scripts live in `scripts/` and are run by hand from the project root. Both read the bot tokens (`TELEGRAM_BOT_TOKEN`, `MAX_BOT_TOKEN`) and `ADMIN_TELEGRAM_ID` from `.env`, and preview the message to you before anything is delivered.
+
+### `refund.py`
+
+Credits a user's balance and notifies them. Recipient, amount and text are passed as arguments; the message is previewed to you in Telegram for confirmation before the balance is changed.
+
+```bash
+python scripts/refund.py --platform telegram --user_id 12345 --amount 50 --message "Возврат за сбой"
+```
+
+### `broadcast.py`
+
+Sends one message to a fixed list of Telegram and Max users. Edit the `TELEGRAM_IDS`, `MAX_IDS` and `MESSAGE` constants at the top of the file, then:
+
+```bash
+python scripts/broadcast.py            # dry run — prints recipients, sends nothing
+python scripts/broadcast.py --send     # deliver after an on-screen confirmation
+```
+
 ## Known issues (mysqlclient)
 
 <details>

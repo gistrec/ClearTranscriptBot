@@ -1,20 +1,15 @@
 #!/usr/bin/env python3
 """
-One-off re-engagement broadcast.
+Broadcast a message to a hand-picked list of Telegram + Max users.
 
-Notifies users who complained that their transcription came out in the wrong
-language (fixed by the WhisperX language-detection threshold change) that the
-issue is resolved. These users were also credited a +36 ₽ bonus beforehand.
+Edit the recipient ids and the message in the CONFIG block below, then:
 
-Dry run (default) — just prints who would receive the message:
-    python scripts/broadcast_language_fix.py
+    python scripts/broadcast.py            # dry run — just prints recipients
+    python scripts/broadcast.py --send     # actually deliver
 
-Actually send:
-    python scripts/broadcast_language_fix.py --send
-
-Reads TELEGRAM_BOT_TOKEN / MAX_BOT_TOKEN from .env (or the environment).
-For --send, also reads ADMIN_TELEGRAM_ID / ADMIN_MAX_ID and previews the
-message to you on both platforms before the broadcast goes out.
+Reads TELEGRAM_BOT_TOKEN / MAX_BOT_TOKEN (and ADMIN_TELEGRAM_ID for the
+Telegram self-preview) from .env. Before sending, previews the message to
+you and asks for confirmation.
 """
 import argparse
 import asyncio
@@ -30,18 +25,22 @@ import aiomax
 
 import messengers.telegram as tg_sender
 import messengers.max as max_sender
-from database.models import PLATFORM_TELEGRAM, PLATFORM_MAX
 
 
-# Users who left a wrong-language complaint and were credited +36 ₽.
-TARGETS = [
-    (PLATFORM_TELEGRAM, 2005560279),  # «Это английский а не русский»
-    (PLATFORM_TELEGRAM, 7997412444),  # «Не на русском языке»
-    (PLATFORM_TELEGRAM, 7933368418),  # «Какие то коды вместо текста»
-    (PLATFORM_MAX, 48638886),         # «по французски … не то»
-    (PLATFORM_MAX, 128595806),        # «Конспект как на украинском»
+# ─────────────────────────── CONFIG — edit me ───────────────────────────
+# Recipient user-ids per platform.
+TELEGRAM_IDS = [
+    2005560279,  # «Это английский а не русский»
+    7997412444,  # «Не на русском языке»
+    7933368418,  # «Какие то коды вместо текста»
 ]
 
+MAX_IDS = [
+    48638886,    # «по французски … не то»
+    128595806,   # «Конспект как на украинском»
+]
+
+# Text delivered to every recipient.
 MESSAGE = (
     "Здравствуйте! Недавно вы распознавали аудио в нашем боте, "
     "но текст вышел не на том языке. Извините за это.\n\n"
@@ -51,8 +50,13 @@ MESSAGE = (
     "на час распознавания. Просто пришлите аудио или видео, и мы вернём текст 🎧"
 )
 
+# Max user-id that receives the pre-send preview.
+ADMIN_MAX_ID = 219203897
+# ─────────────────────────────────────────────────────────────────────────
+
+
 PREVIEW_PREFIX = (
-    "📋 PREVIEW рассылки про исправление языка.\n"
+    "📋 PREVIEW рассылки.\n"
     "Это сообщение получат пользователи из списка. Текст ниже:\n\n"
 )
 
@@ -83,19 +87,19 @@ async def send_max(token: str | None, user_ids: list[int], text: str) -> None:
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description="Broadcast the language-fix apology")
+    parser = argparse.ArgumentParser(description="Broadcast a message to a fixed list of users")
     parser.add_argument("--send", action="store_true", help="actually send (default: dry run)")
     args = parser.parse_args()
 
     tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     max_token = os.environ.get("MAX_BOT_TOKEN")
     tg_admin = os.environ.get("ADMIN_TELEGRAM_ID")
-    max_admin = os.environ.get("ADMIN_MAX_ID")
 
-    tg_ids = [uid for p, uid in TARGETS if p == PLATFORM_TELEGRAM]
-    max_ids = [uid for p, uid in TARGETS if p == PLATFORM_MAX]
+    tg_ids = TELEGRAM_IDS
+    max_ids = MAX_IDS
+    total = len(tg_ids) + len(max_ids)
 
-    print(f"=== {'SEND' if args.send else 'DRY RUN'} — {len(TARGETS)} recipients ===")
+    print(f"=== {'SEND' if args.send else 'DRY RUN'} — {total} recipients ===")
     print(f"Message:\n---\n{MESSAGE}\n---")
 
     if not args.send:
@@ -115,9 +119,6 @@ async def main() -> None:
     if tg_ids and not tg_admin:
         print("ADMIN_TELEGRAM_ID is not set (needed to preview to you)")
         sys.exit(1)
-    if max_ids and not max_admin:
-        print("ADMIN_MAX_ID is not set (needed to preview to you)")
-        sys.exit(1)
 
     # Preview to you on both platforms BEFORE touching real users.
     preview = PREVIEW_PREFIX + MESSAGE
@@ -125,9 +126,9 @@ async def main() -> None:
     if tg_ids:
         await send_telegram(tg_token, [int(tg_admin)], preview)
     if max_ids:
-        await send_max(max_token, [int(max_admin)], preview)
+        await send_max(max_token, [ADMIN_MAX_ID], preview)
 
-    if input(f"\nType 'yes' to deliver to {len(TARGETS)} users: ").strip() != "yes":
+    if input(f"\nType 'yes' to deliver to {total} users: ").strip() != "yes":
         print("Aborted.")
         return
 
