@@ -24,6 +24,13 @@ from utils.tokens import tokens_by_model
 from utils.sentry import sentry_transaction, sentry_drop_transaction
 
 
+# Safety net only. A task with no result after this long is treated as hung and
+# gets cancelled + refunded. Real jobs finish well under this even when
+# Replicate's queue is backed up: the slowest successful job on record took
+# ~86 min, almost entirely queue wait (the predict itself is seconds). Kept
+# comfortably above that so we never cancel a job that would have succeeded.
+MAX_PROCESSING_SECONDS = 2 * 60 * 60
+
 
 @sentry_transaction(name="transcription.poll", op="task.check")
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -65,8 +72,21 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             logging.exception("Failed to check transcription for task %s", task.id)
             continue
 
-        # Результата еще нет, проверим снова через секунду
+        # Результата ещё нет
         if result_info is None:
+            # Задача висит слишком долго (очередь провайдера перегружена) —
+            # отменяем её, возвращаем деньги и просим повторить.
+            if duration > MAX_PROCESSING_SECONDS:
+                if task.provider == PROVIDER_REPLICATE:
+                    await replicate_provider.cancel(task.operation_id)
+                logging.warning("Cancelling stuck task=%s after %ss", task.id, duration)
+                update_transcription(task.id, status=STATUS_FAILED, finished_at=now)
+                change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund
+                timeout_text = (
+                    "❌ Не удалось распознать — очередь обработки перегружена\n\n"
+                    "Деньги вернули на баланс, попробуйте ещё раз"
+                )
+                await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, timeout_text)
             continue
 
         payload = result_info.get("payload") or {}

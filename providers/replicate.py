@@ -88,6 +88,16 @@ async def check_transcription(operation_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
+async def cancel(operation_id: str) -> bool:
+    """Best-effort cancel of a running Replicate prediction."""
+    try:
+        await asyncio.to_thread(client.predictions.cancel, operation_id)
+        return True
+    except Exception:
+        logging.exception(f"Failed to cancel Replicate transcription {operation_id}")
+        return False
+
+
 def _segments(payload: Dict[str, Any]) -> list:
     output = payload.get("output")
     if isinstance(output, dict):
