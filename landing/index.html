@@ -341,22 +341,24 @@
         /* === Stats === */
         .stats {
             display: flex;
+            flex-wrap: wrap;
             align-items: baseline;
             justify-content: center;
+            gap: 6px 10px;
         }
 
-        .stat-value {
-            font-weight: 600;
+        .stat-item {
+            font-weight: 500;
             font-size: 15px;
             line-height: 20px;
-            color: var(--sign-primary);
+            color: var(--sign-secondary);
         }
 
-        .stat-label {
+        .stat-sep {
             font-weight: 400;
             font-size: 15px;
             line-height: 20px;
-            color: var(--text-secondary);
+            color: var(--sign-tertiary);
         }
 
         .notice {
@@ -465,7 +467,11 @@
 
                 <!-- Stats -->
                 <div class="stats">
-                    <span class="stat-value" id="stat-counter">0</span><span class="stat-label">&nbsp;пользователей за месяц</span>
+                    <span class="stat-item" data-stat="hours">2300+ часов</span>
+                    <span class="stat-sep">·</span>
+                    <span class="stat-item" data-stat="transcriptions">15000+ расшифровок</span>
+                    <span class="stat-sep">·</span>
+                    <span class="stat-item" data-stat="success-rate">99.6% успешно обработано</span>
                 </div>
 
                 <!-- Actions -->
@@ -517,28 +523,6 @@
         function handleOpenInBrowserTelegram() {
             if (typeof ym === 'function') ym(108310004, 'reachGoal', 'click_telegram_web');
         }
-
-        // Counter animation
-        (function() {
-            var el = document.getElementById('stat-counter');
-            var target = 1000;
-            var duration = 1200;
-            var start = null;
-
-            function easeOut(t) {
-                return 1 - Math.pow(1 - t, 3);
-            }
-
-            function step(ts) {
-                if (!start) start = ts;
-                var progress = Math.min((ts - start) / duration, 1);
-                var value = Math.floor(easeOut(progress) * target);
-                el.textContent = value >= 1000 ? '1 000+' : value.toLocaleString('ru-RU');
-                if (progress < 1) requestAnimationFrame(step);
-            }
-
-            requestAnimationFrame(step);
-        })();
 
         // Platform detection: show Telegram first on mobile, MAX first on desktop
         (function() {

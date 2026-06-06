@@ -23,6 +23,7 @@ from telegram.ext import (
 from schedulers.refinement import check_refinements
 from schedulers.transcription import check_running_tasks
 from schedulers.topup import check_pending_payments
+from schedulers.landing_stats import refresh_landing_stats
 
 from handlers.telegram.balance import handle_balance
 from handlers.telegram.cancel_task import handle_cancel_task
@@ -279,6 +280,7 @@ async def run_bots() -> None:
     application.job_queue.run_repeating(check_running_tasks, interval=1.0)
     application.job_queue.run_repeating(check_refinements, interval=1.0)
     application.job_queue.run_repeating(check_pending_payments, interval=10.0)
+    application.job_queue.run_repeating(refresh_landing_stats, interval=3600.0, first=10.0)
 
     # --- Start PTB (non-blocking) ---
     await application.initialize()

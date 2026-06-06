@@ -4,12 +4,12 @@ from typing import Optional, Any
 from decimal import Decimal
 from datetime import datetime
 
-from sqlalchemy import update
+from sqlalchemy import text, update
 
 from database.connection import SessionLocal
 from database.models import (
     User, Transcription, Payment, Refinement,
-    STATUS_PENDING, STATUS_RUNNING, STATUS_FAILED,
+    STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED,
 )
 from utils.utils import MoscowTimezone
 
@@ -399,3 +399,25 @@ def update_payment(order_id: str, **fields: Any) -> Optional[Payment]:
         session.commit()
         session.refresh(topup)
         return topup
+
+
+def get_landing_stats() -> dict[str, int]:
+    """Aggregate counts and total duration for the landing-page stats block."""
+    with SessionLocal() as session:
+        row = session.execute(
+            text(
+                """
+                SELECT
+                    COALESCE(SUM(CASE WHEN status = :completed THEN duration_seconds END), 0) AS sec,
+                    SUM(CASE WHEN status = :completed THEN 1 ELSE 0 END) AS completed,
+                    SUM(CASE WHEN status = :failed    THEN 1 ELSE 0 END) AS failed
+                FROM transcriptions
+                """
+            ),
+            {"completed": STATUS_COMPLETED, "failed": STATUS_FAILED},
+        ).one()
+        return {
+            "duration_seconds": int(row.sec or 0),
+            "completed": int(row.completed or 0),
+            "failed": int(row.failed or 0),
+        }
