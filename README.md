@@ -80,7 +80,7 @@ ClearTranscriptBot
 │   ├── transcription.py # Unified entry point routing to provider implementations
 │   ├── tg.py            # Telegram-specific helpers
 │   └── utils.py         # Shared utility functions and constants
-├── docs/                # GitHub Pages legal documents
+├── landing/             # Static marketing site + legal docs (served at clear-transcript-bot.ru)
 └── requirements.txt     # Python dependencies list
 ```
 
