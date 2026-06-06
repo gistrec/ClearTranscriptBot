@@ -346,24 +346,13 @@
             gap: 4px;
         }
 
-        .stat-row {
-            display: flex;
-            align-items: baseline;
-            gap: 8px;
-        }
-
-        .stat-num {
-            font-weight: 700;
-            font-size: 18px;
-            line-height: 22px;
-            color: var(--text-themed);
-        }
-
-        .stat-label {
-            font-weight: 400;
-            font-size: 15px;
-            line-height: 20px;
+        .stat-item {
+            font-size: 13px;
+            font-weight: 500;
             color: var(--sign-secondary);
+            background: var(--backgrounds-object-primary);
+            border-radius: 6px;
+            padding: 3px 9px;
         }
 
         .notice {
@@ -472,18 +461,9 @@
 
                 <!-- Stats -->
                 <div class="stats">
-                    <div class="stat-row">
-                        <strong class="stat-num" data-stat="hours">2300+</strong>
-                        <span class="stat-label">часов аудио обработано</span>
-                    </div>
-                    <div class="stat-row">
-                        <strong class="stat-num" data-stat="transcriptions">15000+</strong>
-                        <span class="stat-label">расшифровок выполнено</span>
-                    </div>
-                    <div class="stat-row">
-                        <strong class="stat-num" data-stat="success-rate">99.6%</strong>
-                        <span class="stat-label">успешно обработано</span>
-                    </div>
+                    <span class="stat-item" data-stat="hours">2300+ часов</span>
+                    <span class="stat-item" data-stat="transcriptions">15000+ расшифровок</span>
+                    <span class="stat-item" data-stat="success-rate">99.6% успешно обработано</span>
                 </div>
 
                 <!-- Actions -->
