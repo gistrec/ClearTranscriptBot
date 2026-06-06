@@ -29,15 +29,13 @@ def _render_values(stats: dict[str, int]) -> dict[str, str]:
     seconds = stats["duration_seconds"]
 
     hours = _round_down(seconds // 3600, 100)
-    transcriptions = _round_down(completed, 1000)
 
     denominator = completed + failed
     rate = 100.0 * completed / denominator if denominator else 100.0
 
     return {
         "hours": f"{hours}+ часов",
-        "transcriptions": f"{transcriptions}+ расшифровок",
-        "success-rate": f"{rate:.1f}% успешно обработано",
+        "success-rate": f"{rate:.1f}% успешных расшифровок",
     }
 
 
