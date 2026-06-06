@@ -34,7 +34,7 @@ def _render_values(stats: dict[str, int]) -> dict[str, str]:
     rate = 100.0 * completed / denominator if denominator else 100.0
 
     return {
-        "hours": f"{hours}+ часов",
+        "hours": f"{hours}+ часов записей обработано",
         "success-rate": f"{rate:.1f}% успешных расшифровок",
     }
 
