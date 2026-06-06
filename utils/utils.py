@@ -69,11 +69,8 @@ def format_duration(duration_sec: Optional[int]) -> str:
     return f"{seconds} сек."
 
 
-def available_time_by_balance(
-    balance_rub: Decimal, channels: int = 1, deferred: bool = False
-) -> str:
+def available_time_by_balance(balance_rub: Decimal) -> str:
     """Return minutes and seconds that can be transcribed for *balance_rub*."""
-    price_per_block = Decimal("0.0375") if deferred else Decimal("0.15")
-    blocks = int(balance_rub / price_per_block)
+    blocks = int(balance_rub / Decimal("0.15"))
     total_seconds = blocks * 15
     return format_duration(total_seconds)

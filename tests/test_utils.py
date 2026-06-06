@@ -32,26 +32,16 @@ def test_format_duration(seconds, expected):
 
 
 @pytest.mark.parametrize(
-    "balance, deferred, expected",
+    "balance, expected",
     [
-        (Decimal("0"), False, "<1 сек."),
-        (Decimal("0.15"), False, "15 сек."),
-        (Decimal("1"), False, "1 мин. 30 сек."),
-        (Decimal("50"), False, "1 ч. 23 мин. 15 сек."),
-        (Decimal("50"), True, "5 ч. 33 мин. 15 сек."),
+        (Decimal("0"), "<1 сек."),
+        (Decimal("0.15"), "15 сек."),
+        (Decimal("1"), "1 мин. 30 сек."),
+        (Decimal("50"), "1 ч. 23 мин. 15 сек."),
     ],
 )
-def test_available_time_by_balance(balance, deferred, expected):
-    assert available_time_by_balance(balance, deferred=deferred) == expected
-
-
-def test_available_time_deferred_is_four_times_cheaper():
-    # Deferred price is a quarter of the regular price, so the same balance
-    # buys 4x the duration in 15-second blocks.
-    balance = Decimal("30")
-    regular_blocks = int(balance / Decimal("0.15"))
-    deferred_blocks = int(balance / Decimal("0.0375"))
-    assert deferred_blocks == regular_blocks * 4
+def test_available_time_by_balance(balance, expected):
+    assert available_time_by_balance(balance) == expected
 
 
 def test_build_payment_text_confirmed():

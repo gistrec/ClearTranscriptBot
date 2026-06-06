@@ -26,7 +26,7 @@ def get_model_name(duration_seconds: int) -> str:
     return "Standard"  # В SpeechKit нет разных моделей
 
 
-def cost_in_rub(duration_s: float, channels: int = 1, deferred: bool = False) -> Decimal:
+def cost_in_rub(duration_s: float, channels: int = 1) -> Decimal:
     """
     Стоимость асинхронного распознавания Yandex SpeechKit в рублях.
 
@@ -34,11 +34,8 @@ def cost_in_rub(duration_s: float, channels: int = 1, deferred: bool = False) ->
       - длительность округляется вверх до целых секунд;
       - число каналов округляется вверх до чётного;
       - минимум 15 секунд на КАЖДУЮ пару каналов (2 канала);
-      - тарификация ведётся за блоки по 15 секунд ДВУХКАНАЛЬНОГО аудио.
-
-    По умолчанию:
-      - обычный async:     0.15 ₽ за 15 секунд;
-      - отложенный режим:  0.0375 ₽ за 15 секунд.
+      - тарификация ведётся за блоки по 15 секунд ДВУХКАНАЛЬНОГО аудио;
+      - 0.15 ₽ за 15 секунд.
     """
     seconds_rounded = ceil(max(0.0, duration_s))
     ch_even = max(1, channels)
@@ -50,8 +47,7 @@ def cost_in_rub(duration_s: float, channels: int = 1, deferred: bool = False) ->
     total_seconds = seconds_per_pair * pairs
     blocks_15s = (total_seconds + 14) // 15  # ceil(total_seconds / 15)
 
-    rate = Decimal("0.0375") if deferred else Decimal("0.15")
-    return (Decimal(blocks_15s) * rate).quantize(Decimal("0.01"))
+    return (Decimal(blocks_15s) * Decimal("0.15")).quantize(Decimal("0.01"))
 
 
 def get_text(result: dict, separator: str = "\n") -> str:
