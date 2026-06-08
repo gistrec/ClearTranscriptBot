@@ -9,11 +9,15 @@ from aiomax.exceptions import ChatNotFound, InternalError
 
 
 def patch_aiomax() -> None:
-    """Apply runtime fixes for aiomax bugs that crash update parsing.
+    """Apply runtime fixes for aiomax bugs that crash message parsing.
 
-    LinkedMessage.from_json reads data["message"] unconditionally, but Max
-    sends links without a message body (e.g. forwards), raising KeyError
-    before any handler runs. Fall back to None, which MessageBody tolerates.
+    1. LinkedMessage.from_json reads data["message"] unconditionally, but Max
+       sends links without a message body (e.g. forwards), raising KeyError
+       before any handler runs. Fall back to None, which MessageBody tolerates.
+    2. CallbackButton.from_json reads data["intent"], but Max omits it in the
+       message echoed back from a keyboard send, so parsing that response raises
+       KeyError('intent') after the message was already delivered. Default to
+       "default" (the constructor's own default) so the send returns normally.
     """
     from aiomax.types import LinkedMessage, MessageBody, User
 
@@ -29,6 +33,12 @@ def patch_aiomax() -> None:
         )
 
     LinkedMessage.from_json = _linked_message_from_json
+
+    @staticmethod
+    def _callback_button_from_json(data):
+        return CallbackButton(data["text"], data["payload"], data.get("intent", "default"))
+
+    CallbackButton.from_json = _callback_button_from_json
 
 
 class _MaxKeyboardAttachment:
