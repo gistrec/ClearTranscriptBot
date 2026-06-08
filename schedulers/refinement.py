@@ -2,6 +2,7 @@
 import logging
 
 import messengers.common as sender
+import utils.heartbeat as heartbeat
 
 from datetime import datetime
 
@@ -24,6 +25,7 @@ from utils.sentry import sentry_transaction, sentry_drop_transaction
 @sentry_transaction(name="refinement.poll", op="task.check")
 async def check_refinements(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Pick up pending refinements and poll running ones."""
+    heartbeat.beat("refinement")
     pending_refinements = get_refinements_by_status(STATUS_PENDING)
     running_refinements = get_refinements_by_status(STATUS_RUNNING)
     if not pending_refinements and not running_refinements:

@@ -2,6 +2,7 @@
 import logging
 
 import messengers.common as sender
+import utils.heartbeat as heartbeat
 
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -54,6 +55,7 @@ def _check_interval(age_seconds: float) -> int:
 @sentry_transaction(name="payment.poll", op="task.check")
 async def check_pending_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll due payments; credit balance when confirmed, expire after 3 hours."""
+    heartbeat.beat("payments")
     payments = get_payments_due_for_check()
     if not payments:
         sentry_drop_transaction()

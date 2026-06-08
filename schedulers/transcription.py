@@ -7,6 +7,7 @@ import providers.speechkit as speechkit_provider
 import messengers.telegram as tg_sender
 import messengers.max as max_sender
 import messengers.common as sender
+import utils.heartbeat as heartbeat
 
 from pathlib import Path
 from datetime import datetime
@@ -40,6 +41,7 @@ DELAY_APOLOGY_SECONDS = 15 * 60
 @sentry_transaction(name="transcription.poll", op="task.check")
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Poll running transcriptions and send results when ready."""
+    heartbeat.beat("transcription")
     tasks = get_transcriptions_by_status(STATUS_RUNNING)
     if not tasks:
         sentry_drop_transaction()

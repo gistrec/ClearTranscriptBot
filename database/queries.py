@@ -14,6 +14,12 @@ from database.models import (
 from utils.utils import MoscowTimezone
 
 
+def ping_db() -> None:
+    """Verify the database is reachable. Raises if the query fails."""
+    with SessionLocal() as session:
+        session.execute(text("SELECT 1"))
+
+
 def add_user(user_id: int, platform: str, yclid: str | None = None) -> User:
     """Create and persist a new user."""
     with SessionLocal() as session:
