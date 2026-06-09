@@ -18,7 +18,7 @@ from database.queries import add_transcription, add_user, get_user
 from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
-from utils.tg import is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
+from utils.tg import ANCHOR, is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
 from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
 from messengers.telegram import make_topup_amounts_keyboard, safe_edit_message, safe_reply_text
 
@@ -49,6 +49,52 @@ def format_size(size_bytes: int) -> str:
 def download_estimate_minutes(size_bytes: int) -> int:
     # Same ~10 MB/s budget as _get_file_timeout.
     return max(1, math.ceil(size_bytes / 1_000_000 / 10 / 60))
+
+
+async def _download_ticker(bot, chat_id, message_id, watch_root: Path, baseline: set, expected_size: int) -> None:
+    """Poll the bot-api working dir and report download progress.
+
+    getFile gives no progress signal, so this watches for a new file growing
+    under the local bot-api directory and assumes it is ours. If several new
+    files grow at once (parallel downloads), attribution is impossible — keep
+    the static text rather than risk showing someone else's progress.
+    """
+    started = time.time()
+    sizes = {}
+    matched = None
+    while True:
+        await asyncio.sleep(TICKER_INTERVAL)
+        if matched is None:
+            try:
+                fresh = {p for p in watch_root.glob("*/*") if p.is_file()} - baseline
+            except OSError:
+                continue
+            growing = []
+            for path in fresh:
+                try:
+                    size = path.stat().st_size
+                except OSError:
+                    continue
+                if size > sizes.get(path, -1):
+                    growing.append(path)
+                sizes[path] = size
+            if len(growing) != 1:
+                continue  # nothing new yet, or several candidates — cannot attribute
+            matched = growing[0]
+            logging.info("Download progress: tracking %s", matched.name)
+        try:
+            size = matched.stat().st_size
+        except OSError:
+            return  # the file moved away — bot-api is finalizing the download
+        percent = min(99, int(size * 100 / expected_size))
+        if percent <= 0:
+            continue
+        eta = max(0.0, (expected_size - size) / (size / (time.time() - started)))
+        await safe_edit_message(
+            bot, chat_id, message_id,
+            f"📥 Скачиваю файл… {percent}%\n"
+            f"Осталось примерно {format_duration(int(eta))}",
+        )
 
 
 async def _conversion_ticker(bot, chat_id, message_id, progress_path, duration: float) -> None:
@@ -96,6 +142,17 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     ack = await safe_reply_text(message, ack_text)
     show_progress = show_progress and ack is not None
 
+    download_ticker = None
+    if show_progress and USE_LOCAL_PTB:
+        watch_root = Path(ANCHOR) / context.bot.token
+        try:
+            baseline = {p for p in watch_root.glob("*/*") if p.is_file()}
+            download_ticker = context.application.create_task(
+                _download_ticker(context.bot, ack.chat_id, ack.message_id, watch_root, baseline, file_size)
+            )
+        except OSError:
+            logging.exception("Could not snapshot bot-api dir for download progress")
+
     try:
         file = None
         mime = ""
@@ -135,6 +192,17 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             "Пожалуйста, попробуйте ещё раз"
         )
         return
+    finally:
+        # Await the cancellation so no in-flight ticker edit can land after
+        # the next stage text.
+        if download_ticker is not None:
+            download_ticker.cancel()
+            try:
+                await download_ticker
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logging.exception("Download progress ticker failed")
 
     if not is_supported_mime(mime):
         await safe_reply_text(

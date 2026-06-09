@@ -40,6 +40,25 @@ def download_estimate_minutes(size_bytes: int) -> int:
     return max(1, math.ceil(size_bytes / 1_000_000 / 10 / 60))
 
 
+async def _download_ticker(bot, message_id, local_path: Path, expected_size: int) -> None:
+    started = time.time()
+    while True:
+        await asyncio.sleep(TICKER_INTERVAL)
+        try:
+            size = local_path.stat().st_size
+        except OSError:
+            continue  # the download has not created the file yet
+        percent = min(99, int(size * 100 / expected_size))
+        if percent <= 0:
+            continue
+        eta = max(0.0, (expected_size - size) / (size / (time.time() - started)))
+        await safe_edit_message(
+            bot, message_id,
+            f"📥 Скачиваю файл… {percent}%\n"
+            f"Осталось примерно {format_duration(int(eta))}",
+        )
+
+
 async def _conversion_ticker(bot, message_id, progress_path, duration: float) -> None:
     started = time.time()
     while True:
@@ -139,7 +158,25 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         out_dir.mkdir()
 
         local_path = in_dir / file_name
-        downloaded = await download_max_file(file_url, local_path)
+
+        download_ticker = None
+        if show_progress:
+            download_ticker = asyncio.create_task(
+                _download_ticker(bot, ack.body.message_id, local_path, file_size)
+            )
+        try:
+            downloaded = await download_max_file(file_url, local_path)
+        finally:
+            # Await the cancellation so no in-flight ticker edit can land after
+            # the next stage text.
+            if download_ticker is not None:
+                download_ticker.cancel()
+                try:
+                    await download_ticker
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    logging.exception("Download progress ticker failed")
         if not downloaded:
             await safe_send_message(bot,
                 "❌ Не удалось загрузить файл\n"
