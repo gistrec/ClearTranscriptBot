@@ -101,6 +101,9 @@ async def run_bots() -> None:
         Application.builder()
         .token(TELEGRAM_BOT_TOKEN)
         .post_init(register_commands)
+        # Without this PTB handles updates one at a time, so a single long
+        # file upload would block buttons and commands for every other user.
+        .concurrent_updates(True)
     )
     if USE_LOCAL_PTB:
         builder = (
