@@ -39,6 +39,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
     user = get_user(user_id, PLATFORM_TELEGRAM)
+    is_new = user is None
 
     yclid = None
     if text.startswith("/start"):
@@ -52,9 +53,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
+    gift = "🎁 Подарили вам <b>почти полтора часа</b> распознавания бесплатно\n\n" if is_new else ""
     await safe_reply_text(
         message,
-        "Отправьте видео или аудио — вернём текст\n\n"
+        f"{gift}Отправьте видео или аудио — вернём текст\n\n"
         "Поддерживаем все популярные форматы:\n"
         "• Видео: mp4, mov, mkv, webm и другие\n"
         "• Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
@@ -64,7 +66,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "• /history — история распознаваний\n"
         "• /balance — текущий баланс\n"
         "• /topup — пополнить баланс\n"
-        "• /price — стоимость"
+        "• /price — стоимость",
+        parse_mode="HTML",
     )
 
 

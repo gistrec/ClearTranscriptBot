@@ -32,14 +32,16 @@ async def handle_max_text(message: aiomax.Message, bot: aiomax.Bot) -> None:
             return
 
     user = get_user(user_id, PLATFORM_MAX)
-    if user is None:
+    is_new = user is None
+    if is_new:
         user = add_user(user_id, PLATFORM_MAX)
 
     balance = Decimal(user.balance or 0)
     duration_str = available_time_by_balance(balance)
 
+    gift = "🎁 Подарили вам почти полтора часа распознавания бесплатно\n\n" if is_new else ""
     await safe_send_message(bot,
-        "Отправьте видео или аудио — вернём текст\n\n"
+        f"{gift}Отправьте видео или аудио — вернём текст\n\n"
         "Поддерживаем все популярные форматы:\n"
         "• Видео: mp4, mov, mkv, webm и другие\n"
         "• Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
