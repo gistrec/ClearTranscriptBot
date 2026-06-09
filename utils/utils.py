@@ -70,7 +70,13 @@ def format_duration(duration_sec: Optional[int]) -> str:
 
 
 def available_time_by_balance(balance_rub: Decimal) -> str:
-    """Return minutes and seconds that can be transcribed for *balance_rub*."""
+    """Return how much audio *balance_rub* covers, rounded down to whole minutes."""
     blocks = int(balance_rub / Decimal("0.15"))
     total_seconds = blocks * 15
-    return format_duration(total_seconds)
+    if total_seconds < 60:
+        return format_duration(total_seconds)
+    hours, r = divmod(total_seconds, 3600)
+    minutes = r // 60
+    if hours > 0:
+        return f"{hours} ч. {minutes} мин."
+    return f"{minutes} мин."

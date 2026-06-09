@@ -36,8 +36,8 @@ def test_format_duration(seconds, expected):
     [
         (Decimal("0"), "<1 сек."),
         (Decimal("0.15"), "15 сек."),
-        (Decimal("1"), "1 мин. 30 сек."),
-        (Decimal("50"), "1 ч. 23 мин. 15 сек."),
+        (Decimal("1"), "1 мин."),
+        (Decimal("50"), "1 ч. 23 мин."),
     ],
 )
 def test_available_time_by_balance(balance, expected):
