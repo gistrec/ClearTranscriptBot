@@ -17,7 +17,7 @@ Recipients below are the distinct Telegram users with a TimedOut in file.upload
 of the eight users in 3N could not be recovered: their raw events aged out of
 Sentry retention while only the tag counter survived.
 
-    python scripts/notify_large_file_fix.py          # dry run — just prints recipients
+    python scripts/notify_large_file_fix.py          # dry run — lists recipients + previews to you
     python scripts/notify_large_file_fix.py --send    # actually deliver
 
 Reads TELEGRAM_BOT_TOKEN and ADMIN_TELEGRAM_ID from .env. Before sending,
@@ -90,6 +90,11 @@ async def main() -> None:
     if not args.send:
         for uid in TELEGRAM_IDS:
             print(f"  [dry-run] telegram:{uid}")
+        if tg_token and tg_admin:
+            print("\nSending preview to you (real users are NOT messaged)...")
+            await send_telegram(tg_token, [int(tg_admin)], PREVIEW_PREFIX + MESSAGE)
+        else:
+            print("\nSet TELEGRAM_BOT_TOKEN and ADMIN_TELEGRAM_ID to also preview to yourself.")
         print("\nDry run only. Re-run with --send to actually deliver.")
         return
 

@@ -4,7 +4,7 @@ Broadcast a message to a hand-picked list of Telegram + Max users.
 
 Edit the recipient ids and the message in the CONFIG block below, then:
 
-    python scripts/broadcast.py            # dry run — just prints recipients
+    python scripts/broadcast.py            # dry run — lists recipients + previews to you
     python scripts/broadcast.py --send     # actually deliver
 
 Reads TELEGRAM_BOT_TOKEN / MAX_BOT_TOKEN (and ADMIN_TELEGRAM_ID for the
@@ -107,6 +107,12 @@ async def main() -> None:
             print(f"  [dry-run] telegram:{uid}")
         for uid in max_ids:
             print(f"  [dry-run] max:{uid}")
+        preview = PREVIEW_PREFIX + MESSAGE
+        print("\nPreview to you (real users are NOT messaged):")
+        if tg_ids and tg_token and tg_admin:
+            await send_telegram(tg_token, [int(tg_admin)], preview)
+        if max_ids and max_token:
+            await send_max(max_token, [ADMIN_MAX_ID], preview)
         print("\nDry run only. Re-run with --send to actually deliver.")
         return
 

@@ -13,7 +13,7 @@ the bug window (2026-06-08 ~17:00–23:32 MSK). Excluded: three pre-bug abandone
 files (01:20 / 06:39 / 12:23 MSK, all with a delivered confirm message) and the
 admin test account.
 
-    python scripts/notify_intent_fix.py          # dry run — just prints recipients
+    python scripts/notify_intent_fix.py          # dry run — lists recipients + previews to admin
     python scripts/notify_intent_fix.py --send    # actually deliver
 
 Reads MAX_BOT_TOKEN from .env. Before sending, previews to the admin and asks for
@@ -103,6 +103,12 @@ async def main() -> None:
     if not args.send:
         for uid in MAX_IDS:
             print(f"  [dry-run] max:{uid}")
+        if max_token:
+            max_sender.patch_aiomax()
+            print("\nSending preview to admin (real users are NOT messaged)...")
+            await send_max(max_token, [ADMIN_MAX_ID], PREVIEW_PREFIX + MESSAGE)
+        else:
+            print("\nSet MAX_BOT_TOKEN to also preview to the admin.")
         print("\nDry run only. Re-run with --send to actually deliver.")
         return
 
