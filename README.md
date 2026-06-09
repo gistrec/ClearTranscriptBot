@@ -16,6 +16,7 @@ Bot for automatic audio/video transcription, available on **Telegram** and **Max
 - 💬 Transcription via Yandex SpeechKit or Replicate WhisperX
 - 📝 AI-generated summaries for long recordings (via Replicate LLM)
 - ✏️ AI-powered punctuation and paragraph formatting (via Replicate LLM)
+- ⏱ Timecoded transcripts and .srt/.vtt subtitles (for WhisperX results)
 - 💰 Balance and billing inside the bot
 - 📜 Full request history
 - 🐞 Optional error reporting via Sentry
@@ -32,6 +33,7 @@ ClearTranscriptBot
 │   ├── telegram.py      # Telegram safe send/edit helpers
 │   └── max.py           # Max messenger safe send/edit helpers
 ├── schedulers/          # Periodic task schedulers
+│   ├── landing_stats.py # Renders fresh stats into the static landing page
 │   ├── refinement.py
 │   ├── topup.py
 │   └── transcription.py
@@ -48,6 +50,7 @@ ClearTranscriptBot
 │   │   ├── send_as_text.py
 │   │   ├── summarize.py
 │   │   ├── text.py
+│   │   ├── timecodes.py
 │   │   └── topup.py
 │   └── max/             # Max messenger (aiomax) handlers
 │       ├── balance.py
@@ -61,6 +64,7 @@ ClearTranscriptBot
 │       ├── send_as_text.py
 │       ├── summarize.py
 │       ├── text.py
+│       ├── timecodes.py
 │       └── topup.py
 ├── providers/           # Transcription provider implementations
 │   ├── replicate.py     # Replicate WhisperX integration
@@ -71,15 +75,18 @@ ClearTranscriptBot
 │   └── queries.py       # Helper functions for common database operations
 ├── utils/               # Helper utilities
 │   ├── ffmpeg.py        # Conversion to OGG using ffmpeg
+│   ├── heartbeat.py     # In-process liveness heartbeats for scheduler loops
 │   ├── marketing.py     # Advertising/tracking: send conversion goals to Yandex Metrica
 │   ├── max_download.py  # File download helper for Max messenger
 │   ├── s3.py            # Upload helper for Yandex Cloud S3 (S3-compatible)
 │   ├── sentry.py        # Sentry error reporting helpers
 │   ├── tokens.py        # LLM token counting helpers
 │   ├── summarize.py     # Replicate LLM wrapper for summarization
+│   ├── timecodes.py     # WhisperX segments → timecoded .txt / .srt / .vtt
 │   ├── transcription.py # Unified entry point routing to provider implementations
 │   ├── tg.py            # Telegram-specific helpers
 │   └── utils.py         # Shared utility functions and constants
+├── scripts/             # One-off admin scripts (see Admin scripts below)
 ├── landing/             # Static marketing site + legal docs (served at clear-transcript-bot.ru)
 └── requirements.txt     # Python dependencies list
 ```
@@ -195,14 +202,16 @@ server.
 
 ```sql
 -- Users table — supports both Telegram and Max users
--- Primary key is (user_id, user_platform) to avoid collisions between platforms
+-- (user_id, user_platform) is unique to avoid collisions between platforms
 CREATE TABLE IF NOT EXISTS users (
+    id               INTEGER         PRIMARY KEY AUTO_INCREMENT,
     user_id          BIGINT          NOT NULL,
     user_platform    VARCHAR(16)     NOT NULL,
+    yclid            VARCHAR(64),    -- Yandex Click ID from the /start deeplink (ad attribution)
     balance          DECIMAL(10,2)   NOT NULL DEFAULT 50.00,
     total_topped_up  DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
     registered_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, user_platform)
+    UNIQUE KEY (user_id, user_platform)
 );
 
 -- History of transcription requests made by users
@@ -212,7 +221,7 @@ CREATE TABLE IF NOT EXISTS transcriptions (
     user_platform          VARCHAR(16)     NOT NULL,
     status                 VARCHAR(32)     NOT NULL,
     audio_s3_path          TEXT            NOT NULL,
-    result_json            TEXT,
+    result_json            MEDIUMTEXT,     -- raw provider payload; WhisperX output exceeds 64 KB TEXT
     llm_tokens_by_encoding JSON,
     duration_seconds       INTEGER,
     price_for_user         DECIMAL(10,2),
@@ -223,6 +232,7 @@ CREATE TABLE IF NOT EXISTS transcriptions (
     operation_id           VARCHAR(64),
     message_id             VARCHAR(64),
     rating                 INTEGER,
+    rating_comment         TEXT,
     created_at             TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at             TIMESTAMP,
     finished_at            TIMESTAMP,
@@ -260,7 +270,7 @@ CREATE TABLE IF NOT EXISTS refinements (
     status            VARCHAR(32)     NOT NULL,
     task_type         VARCHAR(16)     NOT NULL DEFAULT 'summarize',
     operation_id      VARCHAR(64),
-    result_text       TEXT,
+    result_text       MEDIUMTEXT,
     llm_model         VARCHAR(64),
     message_id        VARCHAR(64),
     created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
