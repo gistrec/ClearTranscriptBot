@@ -12,6 +12,7 @@ from sqlalchemy import (
     Text,
     JSON,
 )
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
 
@@ -108,8 +109,9 @@ class Transcription(Base):
     # Model used for transcription
     model = Column(String(64), nullable=True)
 
-    # Raw recognition result returned by the provider
-    result_json = Column(Text, nullable=True)
+    # Raw recognition result returned by the provider.
+    # MEDIUMTEXT: WhisperX payloads with timestamps easily exceed the 64 KB TEXT limit.
+    result_json = Column(MEDIUMTEXT, nullable=True)
 
     # Token counts for transcribed text by encoding
     llm_tokens_by_encoding = Column(JSON, nullable=True)
@@ -174,8 +176,9 @@ class Refinement(Base):
     # Task type: "summarize" or "improve"
     task_type = Column(String(16), nullable=False)
 
-    # Result text produced by the LLM
-    result_text = Column(Text, nullable=True)
+    # Result text produced by the LLM.
+    # MEDIUMTEXT: improved transcripts of long audio exceed the 64 KB TEXT limit.
+    result_text = Column(MEDIUMTEXT, nullable=True)
 
     # LLM model used
     llm_model = Column(String(64), nullable=True)
