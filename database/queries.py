@@ -9,7 +9,7 @@ from sqlalchemy import text, update
 from database.connection import SessionLocal
 from database.models import (
     User, Transcription, Payment, Refinement,
-    STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED,
+    STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED,
 )
 from utils.utils import MoscowTimezone
 
@@ -129,6 +129,26 @@ def claim_transcription_for_run(
                 model=model,
                 message_id=message_id,
             )
+        )
+        session.commit()
+        return result.rowcount > 0
+
+
+def cancel_transcription_if_pending(transcription_id: int) -> bool:
+    """Atomically transition transcription pending → cancelled.
+
+    Returns True if this caller performed the cancellation; False if the
+    transcription already left 'pending' (e.g. a concurrent 'Распознать'
+    click claimed it for running, so the user has been charged).
+    """
+    with SessionLocal() as session:
+        result = session.execute(
+            update(Transcription)
+            .where(
+                Transcription.id == transcription_id,
+                Transcription.status == STATUS_PENDING,
+            )
+            .values(status=STATUS_CANCELLED)
         )
         session.commit()
         return result.rowcount > 0
