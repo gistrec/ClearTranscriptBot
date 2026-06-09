@@ -4,10 +4,11 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM, STATUS_PENDING, STATUS_FAILED, is_owner
+from database.models import PLATFORM_TELEGRAM, STATUS_PENDING, is_owner
 from database.queries import (
     change_user_balance,
     claim_transcription_for_run,
+    fail_transcription_and_refund,
     get_transcription,
     get_user,
     update_transcription,
@@ -71,8 +72,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         duration_seconds=task.duration_seconds,
     )
     if not operation_id:
-        update_transcription(task.id, status=STATUS_FAILED)
-        change_user_balance(user_id, PLATFORM_TELEGRAM, price_for_user)
+        fail_transcription_and_refund(task.id)
         await safe_edit_message_text(query,
             "Не удалось запустить распознавание\n"
             "Пожалуйста, попробуйте ещё раз чуть позже"

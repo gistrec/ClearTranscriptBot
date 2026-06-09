@@ -154,6 +154,41 @@ def cancel_transcription_if_pending(transcription_id: int) -> bool:
         return result.rowcount > 0
 
 
+def fail_transcription_and_refund(transcription_id: int, **fields: Any) -> bool:
+    """Atomically mark a running transcription failed and refund its price.
+
+    The status transition and the balance refund happen in one transaction
+    guarded by the running→failed claim, so a crash cannot separate them and
+    concurrent callers cannot refund twice. Extra *fields* are applied to the
+    transcription row. Returns True if this caller performed the transition.
+    """
+    with SessionLocal() as session:
+        task = (
+            session.query(Transcription)
+            .filter(
+                Transcription.id == transcription_id,
+                Transcription.status == STATUS_RUNNING,
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if task is None:
+            return False
+        task.status = STATUS_FAILED
+        for key, value in fields.items():
+            setattr(task, key, value)
+        if task.price_for_user:
+            user = (
+                session.query(User)
+                .filter(User.user_id == task.user_id, User.user_platform == task.user_platform)
+                .with_for_update()
+                .one()
+            )
+            user.balance = (user.balance or Decimal("0")) + task.price_for_user
+        session.commit()
+        return True
+
+
 def get_transcriptions_by_status(status: str) -> list[Transcription]:
     """Return all transcriptions with the specified *status*."""
     with SessionLocal() as session:

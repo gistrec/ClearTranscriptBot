@@ -5,10 +5,11 @@ from datetime import datetime
 
 import aiomax
 
-from database.models import PLATFORM_MAX, STATUS_PENDING, STATUS_FAILED, is_owner
+from database.models import PLATFORM_MAX, STATUS_PENDING, is_owner
 from database.queries import (
     change_user_balance,
     claim_transcription_for_run,
+    fail_transcription_and_refund,
     get_transcription,
     get_user,
     update_transcription,
@@ -77,8 +78,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         duration_seconds=task.duration_seconds,
     )
     if not operation_id:
-        update_transcription(task.id, status=STATUS_FAILED)
-        change_user_balance(user_id, PLATFORM_MAX, price_for_user)
+        fail_transcription_and_refund(task.id)
         await safe_edit_message(bot,
             message_id,
             "Не удалось запустить распознавание\n"

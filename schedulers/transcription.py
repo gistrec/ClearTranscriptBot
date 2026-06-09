@@ -14,8 +14,8 @@ from datetime import datetime
 
 from telegram.ext import ContextTypes
 
-from database.models import PROVIDER_REPLICATE, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED
-from database.queries import change_user_balance, get_transcriptions_by_status, update_transcription
+from database.models import PROVIDER_REPLICATE, STATUS_RUNNING, STATUS_COMPLETED
+from database.queries import fail_transcription_and_refund, get_transcriptions_by_status, update_transcription
 
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, RATING_PROMPT
 from utils.transcription import check_transcription, get_result
@@ -93,13 +93,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 if task.provider == PROVIDER_REPLICATE:
                     await replicate_provider.cancel(task.operation_id)
                 logging.warning("Cancelling stuck task=%s after %ss", task.id, duration)
-                update_transcription(task.id, status=STATUS_FAILED, finished_at=now)
-                change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund
-                timeout_text = (
-                    "❌ Не удалось распознать — очередь обработки перегружена\n\n"
-                    "Деньги вернули на баланс, попробуйте ещё раз"
-                )
-                await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, timeout_text)
+                if fail_transcription_and_refund(task.id, finished_at=now):
+                    timeout_text = (
+                        "❌ Не удалось распознать — очередь обработки перегружена\n\n"
+                        "Деньги вернули на баланс, попробуйте ещё раз"
+                    )
+                    await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, timeout_text)
             continue
 
         payload = result_info.get("payload") or {}
@@ -118,8 +117,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if not result_info.get("success"):
             logging.warning("Transcription failed task=%s payload=%s", task.id, payload)
-            update_transcription(task.id, status=STATUS_FAILED)
-            change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if failed
+            fail_transcription_and_refund(task.id)
             fail_text = (
                 "❌ Распознавание завершилось с ошибкой\n\n"
                 "Попробуйте ещё раз"
@@ -151,8 +149,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             s3_url = await upload_file(path, object_name)
             if not s3_url:
                 logging.warning("S3 upload failed task=%s object=%s", task.id, object_name)
-                update_transcription(task.id, status=STATUS_FAILED)
-                change_user_balance(task.user_id, task.user_platform, task.price_for_user)  # Refund if upload failed
+                fail_transcription_and_refund(task.id)
                 fail_text = (
                     "❌ Распознавание завершилось с ошибкой\n\n"
                     "Попробуйте ещё раз"
