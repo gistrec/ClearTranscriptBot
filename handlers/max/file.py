@@ -62,7 +62,9 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     if attachment is None:
         return  # no supported attachment, ignore
 
-    file_name = truncate_filename(file_name)
+    # Path(...).name drops any user-supplied directories so the name cannot
+    # escape the temp workdir (e.g. "../../x" or an absolute path).
+    file_name = truncate_filename(Path(file_name).name)
 
     ack = await safe_send_message(bot,
         "📥 Файл получен\n\n"
