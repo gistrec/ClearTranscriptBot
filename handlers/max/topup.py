@@ -1,6 +1,6 @@
 """Handler for /topup command and payment callbacks on Max messenger."""
+import hashlib
 import logging
-import time
 
 from decimal import Decimal
 
@@ -83,7 +83,12 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
 
     await safe_edit_message(bot, message_id, build_topup_text(f"Сумма пополнения: {amount} ₽"), attachments=[], format="markdown")
 
-    order_id = f"max-v2-{user_id}-{int(time.time() * 1000)}"
+    # Deterministic per source message and amount: a double click produces the
+    # same order_id, so the duplicate is caught below — or, if the clicks race,
+    # by the DB unique constraint / Tinkoff OrderId uniqueness. Max message ids
+    # are long opaque strings, so hash to keep OrderId within Tinkoff's limit.
+    mid_hash = hashlib.md5(str(message_id).encode()).hexdigest()[:8]
+    order_id = f"max-v2-{user_id}-{mid_hash}-{amount}"
 
     if get_payment_by_order_id(order_id) is not None:
         logging.warning("Max topup: duplicate callback for order_id: %s", order_id)

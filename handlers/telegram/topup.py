@@ -1,5 +1,4 @@
 import logging
-import time
 
 from decimal import Decimal
 
@@ -107,7 +106,10 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         disable_web_page_preview=True,
     )
 
-    order_id = f"tg-v2-{query.from_user.id}-{int(time.time() * 1000)}"
+    # Deterministic per source message and amount: a double click produces the
+    # same order_id, so the duplicate is caught below — or, if the clicks race,
+    # by the DB unique constraint / Tinkoff OrderId uniqueness.
+    order_id = f"tg-v2-{query.from_user.id}-{query.message.message_id}-{amount}"
 
     if get_payment_by_order_id(order_id) is not None:
         logging.warning("Duplicate topup callback for order_id: %s", order_id)
