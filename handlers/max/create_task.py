@@ -5,10 +5,9 @@ from datetime import datetime
 
 import aiomax
 
-from database.models import PLATFORM_MAX, STATUS_PENDING, is_owner
+from database.models import PLATFORM_MAX, is_owner
 from database.queries import (
-    change_user_balance,
-    claim_transcription_for_run,
+    claim_and_charge_transcription,
     fail_transcription_and_refund,
     get_transcription,
     get_user,
@@ -44,17 +43,18 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         await safe_edit_message(bot, message_id, "Задача не найдена", attachments=[])
         return
 
-    if task.status != STATUS_PENDING:
+    price_for_user = Decimal(task.price_for_user or 0)
+    now = datetime.now(MoscowTimezone)
+    model = get_model_name(task.provider, task.duration_seconds)
+
+    outcome = claim_and_charge_transcription(
+        task.id, now, model, str(message_id), price_for_user
+    )
+    if outcome == "not_pending":
         await safe_edit_message(bot, message_id, "Задача уже запущена", attachments=[])
         return
-
-    user = get_user(user_id, PLATFORM_MAX)
-    if user is None:
-        await safe_edit_message(bot, message_id, "Пользователь не найден", attachments=[])
-        return
-
-    price_for_user = Decimal(task.price_for_user or 0)
-    if user.balance < price_for_user:
+    if outcome == "insufficient_funds":
+        user = get_user(user_id, PLATFORM_MAX)
         await safe_edit_message(bot,
             message_id,
             f"Недостаточно средств\n"
@@ -63,14 +63,6 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
             attachments=[],
         )
         return
-
-    now = datetime.now(MoscowTimezone)
-    model = get_model_name(task.provider, task.duration_seconds)
-
-    if not claim_transcription_for_run(task.id, now, model, str(message_id)):
-        return
-
-    change_user_balance(user_id, PLATFORM_MAX, -price_for_user)
 
     operation_id = await start_transcription(
         task.audio_s3_path,

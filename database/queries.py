@@ -104,34 +104,50 @@ def update_transcription(transcription_id: int, **fields: Any) -> Optional[Trans
         return history
 
 
-def claim_transcription_for_run(
+def claim_and_charge_transcription(
     transcription_id: int,
     started_at: datetime,
     model: str,
     message_id: str,
-) -> bool:
-    """Atomically transition transcription pending → running.
+    price: Decimal,
+) -> str:
+    """Atomically transition pending → running and charge the owner's balance.
 
-    Returns True if this caller won the race (proceed with starting the job);
-    False if the transcription is no longer in 'pending' state (another caller
-    already claimed it, or it was cancelled).
+    Claim and charge happen in one transaction, so a 'running' task always
+    means the user has paid, and concurrent clicks can neither start the task
+    twice nor drive the balance negative.
+
+    Returns "claimed" if this caller won; "not_pending" if the task already
+    left pending (claimed by another click, or cancelled); "insufficient_funds"
+    if the balance is below *price* (the task stays pending).
     """
     with SessionLocal() as session:
-        result = session.execute(
-            update(Transcription)
-            .where(
+        task = (
+            session.query(Transcription)
+            .filter(
                 Transcription.id == transcription_id,
                 Transcription.status == STATUS_PENDING,
             )
-            .values(
-                status=STATUS_RUNNING,
-                started_at=started_at,
-                model=model,
-                message_id=message_id,
-            )
+            .with_for_update()
+            .one_or_none()
         )
+        if task is None:
+            return "not_pending"
+        user = (
+            session.query(User)
+            .filter(User.user_id == task.user_id, User.user_platform == task.user_platform)
+            .with_for_update()
+            .one()
+        )
+        if (user.balance or Decimal("0")) < price:
+            return "insufficient_funds"
+        user.balance = user.balance - price
+        task.status = STATUS_RUNNING
+        task.started_at = started_at
+        task.model = model
+        task.message_id = message_id
         session.commit()
-        return result.rowcount > 0
+        return "claimed"
 
 
 def cancel_transcription_if_pending(transcription_id: int) -> bool:

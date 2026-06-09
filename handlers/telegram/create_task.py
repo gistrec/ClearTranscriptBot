@@ -4,10 +4,9 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM, STATUS_PENDING, is_owner
+from database.models import PLATFORM_TELEGRAM, is_owner
 from database.queries import (
-    change_user_balance,
-    claim_transcription_for_run,
+    claim_and_charge_transcription,
     fail_transcription_and_refund,
     get_transcription,
     get_user,
@@ -40,31 +39,24 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await safe_edit_message_text(query, "Задача не найдена")
         return
 
-    if task.status != STATUS_PENDING:
+    price_for_user = Decimal(task.price_for_user or 0)
+    now = datetime.now(MoscowTimezone)
+    model = get_model_name(task.provider, task.duration_seconds)
+
+    outcome = claim_and_charge_transcription(
+        task.id, now, model, str(query.message.message_id), price_for_user
+    )
+    if outcome == "not_pending":
         await safe_edit_message_text(query, "Задача уже запущена")
         return
-
-    user = get_user(user_id, PLATFORM_TELEGRAM)
-    if user is None:
-        await safe_edit_message_text(query, "Пользователь не найден")
-        return
-
-    price_for_user = Decimal(task.price_for_user or 0)
-    if user.balance < price_for_user:
+    if outcome == "insufficient_funds":
+        user = get_user(user_id, PLATFORM_TELEGRAM)
         await safe_edit_message_text(query,
             f"Недостаточно средств\n"
             f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
             f"Для пополнения баланса используйте команду /topup"
         )
         return
-
-    now = datetime.now(MoscowTimezone)
-    model = get_model_name(task.provider, task.duration_seconds)
-
-    if not claim_transcription_for_run(task.id, now, model, str(query.message.message_id)):
-        return
-
-    change_user_balance(user_id, PLATFORM_TELEGRAM, -price_for_user)
 
     operation_id = await start_transcription(
         task.audio_s3_path,
