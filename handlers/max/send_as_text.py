@@ -48,4 +48,15 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
 
     chat_id = callback.message.recipient.chat_id
     for i in range(0, len(text), _MAX_MSG_LEN):
-        await safe_send_message(bot, text[i:i + _MAX_MSG_LEN], chat_id=chat_id)
+        sent = await safe_send_message(bot, text[i:i + _MAX_MSG_LEN], chat_id=chat_id)
+        if sent is None:
+            # Stop instead of skipping ahead: a truncated tail is recoverable
+            # by pressing the restored button, holes in the middle are not.
+            retry_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=True, show_improve=show_improve, show_timecodes=show_timecodes)
+            await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=retry_keyboard)
+            await safe_send_message(bot,
+                "⚠️ Не удалось отправить текст целиком\n"
+                "Нажмите «Отправить текстом» ещё раз чуть позже",
+                chat_id=chat_id,
+            )
+            return
