@@ -71,6 +71,10 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
 
+    # Record operation_id before the (slow) message edit: until it is written,
+    # the task looks like a zombie to the scheduler's reaper.
+    update_transcription(task.id, operation_id=operation_id)
+
     audio_duration_str = format_duration(task.duration_seconds)
     elapsed_str = format_duration(0)
     await safe_edit_message_text(query,
@@ -79,5 +83,3 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"Стоимость: {task.price_for_user} ₽\n\n"
         f"Время обработки: {elapsed_str}"
     )
-
-    update_transcription(task.id, operation_id=operation_id)

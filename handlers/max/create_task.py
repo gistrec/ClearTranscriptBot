@@ -79,6 +79,10 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         )
         return
 
+    # Record operation_id before the (slow) message edit: until it is written,
+    # the task looks like a zombie to the scheduler's reaper.
+    update_transcription(task.id, operation_id=operation_id)
+
     audio_duration_str = format_duration(task.duration_seconds)
     elapsed_str = format_duration(0)
     await safe_edit_message(bot,
@@ -89,5 +93,3 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         f"Время обработки: {elapsed_str}",
         attachments=[],
     )
-
-    update_transcription(task.id, operation_id=operation_id)

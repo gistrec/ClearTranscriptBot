@@ -37,6 +37,12 @@ MAX_PROCESSING_SECONDS = 2 * 60 * 60
 # still completes — this only manages the user's expectations.
 DELAY_APOLOGY_SECONDS = 15 * 60
 
+# A running task with no operation_id after this long is a zombie: the process
+# died in create_task after charging the user but before recording the provider
+# operation. It will never produce a result — fail it and refund. Normally that
+# window lasts seconds; 10 minutes is far beyond any legitimate start delay.
+ZOMBIE_SECONDS = 10 * 60
+
 
 @sentry_transaction(name="transcription.poll", op="task.check")
 async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -52,12 +58,21 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
     prune_edit_cache(context, {task.id for task in tasks})
 
     for task in tasks:
-        # Task may be in the brief window between status='running' (set by claim_transcription_for_run)
-        # and operation_id being written. Skip until the create_task handler finishes initialization.
-        if task.operation_id is None:
-            continue
-
         started_at = task.started_at.replace(tzinfo=MoscowTimezone)
+
+        # Normally just the brief window in create_task between the claim
+        # (status='running') and operation_id being written — skip and wait.
+        # If the window persists, the process died mid-create: reap the zombie.
+        if task.operation_id is None:
+            if (now - started_at).total_seconds() > ZOMBIE_SECONDS:
+                logging.warning("Reaping zombie task=%s (charged, no operation_id)", task.id)
+                if fail_transcription_and_refund(task.id, finished_at=now):
+                    await sender.safe_edit_message(
+                        context, task.user_platform, task.user_id, task.message_id,
+                        "❌ Не удалось запустить распознавание\n\n"
+                        "Деньги вернули на баланс, попробуйте ещё раз",
+                    )
+            continue
 
         duration = int((now - started_at).total_seconds())
         duration_str = format_duration(duration)
