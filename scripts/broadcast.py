@@ -7,9 +7,12 @@ Edit the recipient ids and the message in the CONFIG block below, then:
     python scripts/broadcast.py            # dry run — lists recipients + previews to you
     python scripts/broadcast.py --send     # actually deliver
 
-Reads TELEGRAM_BOT_TOKEN / MAX_BOT_TOKEN (and ADMIN_TELEGRAM_ID for the
-Telegram self-preview) from .env. Before sending, previews the message to
-you and asks for confirmation.
+Reads TELEGRAM_BOT_TOKEN / MAX_BOT_TOKEN from .env; the admin preview ids are
+constants in the CONFIG block. Before sending, previews the message to you and
+asks for confirmation.
+
+cli() also backs the thin notify_*.py scripts: they import it and supply only
+their own recipient ids + message text.
 """
 import argparse
 import asyncio
@@ -50,7 +53,8 @@ MESSAGE = (
     "на час распознавания. Просто пришлите аудио или видео, и мы вернём текст 🎧"
 )
 
-# Max user-id that receives the pre-send preview.
+# Admin user-ids that receive the pre-send (and dry-run) preview.
+ADMIN_TELEGRAM_ID = 394190148
 ADMIN_MAX_ID = 219203897
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -86,51 +90,46 @@ async def send_max(token: str | None, user_ids: list[int], text: str) -> None:
         bot.session = None
 
 
-async def main() -> None:
-    parser = argparse.ArgumentParser(description="Broadcast a message to a fixed list of users")
-    parser.add_argument("--send", action="store_true", help="actually send (default: dry run)")
-    args = parser.parse_args()
-
+async def _run(message: str, telegram_ids: list[int], max_ids: list[int], *, send: bool) -> None:
     tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     max_token = os.environ.get("MAX_BOT_TOKEN")
-    tg_admin = os.environ.get("ADMIN_TELEGRAM_ID")
+    total = len(telegram_ids) + len(max_ids)
 
-    tg_ids = TELEGRAM_IDS
-    max_ids = MAX_IDS
-    total = len(tg_ids) + len(max_ids)
+    if max_ids:
+        # Same runtime patch the bot uses, so a Max send never trips the aiomax
+        # intent bug this tooling exists to work around.
+        max_sender.patch_aiomax()
 
-    print(f"=== {'SEND' if args.send else 'DRY RUN'} — {total} recipients ===")
-    print(f"Message:\n---\n{MESSAGE}\n---")
+    print(f"=== {'SEND' if send else 'DRY RUN'} — {total} recipients ===")
+    print(f"Message:\n---\n{message}\n---")
+    prefix = "" if send else "[dry-run] "
+    for uid in telegram_ids:
+        print(f"  {prefix}telegram:{uid}")
+    for uid in max_ids:
+        print(f"  {prefix}max:{uid}")
 
-    if not args.send:
-        for uid in tg_ids:
-            print(f"  [dry-run] telegram:{uid}")
-        for uid in max_ids:
-            print(f"  [dry-run] max:{uid}")
-        preview = PREVIEW_PREFIX + MESSAGE
+    preview = PREVIEW_PREFIX + message
+
+    if not send:
         print("\nPreview to you (real users are NOT messaged):")
-        if tg_ids and tg_token and tg_admin:
-            await send_telegram(tg_token, [int(tg_admin)], preview)
+        if telegram_ids and tg_token:
+            await send_telegram(tg_token, [ADMIN_TELEGRAM_ID], preview)
         if max_ids and max_token:
             await send_max(max_token, [ADMIN_MAX_ID], preview)
         print("\nDry run only. Re-run with --send to actually deliver.")
         return
 
-    if tg_ids and not tg_token:
+    if telegram_ids and not tg_token:
         print("TELEGRAM_BOT_TOKEN is not set")
         sys.exit(1)
     if max_ids and not max_token:
         print("MAX_BOT_TOKEN is not set")
         sys.exit(1)
-    if tg_ids and not tg_admin:
-        print("ADMIN_TELEGRAM_ID is not set (needed to preview to you)")
-        sys.exit(1)
 
-    # Preview to you on both platforms BEFORE touching real users.
-    preview = PREVIEW_PREFIX + MESSAGE
+    # Preview to you BEFORE touching real users.
     print("\nSending preview to you...")
-    if tg_ids:
-        await send_telegram(tg_token, [int(tg_admin)], preview)
+    if telegram_ids:
+        await send_telegram(tg_token, [ADMIN_TELEGRAM_ID], preview)
     if max_ids:
         await send_max(max_token, [ADMIN_MAX_ID], preview)
 
@@ -138,8 +137,8 @@ async def main() -> None:
         print("Aborted.")
         return
 
-    await send_telegram(tg_token, tg_ids, MESSAGE)
-    await send_max(max_token, max_ids, MESSAGE)
+    await send_telegram(tg_token, telegram_ids, message)
+    await send_max(max_token, max_ids, message)
 
 
 def _load_env() -> None:
@@ -151,6 +150,16 @@ def _load_env() -> None:
     load_dotenv()
 
 
-if __name__ == "__main__":
+def cli(message: str, *, telegram_ids: list[int] | None = None, max_ids: list[int] | None = None) -> None:
+    """Entry point for broadcast scripts: parse --send, load .env, then
+    dry-run/preview/confirm/deliver. Callers supply only the text and ids."""
+    parser = argparse.ArgumentParser(description="Broadcast a message to a fixed list of users")
+    parser.add_argument("--send", action="store_true", help="actually send (default: dry run)")
+    args = parser.parse_args()
+
     _load_env()
-    asyncio.run(main())
+    asyncio.run(_run(message, telegram_ids or [], max_ids or [], send=args.send))
+
+
+if __name__ == "__main__":
+    cli(MESSAGE, telegram_ids=TELEGRAM_IDS, max_ids=MAX_IDS)

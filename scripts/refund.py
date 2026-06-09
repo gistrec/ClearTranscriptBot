@@ -5,7 +5,8 @@ Refund a user: add to their balance and send them a message.
 Usage:
     python scripts/refund.py --platform telegram --user_id 12345 --amount 50 --message "Возврат за сбой"
 
-Requires env var ADMIN_TELEGRAM_ID to be set.
+Reads TELEGRAM_BOT_TOKEN / MAX_BOT_TOKEN from .env; the admin preview id is the
+ADMIN_TELEGRAM_ID constant in broadcast.py.
 """
 import argparse
 import asyncio
@@ -19,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import telegram
 import aiomax
 
+from broadcast import ADMIN_TELEGRAM_ID, _load_env
 from database.models import PLATFORM_TELEGRAM, PLATFORM_MAX
 from database.queries import get_user, change_user_balance
 
@@ -34,13 +36,13 @@ def parse_args():
 
 async def main():
     args = parse_args()
+    _load_env()
 
-    admin_id = os.environ.get("ADMIN_TELEGRAM_ID")
     tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     max_token = os.environ.get("MAX_BOT_TOKEN")
 
-    if not admin_id or not tg_token:
-        print("ADMIN_TELEGRAM_ID and TELEGRAM_BOT_TOKEN must be set")
+    if not tg_token:
+        print("TELEGRAM_BOT_TOKEN must be set")
         sys.exit(1)
 
     user = get_user(args.user_id, args.platform)
@@ -54,7 +56,7 @@ async def main():
 
     tg_bot = telegram.Bot(token=tg_token)
     preview = f"[PREVIEW — будет отправлено {args.platform}:{args.user_id}]\n\n{args.message}"
-    await tg_bot.send_message(chat_id=int(admin_id), text=preview)
+    await tg_bot.send_message(chat_id=ADMIN_TELEGRAM_ID, text=preview)
 
     print("Preview отправлен тебе в Telegram. Нажми Enter чтобы подтвердить, Ctrl+C для отмены.")
     try:

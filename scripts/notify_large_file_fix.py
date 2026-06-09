@@ -20,20 +20,9 @@ Sentry retention while only the tag counter survived.
     python scripts/notify_large_file_fix.py          # dry run — lists recipients + previews to you
     python scripts/notify_large_file_fix.py --send    # actually deliver
 
-Reads TELEGRAM_BOT_TOKEN and ADMIN_TELEGRAM_ID from .env. Before sending,
-previews to the admin and asks for confirmation.
+Send/preview/confirm logic and env handling live in broadcast.py.
 """
-import argparse
-import asyncio
-import os
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-import telegram
-
-import messengers.telegram as tg_sender
+from broadcast import cli
 
 
 # ─────────────────────────── CONFIG — edit me ───────────────────────────
@@ -60,72 +49,5 @@ MESSAGE = (
 # ─────────────────────────────────────────────────────────────────────────
 
 
-PREVIEW_PREFIX = (
-    "📋 PREVIEW рассылки.\n"
-    "Это сообщение получат пользователи из списка. Текст ниже:\n\n"
-)
-
-
-async def send_telegram(token: str | None, user_ids: list[int], text: str) -> None:
-    if not user_ids:
-        return
-    async with telegram.Bot(token=token) as bot:
-        for uid in user_ids:
-            res = await tg_sender.safe_send_message(bot, chat_id=uid, text=text)
-            print(f"  telegram:{uid} -> {'ok' if res else 'FAILED/skipped'}")
-
-
-async def main() -> None:
-    parser = argparse.ArgumentParser(description="Notify affected Telegram users that large files are fixed")
-    parser.add_argument("--send", action="store_true", help="actually send (default: dry run)")
-    args = parser.parse_args()
-
-    tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    tg_admin = os.environ.get("ADMIN_TELEGRAM_ID")
-    total = len(TELEGRAM_IDS)
-
-    print(f"=== {'SEND' if args.send else 'DRY RUN'} — {total} recipients ===")
-    print(f"Message:\n---\n{MESSAGE}\n---")
-
-    if not args.send:
-        for uid in TELEGRAM_IDS:
-            print(f"  [dry-run] telegram:{uid}")
-        if tg_token and tg_admin:
-            print("\nSending preview to you (real users are NOT messaged)...")
-            await send_telegram(tg_token, [int(tg_admin)], PREVIEW_PREFIX + MESSAGE)
-        else:
-            print("\nSet TELEGRAM_BOT_TOKEN and ADMIN_TELEGRAM_ID to also preview to yourself.")
-        print("\nDry run only. Re-run with --send to actually deliver.")
-        return
-
-    if not tg_token:
-        print("TELEGRAM_BOT_TOKEN is not set")
-        sys.exit(1)
-    if not tg_admin:
-        print("ADMIN_TELEGRAM_ID is not set (needed to preview to you)")
-        sys.exit(1)
-
-    # Preview to you BEFORE touching real users.
-    preview = PREVIEW_PREFIX + MESSAGE
-    print("\nSending preview to you...")
-    await send_telegram(tg_token, [int(tg_admin)], preview)
-
-    if input(f"\nType 'yes' to deliver to {total} users: ").strip() != "yes":
-        print("Aborted.")
-        return
-
-    await send_telegram(tg_token, TELEGRAM_IDS, MESSAGE)
-
-
-def _load_env() -> None:
-    """Load .env if python-dotenv is available; otherwise rely on ambient env."""
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        return
-    load_dotenv()
-
-
 if __name__ == "__main__":
-    _load_env()
-    asyncio.run(main())
+    cli(MESSAGE, telegram_ids=TELEGRAM_IDS)
