@@ -1,6 +1,9 @@
+import asyncio
+import math
 import os
 import logging
 import tempfile
+import time
 
 import providers.speechkit as speechkit_provider
 
@@ -12,15 +15,19 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, STATUS_PENDING
 from database.queries import add_transcription, add_user, get_user
 
-from utils.ffmpeg import convert_to_ogg, get_media_duration
+from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
 from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
-from messengers.telegram import make_topup_amounts_keyboard, safe_reply_text
+from messengers.telegram import make_topup_amounts_keyboard, safe_edit_message, safe_reply_text
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
+
+# Files below this prepare in seconds — staged progress would only flicker.
+PROGRESS_THRESHOLD_BYTES = 20 * 1024 * 1024
+TICKER_INTERVAL = 5.0  # seconds between progress edits, safely under edit rate limits
 
 
 def _get_file_timeout(size_bytes):
@@ -30,6 +37,32 @@ def _get_file_timeout(size_bytes):
     if not size_bytes:
         return 120
     return int(min(600, 60 + (size_bytes / 1_000_000) / 10))
+
+
+def format_size(size_bytes: int) -> str:
+    mb = size_bytes / (1024 * 1024)
+    if mb < 1024:
+        return f"{mb:.0f} МБ"
+    return f"{mb / 1024:.1f} ГБ"
+
+
+def download_estimate_minutes(size_bytes: int) -> int:
+    # Same ~10 MB/s budget as _get_file_timeout.
+    return max(1, math.ceil(size_bytes / 1_000_000 / 10 / 60))
+
+
+async def _conversion_ticker(bot, chat_id, message_id, progress_path, duration: float) -> None:
+    started = time.time()
+    while True:
+        await asyncio.sleep(TICKER_INTERVAL)
+        percent, _, eta = await get_conversion_progress(progress_path, duration, started)
+        if percent <= 0:
+            continue  # ffmpeg has not reported anything yet, keep the stage text
+        await safe_edit_message(
+            bot, chat_id, message_id,
+            f"🎬 Извлекаю аудиодорожку… {percent}%\n"
+            f"Осталось примерно {format_duration(int(eta))}",
+        )
 
 
 @sentry_bind_user
@@ -44,15 +77,24 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if user is None:
         user = add_user(user_id, PLATFORM_TELEGRAM)
 
-    await safe_reply_text(
-        message,
-        "📥 Файл получен\n\n"
-        "Подготавливаю аудио и считаю стоимость\n"
-        "Это может занять до 1 минуты",
-    )
-
     incoming = message.document or message.audio or message.video or message.voice or message.video_note
-    file_timeout = _get_file_timeout(getattr(incoming, "file_size", None))
+    file_size = getattr(incoming, "file_size", None) or 0
+    file_timeout = _get_file_timeout(file_size)
+    show_progress = file_size > PROGRESS_THRESHOLD_BYTES
+
+    if show_progress:
+        ack_text = (
+            f"📥 Файл получен ({format_size(file_size)})\n\n"
+            f"Скачиваю файл — обычно это занимает до {download_estimate_minutes(file_size)} мин."
+        )
+    else:
+        ack_text = (
+            "📥 Файл получен\n\n"
+            "Подготавливаю аудио и считаю стоимость\n"
+            "Это может занять до 1 минуты"
+        )
+    ack = await safe_reply_text(message, ack_text)
+    show_progress = show_progress and ack is not None
 
     try:
         file = None
@@ -158,7 +200,25 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         progress_name = f"{safe_stem}.progress"
         progress_path = out_dir / progress_name
 
-        convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
+        ticker = None
+        if show_progress:
+            await safe_edit_message(context.bot, ack.chat_id, ack.message_id, "🎬 Извлекаю аудиодорожку…")
+            ticker = context.application.create_task(
+                _conversion_ticker(context.bot, ack.chat_id, ack.message_id, progress_path, duration)
+            )
+        try:
+            convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
+        finally:
+            # Await the cancellation so no in-flight ticker edit can land after
+            # the next stage text (or after the tempdir is gone).
+            if ticker is not None:
+                ticker.cancel()
+                try:
+                    await ticker
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    logging.exception("Conversion progress ticker failed")
         if convert_error:
             if convert_error == "no_audio_stream":
                 error_text = (
@@ -186,6 +246,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         except Exception:
             logging.exception("Could not remove original file %s", local_path)
 
+        if show_progress:
+            await safe_edit_message(context.bot, ack.chat_id, ack.message_id, "☁️ Сохраняю аудио…")
+
         object_name = f"source/{user_id}/{message.message_id}_{ogg_path.name}"
         s3_url = await upload_file(ogg_path, object_name)
         if not s3_url:
@@ -195,6 +258,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 "Пожалуйста, попробуйте ещё раз чуть позже"
             )
             return
+
+        if show_progress:
+            await safe_edit_message(context.bot, ack.chat_id, ack.message_id, "✅ Аудио готово")
 
     history = add_transcription(
         user_id=user_id,

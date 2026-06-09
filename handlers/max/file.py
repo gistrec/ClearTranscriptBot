@@ -1,7 +1,10 @@
 """Handler for file/audio/video messages on Max messenger."""
+import asyncio
 import logging
+import math
 import mimetypes
 import tempfile
+import time
 import aiomax
 
 from pathlib import Path
@@ -11,13 +14,44 @@ from database.queries import add_transcription, add_user, get_user, update_trans
 
 import providers.speechkit as speechkit_provider
 
-from utils.ffmpeg import convert_to_ogg, get_media_duration
+from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_media_duration
 from utils.max_download import download_max_file
 from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename
 from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import make_confirm_keyboard, make_topup_amounts_keyboard, safe_send_message
+from messengers.max import make_confirm_keyboard, make_topup_amounts_keyboard, safe_edit_message, safe_send_message
+
+
+# Files below this prepare in seconds — staged progress would only flicker.
+PROGRESS_THRESHOLD_BYTES = 20 * 1024 * 1024
+TICKER_INTERVAL = 5.0  # seconds between progress edits, safely under edit rate limits
+
+
+def format_size(size_bytes: int) -> str:
+    mb = size_bytes / (1024 * 1024)
+    if mb < 1024:
+        return f"{mb:.0f} МБ"
+    return f"{mb / 1024:.1f} ГБ"
+
+
+def download_estimate_minutes(size_bytes: int) -> int:
+    # Same ~10 MB/s budget as the Telegram handler uses.
+    return max(1, math.ceil(size_bytes / 1_000_000 / 10 / 60))
+
+
+async def _conversion_ticker(bot, message_id, progress_path, duration: float) -> None:
+    started = time.time()
+    while True:
+        await asyncio.sleep(TICKER_INTERVAL)
+        percent, _, eta = await get_conversion_progress(progress_path, duration, started)
+        if percent <= 0:
+            continue  # ffmpeg has not reported anything yet, keep the stage text
+        await safe_edit_message(
+            bot, message_id,
+            f"🎬 Извлекаю аудиодорожку… {percent}%\n"
+            f"Осталось примерно {format_duration(int(eta))}",
+        )
 
 
 
@@ -66,12 +100,21 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     # escape the temp workdir (e.g. "../../x" or an absolute path).
     file_name = truncate_filename(Path(file_name).name)
 
-    ack = await safe_send_message(bot,
-        "📥 Файл получен\n\n"
-        "Подготавливаю аудио и считаю стоимость\n"
-        "Это может занять до 1 минуты",
-        chat_id=chat_id,
-    )
+    file_size = getattr(attachment, "size", None) or 0
+    show_progress = file_size > PROGRESS_THRESHOLD_BYTES
+
+    if show_progress:
+        ack_text = (
+            f"📥 Файл получен ({format_size(file_size)})\n\n"
+            f"Скачиваю файл — обычно это занимает до {download_estimate_minutes(file_size)} мин."
+        )
+    else:
+        ack_text = (
+            "📥 Файл получен\n\n"
+            "Подготавливаю аудио и считаю стоимость\n"
+            "Это может занять до 1 минуты"
+        )
+    ack = await safe_send_message(bot, ack_text, chat_id=chat_id)
     if ack is None:
         return
 
@@ -105,6 +148,14 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             )
             return
 
+        if not show_progress:
+            # Max attachments do not always carry a size — fall back to the
+            # downloaded file so big files still get conversion progress.
+            try:
+                show_progress = local_path.stat().st_size > PROGRESS_THRESHOLD_BYTES
+            except OSError:
+                pass
+
         duration = await get_media_duration(local_path)
         if not duration:
             await safe_send_message(bot,
@@ -134,7 +185,25 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         ogg_path = out_dir / ogg_name
         progress_path = out_dir / f"{safe_stem}.progress"
 
-        convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
+        ticker = None
+        if show_progress:
+            await safe_edit_message(bot, ack.body.message_id, "🎬 Извлекаю аудиодорожку…")
+            ticker = asyncio.create_task(
+                _conversion_ticker(bot, ack.body.message_id, progress_path, duration)
+            )
+        try:
+            convert_error = await convert_to_ogg(local_path, ogg_path, progress_path)
+        finally:
+            # Await the cancellation so no in-flight ticker edit can land after
+            # the next stage text (or after the tempdir is gone).
+            if ticker is not None:
+                ticker.cancel()
+                try:
+                    await ticker
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    logging.exception("Conversion progress ticker failed")
         if convert_error:
             if convert_error == "no_audio_stream":
                 error_text = (
@@ -161,6 +230,9 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         except Exception:
             logging.exception("Could not remove original file %s", local_path)
 
+        if show_progress:
+            await safe_edit_message(bot, ack.body.message_id, "☁️ Сохраняю аудио…")
+
         object_name = f"source/{user_id}/{message.body.message_id}_{ogg_path.name}"
         s3_url = await upload_file(ogg_path, object_name)
         if not s3_url:
@@ -170,6 +242,9 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
                 chat_id=chat_id,
             )
             return
+
+        if show_progress:
+            await safe_edit_message(bot, ack.body.message_id, "✅ Аудио готово")
 
     history = add_transcription(
         user_id=user_id,
