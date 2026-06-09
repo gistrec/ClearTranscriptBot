@@ -29,7 +29,7 @@ from handlers.telegram.balance import handle_balance
 from handlers.telegram.cancel_task import handle_cancel_task
 from handlers.telegram.create_task import handle_create_task
 from handlers.telegram.file import handle_file
-from handlers.telegram.history import handle_history
+from handlers.telegram.history import handle_history, handle_history_doc
 from handlers.telegram.price import handle_price
 from handlers.telegram.text import handle_text, handle_unsupported
 from handlers.telegram.topup import handle_topup, handle_topup_callback, handle_cancel_payment
@@ -43,7 +43,7 @@ from handlers.max.balance import handle_max_balance
 from handlers.max.cancel_task import handle_max_cancel_task
 from handlers.max.create_task import handle_max_create_task
 from handlers.max.file import handle_max_file
-from handlers.max.history import handle_max_history
+from handlers.max.history import handle_max_history, handle_max_history_doc
 from handlers.max.price import handle_max_price
 from handlers.max.rate_transcription import handle_max_rate
 from handlers.max.summarize import handle_max_summarize
@@ -158,6 +158,9 @@ async def run_bots() -> None:
     application.add_handler(
         CallbackQueryHandler(handle_timecodes_format, pattern=r"^tc_fmt:\d+:(txt|srt|vtt)$")
     )
+    application.add_handler(
+        CallbackQueryHandler(handle_history_doc, pattern=r"^history_doc:\d+$")
+    )
 
     # --- Build Max bot (optional) ---
     max_bot = None
@@ -255,6 +258,8 @@ async def run_bots() -> None:
                 await handle_max_send_as_text(callback, max_bot)
             elif payload.startswith("improve:"):
                 await handle_max_improve(callback, max_bot)
+            elif payload.startswith("history_doc:"):
+                await handle_max_history_doc(callback, max_bot)
             elif payload.startswith("tc_fmt:"):
                 await handle_max_timecodes_format(callback, max_bot)
             elif payload.startswith("tc_back:"):
