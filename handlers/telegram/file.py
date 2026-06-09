@@ -23,6 +23,15 @@ from messengers.telegram import safe_reply_text
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
 
 
+def _get_file_timeout(size_bytes):
+    # In local Bot API mode getFile blocks for the whole server-side download, so
+    # a flat timeout either fails big files or makes small ones hang on a stall.
+    # Budget ~10 MB/s: small files fail fast, only large ones wait, capped ~10 min.
+    if not size_bytes:
+        return 120
+    return int(min(600, 60 + (size_bytes / 1_000_000) / 10))
+
+
 @sentry_bind_user
 @sentry_transaction(name="file.upload", op="telegram.message")
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -42,24 +51,27 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "Это может занять до 1 минуты",
     )
 
+    incoming = message.document or message.audio or message.video or message.voice
+    file_timeout = _get_file_timeout(getattr(incoming, "file_size", None))
+
     try:
         file = None
         mime = ""
         file_name = "file"
         if message.document:
-            file = await message.document.get_file(read_timeout=120)
+            file = await message.document.get_file(read_timeout=file_timeout)
             mime = message.document.mime_type or ""
             file_name = message.document.file_name or file_name
         elif message.audio:
-            file = await message.audio.get_file(read_timeout=120)
+            file = await message.audio.get_file(read_timeout=file_timeout)
             mime = message.audio.mime_type or ""
             file_name = message.audio.file_name or file_name
         elif message.video:
-            file = await message.video.get_file(read_timeout=120)
+            file = await message.video.get_file(read_timeout=file_timeout)
             mime = message.video.mime_type or ""
             file_name = message.video.file_name or file_name
         elif message.voice:
-            file = await message.voice.get_file(read_timeout=120)
+            file = await message.voice.get_file(read_timeout=file_timeout)
             mime = "audio/ogg"
             file_name = "voice.ogg"
         else:
