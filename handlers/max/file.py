@@ -17,7 +17,7 @@ from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename
 from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import make_confirm_keyboard, safe_send_message
+from messengers.max import make_confirm_keyboard, make_topup_amounts_keyboard, safe_send_message
 
 
 
@@ -125,14 +125,9 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             return
 
         price_for_user = max(MIN_PRICE_RUB, speechkit_provider.cost_in_rub(duration))
-        if user.balance < price_for_user:
-            await safe_send_message(bot,
-                f"❌ Недостаточно средств\n"
-                f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
-                f"Для пополнения баланса используйте команду /topup",
-                chat_id=chat_id,
-            )
-            return
+        # Not enough balance is no longer a dead end: the task is still
+        # prepared, and a topup prompt follows the confirm message below.
+        needs_topup = user.balance < price_for_user
 
         safe_stem = sanitize_filename(Path(file_name).stem)
         ogg_name = f"{safe_stem}.ogg"
@@ -203,3 +198,12 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         return
 
     update_transcription(history.id, message_id=str(confirm_msg.body.message_id))
+
+    if needs_topup:
+        await safe_send_message(bot,
+            f"⚠️ На балансе не хватает средств\n"
+            f"Баланс: {user.balance} ₽, стоимость: {price_for_user} ₽\n\n"
+            f"Пополните баланс и нажмите «Распознать»",
+            chat_id=chat_id,
+            keyboard=make_topup_amounts_keyboard(),
+        )

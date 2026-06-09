@@ -13,7 +13,7 @@ from database.queries import (
     update_transcription,
 )
 
-from messengers.telegram import safe_edit_message_text, safe_query_answer
+from messengers.telegram import make_topup_amounts_keyboard, safe_edit_message_text, safe_query_answer, safe_reply_text
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import start_transcription, get_model_name
@@ -51,10 +51,14 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     if outcome == "insufficient_funds":
         user = get_user(user_id, PLATFORM_TELEGRAM)
-        await safe_edit_message_text(query,
-            f"Недостаточно средств\n"
+        # Reply instead of editing: the original message keeps its button, so
+        # after a topup the user can press it again without re-uploading.
+        await safe_reply_text(
+            query.message,
+            f"❌ Недостаточно средств\n"
             f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
-            f"Для пополнения баланса используйте команду /topup"
+            f"Пополните баланс и нажмите «Распознать» ещё раз",
+            reply_markup=make_topup_amounts_keyboard(),
         )
         return
 

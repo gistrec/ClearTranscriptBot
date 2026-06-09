@@ -14,30 +14,12 @@ from database.queries import add_user, get_user, \
 
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.utils import build_topup_text, build_payment_text
-from messengers.telegram import safe_edit_message_text, safe_query_answer, safe_reply_text
+from messengers.telegram import make_topup_amounts_keyboard, safe_edit_message_text, safe_query_answer, safe_reply_text
 
 
 BOT_URL = "https://t.me/ClearTranscriptBot"
 
 TOPUP_AMOUNTS = (50, 100, 250, 500)
-
-
-def _build_topup_amounts_keyboard() -> InlineKeyboardMarkup:
-    buttons = [
-        [
-            InlineKeyboardButton(text="50 ₽",  callback_data="topup:50"),
-            InlineKeyboardButton(text="100 ₽", callback_data="topup:100"),
-        ],
-        [
-            InlineKeyboardButton(text="250 ₽", callback_data="topup:250"),
-            InlineKeyboardButton(text="500 ₽", callback_data="topup:500"),
-        ],
-        [
-            InlineKeyboardButton(text="Отменить", callback_data="topup:cancel")
-        ]
-    ]
-
-    return InlineKeyboardMarkup(buttons)
 
 
 def _build_payment_actions_keyboard(order_id: str, payment_url: str) -> InlineKeyboardMarkup:
@@ -64,7 +46,7 @@ async def handle_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await safe_reply_text(
         update.message,
         text=build_topup_text("Выберите сумму пополнения"),
-        reply_markup=_build_topup_amounts_keyboard(),
+        reply_markup=make_topup_amounts_keyboard(),
         parse_mode="MarkdownV2",
         disable_web_page_preview=True,
     )

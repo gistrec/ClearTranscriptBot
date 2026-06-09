@@ -17,7 +17,7 @@ from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
 from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
-from messengers.telegram import safe_reply_text
+from messengers.telegram import make_topup_amounts_keyboard, safe_reply_text
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
@@ -146,14 +146,9 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             return
 
         price_for_user = max(MIN_PRICE_RUB, speechkit_provider.cost_in_rub(duration))
-        if user.balance < price_for_user:
-            await safe_reply_text(
-                message,
-                f"❌ Недостаточно средств\n"
-                f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
-                f"Для пополнения баланса используйте команду /topup"
-            )
-            return
+        # Not enough balance is no longer a dead end: the task is still
+        # prepared, and a topup prompt follows the confirm message below.
+        needs_topup = user.balance < price_for_user
 
         safe_stem = sanitize_filename(local_path.stem)
 
@@ -230,3 +225,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         f"{hint}",
         reply_markup=InlineKeyboardMarkup([buttons]),
     )
+
+    if needs_topup:
+        await safe_reply_text(
+            message,
+            f"⚠️ На балансе не хватает средств\n"
+            f"Баланс: {user.balance} ₽, стоимость: {price_for_user} ₽\n\n"
+            f"Пополните баланс и нажмите «Распознать»",
+            reply_markup=make_topup_amounts_keyboard(),
+        )

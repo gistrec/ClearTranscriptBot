@@ -236,6 +236,23 @@ def make_timecodes_format_keyboard(transcription_id: int) -> InlineKeyboardMarku
     ])
 
 
+def make_topup_amounts_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        [
+            InlineKeyboardButton(text="50 ₽",  callback_data="topup:50"),
+            InlineKeyboardButton(text="100 ₽", callback_data="topup:100"),
+        ],
+        [
+            InlineKeyboardButton(text="250 ₽", callback_data="topup:250"),
+            InlineKeyboardButton(text="500 ₽", callback_data="topup:500"),
+        ],
+        [
+            InlineKeyboardButton(text="Отменить", callback_data="topup:cancel")
+        ]
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
 async def safe_remove_keyboard(bot, chat_id, message_id) -> None:
     try:
         await bot.edit_message_reply_markup(

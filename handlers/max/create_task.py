@@ -16,7 +16,7 @@ from database.queries import (
 from utils.utils import format_duration, MoscowTimezone
 from utils.transcription import start_transcription, get_model_name
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import safe_callback_answer, safe_edit_message
+from messengers.max import make_topup_amounts_keyboard, safe_callback_answer, safe_edit_message, safe_send_message
 
 
 @sentry_bind_user_max
@@ -55,12 +55,14 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         return
     if outcome == "insufficient_funds":
         user = get_user(user_id, PLATFORM_MAX)
-        await safe_edit_message(bot,
-            message_id,
-            f"Недостаточно средств\n"
+        # Send a new message instead of editing: the original message keeps
+        # its button, so after a topup the user can press it again.
+        await safe_send_message(bot,
+            f"❌ Недостаточно средств\n"
             f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
-            f"Для пополнения баланса используйте команду /topup",
-            attachments=[],
+            f"Пополните баланс и нажмите «Распознать» ещё раз",
+            chat_id=callback.message.recipient.chat_id,
+            keyboard=make_topup_amounts_keyboard(),
         )
         return
 
