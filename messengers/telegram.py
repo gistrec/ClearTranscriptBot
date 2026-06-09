@@ -130,6 +130,9 @@ async def safe_send_document(bot, chat_id, reply_to_message_id, document, captio
         return await bot.send_document(
             chat_id=int(chat_id),
             reply_to_message_id=int(reply_to_message_id) if reply_to_message_id is not None else None,
+            # The user may have deleted the status message; deliver the paid
+            # result anyway instead of failing on the dangling reply.
+            allow_sending_without_reply=True,
             document=document,
             caption=caption,
             reply_markup=reply_markup,
