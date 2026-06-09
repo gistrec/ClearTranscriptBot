@@ -51,7 +51,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "Это может занять до 1 минуты",
     )
 
-    incoming = message.document or message.audio or message.video or message.voice
+    incoming = message.document or message.audio or message.video or message.voice or message.video_note
     file_timeout = _get_file_timeout(getattr(incoming, "file_size", None))
 
     try:
@@ -74,6 +74,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             file = await message.voice.get_file(read_timeout=file_timeout)
             mime = "audio/ogg"
             file_name = "voice.ogg"
+        elif message.video_note:
+            file = await message.video_note.get_file(read_timeout=file_timeout)
+            mime = "video/mp4"
+            file_name = "video_note.mp4"
         else:
             await safe_reply_text(
                 message,

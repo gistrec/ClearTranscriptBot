@@ -120,7 +120,7 @@ async def run_bots() -> None:
     application.add_handler(CommandHandler("topup", handle_topup))
     application.add_handler(CommandHandler("price", handle_price))
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
-    file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE
+    file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE | filters.VIDEO_NOTE
     application.add_handler(MessageHandler(file_filters, handle_file))
     application.add_handler(
         CallbackQueryHandler(handle_create_task, pattern=r"^create_task:\d+$")
