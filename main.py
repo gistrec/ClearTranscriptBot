@@ -31,7 +31,7 @@ from handlers.telegram.create_task import handle_create_task
 from handlers.telegram.file import handle_file
 from handlers.telegram.history import handle_history
 from handlers.telegram.price import handle_price
-from handlers.telegram.text import handle_text
+from handlers.telegram.text import handle_text, handle_unsupported
 from handlers.telegram.topup import handle_topup, handle_topup_callback, handle_cancel_payment
 from handlers.telegram.rate_transcription import handle_rate_transcription
 from handlers.telegram.summarize import handle_summarize
@@ -122,6 +122,9 @@ async def run_bots() -> None:
     application.add_handler(MessageHandler(filters.TEXT, handle_text))
     file_filters = filters.Document.ALL | filters.AUDIO | filters.VIDEO | filters.VOICE | filters.VIDEO_NOTE
     application.add_handler(MessageHandler(file_filters, handle_file))
+    # Group-0 handlers fire first-match in registration order, so this
+    # catch-all must stay below the TEXT and file handlers.
+    application.add_handler(MessageHandler(filters.ALL & ~filters.StatusUpdate.ALL, handle_unsupported))
     application.add_handler(
         CallbackQueryHandler(handle_create_task, pattern=r"^create_task:\d+$")
     )
