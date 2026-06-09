@@ -303,24 +303,19 @@ chmod 0600 ~/.mysql/root.crt
 
 The certificate will be saved to `~/.mysql/root.crt` and will be used automatically by MySQL clients to establish a secure connection.
 
-## Running as a systemd service
+## Running under pm2
 
-A unit file is provided at `scripts/cleartranscriptbot.service` to keep the bot running and auto-start it on boot.
+The bot runs under [pm2](https://pm2.keymetrics.io/) via the provided `ecosystem.config.js`. It launches `main.py` through the venv interpreter and restarts indefinitely with exponential backoff (pm2 caps the delay at 15s).
 
 1. Put env vars into `/home/gistrec/ClearTranscriptBot/.env` (loaded automatically via `python-dotenv`).
-2. Install and enable the unit:
+2. Start, inspect and persist the process:
    ```bash
-   sudo cp scripts/cleartranscriptbot.service /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now cleartranscriptbot
-   ```
-3. Check status and follow logs:
-   ```bash
-   sudo systemctl status cleartranscriptbot
-   journalctl -u cleartranscriptbot -f
+   pm2 start ecosystem.config.js
+   pm2 logs clear-transcript-bot
+   pm2 save            # persist across reboots (with `pm2 startup`)
    ```
 
-The default unit assumes the project lives at `/home/gistrec/ClearTranscriptBot`, runs under user `gistrec`, and uses the venv at `.venv/`. Adjust `WorkingDirectory`, `User`, and `ExecStart` if your layout differs. The `After=mysql.service` line can be removed (or renamed to e.g. `mariadb.service`) if MySQL runs on a different host or under a different unit name.
+The config assumes the project lives at `/home/gistrec/ClearTranscriptBot`; adjust `cwd` and `interpreter` if your layout differs.
 
 ## Admin scripts
 
