@@ -354,11 +354,12 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
     confirm = await safe_reply_text(
         message,
-        "🎧 Аудио подготовлено\n\n"
+        "<b>🎧 Аудио подготовлено</b>\n\n"
         f"Длительность: {duration_str}\n"
         f"Стоимость: {price_for_user} ₽"
         f"{hint}",
         reply_markup=InlineKeyboardMarkup([buttons]),
+        parse_mode="HTML",
     )
 
     if confirm is not None and ack is not None:

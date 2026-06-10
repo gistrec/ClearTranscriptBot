@@ -106,13 +106,14 @@ async def safe_edit_message_caption(query, *args, **kwargs):
         return None
 
 
-async def safe_edit_message(bot, chat_id, message_id, text: str, reply_markup=None):
+async def safe_edit_message(bot, chat_id, message_id, text: str, reply_markup=None, parse_mode=None):
     try:
         return await bot.edit_message_text(
             chat_id=int(chat_id),
             message_id=int(message_id),
             text=text,
             reply_markup=reply_markup,
+            parse_mode=parse_mode,
         )
     except BadRequest as exc:
         if _MSG_NOT_MODIFIED in exc.message.lower():

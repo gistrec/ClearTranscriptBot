@@ -298,14 +298,24 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     keyboard = make_confirm_keyboard(history.id)
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
-    confirm_msg = await safe_send_message(bot,
-        "🎧 Аудио подготовлено\n\n"
+    details = (
         f"Длительность: {duration_str}\n"
         f"Стоимость: {price_for_user} ₽"
-        f"{hint}",
+        f"{hint}"
+    )
+    confirm_msg = await safe_send_message(bot,
+        f"<b>🎧 Аудио подготовлено</b>\n\n{details}",
         chat_id=chat_id,
         keyboard=keyboard,
+        format="html",
     )
+    if confirm_msg is None:
+        # Max HTML formatting is unverified — never lose the confirm over styling.
+        confirm_msg = await safe_send_message(bot,
+            f"🎧 Аудио подготовлено\n\n{details}",
+            chat_id=chat_id,
+            keyboard=keyboard,
+        )
 
     if confirm_msg is None:
         return

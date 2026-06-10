@@ -8,6 +8,13 @@ from database.models import PLATFORM_TELEGRAM, PLATFORM_MAX
 from messengers.max import _MaxKeyboardAttachment
 
 
+def _bold_first_line(text: str) -> str:
+    # Both Telegram HTML and Max HTML understand <b>; texts passed here must
+    # not contain unescaped < > & in dynamic parts.
+    head, sep, rest = text.partition("\n")
+    return f"<b>{head}</b>{sep}{rest}"
+
+
 async def safe_send_message(context, platform: str, user_id, text: str) -> None:
     if platform == PLATFORM_TELEGRAM:
         await tg_sender.safe_send_message(context.bot, chat_id=int(user_id), text=text)
@@ -29,13 +36,21 @@ async def safe_send_message_with_keyboard(context, platform: str, user_id, text:
         await max_sender.safe_send_message(max_bot, text, user_id=int(user_id), attachments=attachments)
 
 
-async def safe_edit_message(context, platform: str, user_id, message_id, text: str, tg_keyboard=None, max_keyboard=None) -> None:
+async def safe_edit_message(context, platform: str, user_id, message_id, text: str, tg_keyboard=None, max_keyboard=None, bold_header: bool = False) -> None:
     if platform == PLATFORM_TELEGRAM:
-        await tg_sender.safe_edit_message(context.bot, user_id, message_id, text, tg_keyboard)
+        if bold_header:
+            await tg_sender.safe_edit_message(context.bot, user_id, message_id, _bold_first_line(text), tg_keyboard, parse_mode="HTML")
+        else:
+            await tg_sender.safe_edit_message(context.bot, user_id, message_id, text, tg_keyboard)
     if platform == PLATFORM_MAX:
         max_bot = context.bot_data.get("max_bot")
         if max_bot is None:
             return
+        if bold_header:
+            sent = await max_sender.safe_edit_message(max_bot, str(message_id), _bold_first_line(text), keyboard=max_keyboard, format="html")
+            if sent is not None:
+                return
+            # Max HTML formatting is unverified — never lose a status update over styling.
         await max_sender.safe_edit_message(max_bot, str(message_id), text, keyboard=max_keyboard)
 
 
