@@ -75,8 +75,8 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         fail_transcription_and_refund(task.id)
         await safe_edit_message(bot,
             message_id,
-            "Не удалось запустить распознавание\n"
-            "Пожалуйста, попробуйте ещё раз чуть позже",
+            "❌ Не удалось запустить распознавание\n\n"
+            "Деньги вернули на баланс, попробуйте ещё раз чуть позже",
             attachments=[],
         )
         return

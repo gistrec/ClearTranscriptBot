@@ -135,7 +135,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             fail_transcription_and_refund(task.id)
             fail_text = (
                 "❌ Распознавание завершилось с ошибкой\n\n"
-                "Попробуйте ещё раз"
+                "Деньги вернули на баланс, попробуйте ещё раз"
             )
             await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, fail_text, bold_header=True)
             continue
@@ -167,7 +167,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 fail_transcription_and_refund(task.id)
                 fail_text = (
                     "❌ Распознавание завершилось с ошибкой\n\n"
-                    "Попробуйте ещё раз"
+                    "Деньги вернули на баланс, попробуйте ещё раз"
                 )
                 await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, fail_text, bold_header=True)
                 continue

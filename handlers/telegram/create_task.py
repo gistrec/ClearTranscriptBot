@@ -70,8 +70,8 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not operation_id:
         fail_transcription_and_refund(task.id)
         await safe_edit_message_text(query,
-            "Не удалось запустить распознавание\n"
-            "Пожалуйста, попробуйте ещё раз чуть позже"
+            "❌ Не удалось запустить распознавание\n\n"
+            "Деньги вернули на баланс, попробуйте ещё раз чуть позже"
         )
         return
 
