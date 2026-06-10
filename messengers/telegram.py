@@ -156,6 +156,20 @@ async def safe_send_document(bot, chat_id, reply_to_message_id, document, captio
         return None
 
 
+async def safe_delete_message(bot, chat_id, message_id):
+    try:
+        return await bot.delete_message(chat_id=int(chat_id), message_id=int(message_id))
+    except Forbidden as exc:
+        if _BOT_BLOCKED in exc.message.lower():
+            logging.warning("TG delete_message skipped (bot blocked): %s", exc)
+            return None
+        logging.exception("TG delete_message failed")
+        return None
+    except Exception:
+        logging.exception("TG delete_message failed")
+        return None
+
+
 async def safe_edit_message_reply_markup(query, *args, **kwargs):
     try:
         return await query.edit_message_reply_markup(*args, **kwargs)

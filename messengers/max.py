@@ -140,6 +140,14 @@ async def safe_edit_message(bot: aiomax.Bot, *args, keyboard=_KEYBOARD_NOT_SET, 
         return None
 
 
+async def safe_delete_message(bot: aiomax.Bot, message_id):
+    try:
+        return await bot.delete_message(str(message_id))
+    except Exception as exc:
+        _log_aiomax_failure("Max delete_message", f"msg={message_id}", exc)
+        return None
+
+
 async def safe_remove_keyboard(bot: aiomax.Bot, message_id):
     try:
         return await bot.edit_message(str(message_id), attachments=[])

@@ -20,7 +20,7 @@ from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename
 from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from messengers.max import make_confirm_keyboard, make_topup_amounts_keyboard, safe_edit_message, safe_send_message
+from messengers.max import make_confirm_keyboard, make_topup_amounts_keyboard, safe_delete_message, safe_edit_message, safe_send_message
 
 
 # Files below this prepare in seconds — staged progress would only flicker.
@@ -284,9 +284,6 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             )
             return
 
-        if show_progress:
-            await safe_edit_message(bot, ack.body.message_id, "✅ Аудио готово")
-
     history = add_transcription(
         user_id=user_id,
         platform=PLATFORM_MAX,
@@ -314,6 +311,9 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         return
 
     update_transcription(history.id, message_id=str(confirm_msg.body.message_id))
+
+    # The confirm message carries all the info — the staged ack is now clutter.
+    await safe_delete_message(bot, ack.body.message_id)
 
     if needs_topup:
         await safe_send_message(bot,

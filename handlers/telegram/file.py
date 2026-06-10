@@ -20,7 +20,7 @@ from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import ANCHOR, is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
 from utils.utils import format_duration, MAX_AUDIO_DURATION, MIN_PRICE_RUB
-from messengers.telegram import make_topup_amounts_keyboard, safe_edit_message, safe_reply_text
+from messengers.telegram import make_topup_amounts_keyboard, safe_delete_message, safe_edit_message, safe_reply_text
 
 
 USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
@@ -331,9 +331,6 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
             return
 
-        if show_progress:
-            await safe_edit_message(context.bot, ack.chat_id, ack.message_id, "✅ Аудио готово")
-
     history = add_transcription(
         user_id=user_id,
         platform=PLATFORM_TELEGRAM,
@@ -355,7 +352,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     ]
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
-    await safe_reply_text(
+    confirm = await safe_reply_text(
         message,
         "🎧 Аудио подготовлено\n\n"
         f"Длительность: {duration_str}\n"
@@ -363,6 +360,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         f"{hint}",
         reply_markup=InlineKeyboardMarkup([buttons]),
     )
+
+    if confirm is not None and ack is not None:
+        # The confirm message carries all the info — the staged ack is now clutter.
+        await safe_delete_message(context.bot, ack.chat_id, ack.message_id)
 
     if needs_topup:
         await safe_reply_text(
