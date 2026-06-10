@@ -194,10 +194,15 @@ async def run_bots() -> None:
                 user = add_user(user_id, PLATFORM_MAX, yclid=yclid)
             balance = Decimal(user.balance or 0)
             duration_str = available_time_by_balance(balance)
-            gift = "🎁 Подарили вам почти полтора часа распознавания бесплатно\n\n" if is_new else ""
+            if is_new:
+                await max_safe_send_message(
+                    max_bot,
+                    "🎁 Подарили вам почти полтора часа распознавания бесплатно",
+                    user_id=user_id,
+                )
             await max_safe_send_message(
                 max_bot,
-                f"{gift}Отправьте видео или аудио — вернём текст\n\n"
+                "Отправьте видео или аудио — вернём текст\n\n"
                 "Поддерживаем все популярные форматы:\n"
                 "* Видео: mp4, mov, mkv, webm и другие\n"
                 "* Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
