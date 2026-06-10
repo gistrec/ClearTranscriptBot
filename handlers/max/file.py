@@ -25,7 +25,7 @@ from messengers.max import make_confirm_keyboard, make_topup_amounts_keyboard, s
 
 # Files below this prepare in seconds — staged progress would only flicker.
 PROGRESS_THRESHOLD_BYTES = 20 * 1024 * 1024
-TICKER_INTERVAL = 5.0  # seconds between progress edits, safely under edit rate limits
+TICKER_INTERVAL = 2.0  # seconds between progress edits, safely under edit rate limits
 
 
 def format_size(size_bytes: int) -> str:
@@ -42,6 +42,7 @@ def download_estimate_minutes(size_bytes: int) -> int:
 
 async def _download_ticker(bot, message_id, local_path: Path, expected_size: int) -> None:
     started = time.time()
+    last_text = None
     while True:
         await asyncio.sleep(TICKER_INTERVAL)
         try:
@@ -52,11 +53,14 @@ async def _download_ticker(bot, message_id, local_path: Path, expected_size: int
         if percent <= 0:
             continue
         eta = max(0.0, (expected_size - size) / (size / (time.time() - started)))
-        await safe_edit_message(
-            bot, message_id,
+        text = (
             f"📥 Скачиваю файл… {percent}%\n"
-            f"Осталось примерно {format_duration(int(eta))}",
+            f"Осталось примерно {format_duration(int(eta))}"
         )
+        if text == last_text:
+            continue  # progress has not visibly moved — do not burn the edit quota
+        last_text = text
+        await safe_edit_message(bot, message_id, text)
 
 
 async def _conversion_ticker(bot, message_id, progress_path, duration: float) -> None:

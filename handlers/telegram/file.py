@@ -27,7 +27,7 @@ USE_LOCAL_PTB = os.environ.get("USE_LOCAL_PTB") is not None
 
 # Files below this prepare in seconds — staged progress would only flicker.
 PROGRESS_THRESHOLD_BYTES = 20 * 1024 * 1024
-TICKER_INTERVAL = 5.0  # seconds between progress edits, safely under edit rate limits
+TICKER_INTERVAL = 2.0  # seconds between progress edits, safely under edit rate limits
 
 
 def _get_file_timeout(size_bytes):
@@ -62,6 +62,7 @@ async def _download_ticker(bot, chat_id, message_id, watch_root: Path, baseline:
     started = time.time()
     sizes = {}
     matched = None
+    last_text = None
     while True:
         await asyncio.sleep(TICKER_INTERVAL)
         if matched is None:
@@ -90,11 +91,14 @@ async def _download_ticker(bot, chat_id, message_id, watch_root: Path, baseline:
         if percent <= 0:
             continue
         eta = max(0.0, (expected_size - size) / (size / (time.time() - started)))
-        await safe_edit_message(
-            bot, chat_id, message_id,
+        text = (
             f"📥 Скачиваю файл… {percent}%\n"
-            f"Осталось примерно {format_duration(int(eta))}",
+            f"Осталось примерно {format_duration(int(eta))}"
         )
+        if text == last_text:
+            continue  # progress has not visibly moved — do not burn the edit quota
+        last_text = text
+        await safe_edit_message(bot, chat_id, message_id, text)
 
 
 async def _conversion_ticker(bot, chat_id, message_id, progress_path, duration: float) -> None:
