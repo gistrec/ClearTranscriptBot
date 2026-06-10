@@ -54,7 +54,7 @@ async def _download_ticker(bot, message_id, local_path: Path, expected_size: int
             continue
         eta = max(0.0, (expected_size - size) / (size / (time.time() - started)))
         text = (
-            f"📥 Скачиваю файл… {percent}%\n"
+            f"📥 Скачиваю файл… {percent}%\n\n"
             f"Осталось примерно {format_duration(int(eta))}"
         )
         if text == last_text:
@@ -72,7 +72,7 @@ async def _conversion_ticker(bot, message_id, progress_path, duration: float) ->
             continue  # ffmpeg has not reported anything yet, keep the stage text
         await safe_edit_message(
             bot, message_id,
-            f"🎬 Извлекаю аудиодорожку… {percent}%\n"
+            f"🎬 Извлекаю аудиодорожку… {percent}%\n\n"
             f"Осталось примерно {format_duration(int(eta))}",
         )
 
@@ -272,7 +272,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
             logging.exception("Could not remove original file %s", local_path)
 
         if show_progress:
-            await safe_edit_message(bot, ack.body.message_id, "☁️ Сохраняю аудио…")
+            await safe_edit_message(bot, ack.body.message_id, "✨ Почти готово…")
 
         object_name = f"source/{user_id}/{message.body.message_id}_{ogg_path.name}"
         s3_url = await upload_file(ogg_path, object_name)
