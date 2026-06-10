@@ -82,7 +82,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
     audio_duration_str = format_duration(task.duration_seconds)
     elapsed_str = format_duration(0)
     await safe_edit_message_text(query,
-        f"⏳ Распознавание в процессе\n\n"
+        f"⏳ Распознаём запись…\n\n"
         f"Длительность: {audio_duration_str}\n"
         f"Стоимость: {task.price_for_user} ₽\n\n"
         f"Время обработки: {elapsed_str}"

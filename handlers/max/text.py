@@ -43,14 +43,14 @@ async def handle_max_text(message: aiomax.Message, bot: aiomax.Bot) -> None:
     await safe_send_message(bot,
         f"{gift}Отправьте видео или аудио — вернём текст\n\n"
         "Поддерживаем все популярные форматы:\n"
-        "• Видео: mp4, mov, mkv, webm и другие\n"
-        "• Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
+        "* Видео: mp4, mov, mkv, webm и другие\n"
+        "* Аудио: mp3, m4a, wav, ogg/opus, flac и другие\n\n"
         f"Текущий баланс: {balance} ₽\n"
         f"Хватит на распознавание: {duration_str}\n\n"
         "Доступные команды:\n"
-        "• /history — история распознаваний\n"
-        "• /balance — текущий баланс\n"
-        "• /topup — пополнить баланс\n"
-        "• /price — стоимость",
+        "* /history — история распознаваний\n"
+        "* /balance — текущий баланс\n"
+        "* /topup — пополнить баланс\n"
+        "* /price — стоимость",
         chat_id=message.recipient.chat_id,
     )

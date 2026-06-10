@@ -89,7 +89,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     elapsed_str = format_duration(0)
     await safe_edit_message(bot,
         message_id,
-        f"⏳ Распознавание в процессе\n\n"
+        f"⏳ Распознаём запись…\n\n"
         f"Длительность: {audio_duration_str}\n"
         f"Стоимость: {task.price_for_user} ₽\n\n"
         f"Время обработки: {elapsed_str}",
