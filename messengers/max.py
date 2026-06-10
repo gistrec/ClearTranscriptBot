@@ -208,11 +208,11 @@ def make_summarize_keyboard(
 ) -> Optional[KeyboardBuilder]:
     buttons = []
     if show_summarize:
-        buttons.append(CallbackButton("📝 Создать конспект", f"summarize:{transcription_id}"))
+        buttons.append(CallbackButton("📝 Сделать конспект", f"summarize:{transcription_id}"))
     if show_timecodes:
         buttons.append(CallbackButton("⏱ С таймкодами", f"tc:{transcription_id}"))
     if show_improve:
-        buttons.append(CallbackButton("✏️ Знаки препинания и абзацы", f"improve:{transcription_id}"))
+        buttons.append(CallbackButton("✏️ Оформить текст", f"improve:{transcription_id}"))
     if not buttons:
         return None
     kb = KeyboardBuilder()
@@ -233,7 +233,7 @@ def make_send_as_text_keyboard(
     if show_timecodes:
         buttons.append(CallbackButton("⏱ С таймкодами", f"tc:{transcription_id}"))
     if show_improve:
-        buttons.append(CallbackButton("✏️ Знаки препинания и абзацы", f"improve:{transcription_id}"))
+        buttons.append(CallbackButton("✏️ Оформить текст", f"improve:{transcription_id}"))
     if not buttons:
         return None
     kb = KeyboardBuilder()

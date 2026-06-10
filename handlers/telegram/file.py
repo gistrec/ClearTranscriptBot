@@ -235,7 +235,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             logging.exception("Failed to download file to disk")
             await safe_reply_text(
                 message,
-                "❌ Не удалось скачать файл\n\n"
+                "❌ Не удалось загрузить файл\n\n"
                 "Пожалуйста, попробуйте ещё раз"
             )
             return

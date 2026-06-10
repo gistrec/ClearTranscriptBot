@@ -81,7 +81,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         if need_edit(context, task.id, now):
             audio_duration_str = format_duration(task.duration_seconds)
             status_text = (
-                f"⏳ Распознаём запись…\n\n"
+                f"⏳ Расшифровываем запись…\n\n"
                 f"Длительность: {audio_duration_str}\n"
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}"

@@ -205,7 +205,7 @@ def make_rating_keyboard(
     rows = [rating_buttons]
     if show_summarize:
         rows.append([
-            InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}")
+            InlineKeyboardButton("📝 Сделать конспект", callback_data=f"summarize:{transcription_id}")
         ])
     return InlineKeyboardMarkup(rows)
 
@@ -218,11 +218,11 @@ def make_summarize_keyboard(
 ) -> Optional[InlineKeyboardMarkup]:
     buttons = []
     if show_summarize:
-        buttons.append(InlineKeyboardButton("📝 Создать конспект", callback_data=f"summarize:{transcription_id}"))
+        buttons.append(InlineKeyboardButton("📝 Сделать конспект", callback_data=f"summarize:{transcription_id}"))
     if show_timecodes:
         buttons.append(InlineKeyboardButton("⏱ С таймкодами", callback_data=f"tc:{transcription_id}"))
     if show_improve:
-        buttons.append(InlineKeyboardButton("✏️ Знаки препинания и абзацы", callback_data=f"improve:{transcription_id}"))
+        buttons.append(InlineKeyboardButton("✏️ Оформить текст", callback_data=f"improve:{transcription_id}"))
     return InlineKeyboardMarkup([[btn] for btn in buttons]) if buttons else None
 
 
@@ -238,7 +238,7 @@ def make_send_as_text_keyboard(
     if show_timecodes:
         buttons.append(InlineKeyboardButton("⏱ С таймкодами", callback_data=f"tc:{transcription_id}"))
     if show_improve:
-        buttons.append(InlineKeyboardButton("✏️ Знаки препинания и абзацы", callback_data=f"improve:{transcription_id}"))
+        buttons.append(InlineKeyboardButton("✏️ Оформить текст", callback_data=f"improve:{transcription_id}"))
     return InlineKeyboardMarkup([[btn] for btn in buttons]) if buttons else None
 
 

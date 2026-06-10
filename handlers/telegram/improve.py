@@ -1,4 +1,4 @@
-"""Handler for the 'Знаки препинания и абзацы' button on completed transcriptions."""
+"""Handler for the 'Оформить текст' button on completed transcriptions."""
 from telegram import Update
 from telegram.ext import ContextTypes
 
