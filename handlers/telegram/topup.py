@@ -122,7 +122,7 @@ async def handle_topup_callback(update: Update, context: ContextTypes.DEFAULT_TY
         logging.exception(f"Payment initialization failed for order_id: {order_id}")
         await safe_reply_text(
             query.message,
-            "Не удалось создать форму оплаты\n"
+            "❌ Не удалось создать форму оплаты\n\n"
             "Попробуйте ещё раз чуть позже"
         )
         return

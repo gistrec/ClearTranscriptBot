@@ -86,12 +86,12 @@ async def handle_timecodes_format(update: Update, context: ContextTypes.DEFAULT_
 
     payload = parse_result_json(transcription.result_json)
     if payload is None:
-        await safe_reply_text(query.message, "Не удалось получить таймкоды для этой расшифровки")
+        await safe_reply_text(query.message, "❌ Не удалось получить таймкоды для этой расшифровки")
         return
 
     segments = extract_segments(payload)
     if not segments:
-        await safe_reply_text(query.message, "В этой расшифровке нет данных с таймкодами")
+        await safe_reply_text(query.message, "❌ В этой расшифровке нет данных с таймкодами")
         return
 
     text = formatter(segments)
@@ -109,7 +109,7 @@ async def handle_timecodes_format(update: Update, context: ContextTypes.DEFAULT_
     )
     if sent is None:
         logging.warning("timecodes: failed to send document for transcription %s", transcription_id)
-        await safe_reply_text(query.message, "Не удалось отправить файл")
+        await safe_reply_text(query.message, "❌ Не удалось отправить файл")
         return
 
     await safe_edit_message_reply_markup(query, reply_markup=_restore_main_keyboard(transcription))

@@ -37,7 +37,7 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
     if not text:
         logging.warning("Max send_as_text: failed to download text for transcription %s", transcription_id)
         chat_id = callback.message.recipient.chat_id
-        await safe_send_message(bot, "Не удалось получить текст", chat_id=chat_id)
+        await safe_send_message(bot, "❌ Не удалось получить текст", chat_id=chat_id)
         return
 
     message_id = callback.message.body.message_id
@@ -55,7 +55,7 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
             retry_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=True, show_improve=show_improve, show_timecodes=show_timecodes)
             await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=retry_keyboard)
             await safe_send_message(bot,
-                "⚠️ Не удалось отправить текст целиком\n"
+                "⚠️ Не удалось отправить текст целиком\n\n"
                 "Нажмите «Отправить текстом» ещё раз чуть позже",
                 chat_id=chat_id,
             )

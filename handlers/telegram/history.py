@@ -78,7 +78,7 @@ async def handle_history_doc(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not text:
         await safe_reply_text(
             query.message,
-            "Не удалось получить текст\n"
+            "❌ Не удалось получить текст\n\n"
             "Попробуйте ещё раз чуть позже"
         )
         return

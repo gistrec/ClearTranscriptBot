@@ -114,7 +114,7 @@ async def handle_max_topup_callback(callback: aiomax.Callback, bot: aiomax.Bot) 
     except Exception:
         logging.exception("Max topup: payment init failed for order_id: %s", order_id)
         await safe_send_message(bot,
-            "Не удалось создать форму оплаты\n"
+            "❌ Не удалось создать форму оплаты\n\n"
             "Попробуйте ещё раз чуть позже",
             chat_id=chat_id,
         )

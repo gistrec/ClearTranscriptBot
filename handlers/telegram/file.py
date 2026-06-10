@@ -184,7 +184,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         else:
             await safe_reply_text(
                 message,
-                "❌ Этот тип файла не поддерживается\n"
+                "❌ Этот тип файла не поддерживается\n\n"
                 "Пожалуйста, отправьте видео или аудио"
             )
             return
@@ -192,7 +192,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         logging.exception("Failed to get file from Telegram")
         await safe_reply_text(
             message,
-            "❌ Не удалось загрузить файл от Telegram\n"
+            "❌ Не удалось загрузить файл от Telegram\n\n"
             "Пожалуйста, попробуйте ещё раз"
         )
         return
@@ -211,7 +211,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not is_supported_mime(mime):
         await safe_reply_text(
             message,
-            "❌ Этот тип файла не поддерживается\n"
+            "❌ Этот тип файла не поддерживается\n\n"
             "Пожалуйста, отправьте видео или аудио"
         )
         return
@@ -235,7 +235,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             logging.exception("Failed to download file to disk")
             await safe_reply_text(
                 message,
-                "❌ Не удалось скачать файл\n"
+                "❌ Не удалось скачать файл\n\n"
                 "Пожалуйста, попробуйте ещё раз"
             )
             return
@@ -244,7 +244,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         if not duration:
             await safe_reply_text(
                 message,
-                "❌ Не удалось определить длительность файла\n"
+                "❌ Не удалось определить длительность файла\n\n"
                 "Возможно, формат не поддерживается или файл повреждён"
             )
             return
@@ -254,7 +254,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             max_duration_str = format_duration(MAX_AUDIO_DURATION)
             await safe_reply_text(
                 message,
-                f"❌ Файл слишком длинный: {duration_str}\n"
+                f"❌ Файл слишком длинный: {duration_str}\n\n"
                 f"Максимально допустимая длительность — {max_duration_str}"
             )
             return
@@ -294,17 +294,17 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         if convert_error:
             if convert_error == "no_audio_stream":
                 error_text = (
-                    "❌ В этом файле не обнаружено аудио\n"
+                    "❌ В этом файле не обнаружено аудио\n\n"
                     "Пожалуйста, отправьте файл со звуком"
                 )
             elif convert_error == "moov_atom_not_found":
                 error_text = (
-                    "❌ Файл повреждён — запись была прервана и не сохранена до конца\n"
+                    "❌ Файл повреждён — запись была прервана и не сохранена до конца\n\n"
                     "Попробуйте записать снова"
                 )
             else:
                 error_text = (
-                    "❌ Не удалось обработать файл\n"
+                    "❌ Не удалось обработать файл\n\n"
                     "Возможно, он имеет неподдерживаемый формат"
                 )
             await safe_reply_text(message, error_text)
@@ -326,7 +326,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         if not s3_url:
             await safe_reply_text(
                 message,
-                "❌ Не удалось загрузить файл\n"
+                "❌ Не удалось загрузить файл\n\n"
                 "Пожалуйста, попробуйте ещё раз чуть позже"
             )
             return
@@ -369,7 +369,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if needs_topup:
         await safe_reply_text(
             message,
-            f"⚠️ На балансе не хватает средств\n"
+            f"⚠️ На балансе не хватает средств\n\n"
             f"Баланс: {user.balance} ₽, стоимость: {price_for_user} ₽\n\n"
             f"Пополните баланс и нажмите «Распознать»",
             reply_markup=make_topup_amounts_keyboard(),

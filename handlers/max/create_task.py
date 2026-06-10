@@ -58,7 +58,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         # Send a new message instead of editing: the original message keeps
         # its button, so after a topup the user can press it again.
         await safe_send_message(bot,
-            f"❌ Недостаточно средств\n"
+            f"❌ Недостаточно средств\n\n"
             f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
             f"Пополните баланс и нажмите «Распознать» ещё раз",
             chat_id=callback.message.recipient.chat_id,

@@ -148,7 +148,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     if mime and not is_supported_mime(mime):
         await safe_send_message(bot,
-            "❌ Этот тип файла не поддерживается\n"
+            "❌ Этот тип файла не поддерживается\n\n"
             "Пожалуйста, отправьте видео или аудио",
             chat_id=chat_id,
         )
@@ -183,7 +183,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
                     logging.exception("Download progress ticker failed")
         if not downloaded:
             await safe_send_message(bot,
-                "❌ Не удалось загрузить файл\n"
+                "❌ Не удалось загрузить файл\n\n"
                 "Пожалуйста, попробуйте ещё раз",
                 chat_id=chat_id,
             )
@@ -200,7 +200,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         duration = await get_media_duration(local_path)
         if not duration:
             await safe_send_message(bot,
-                "❌ Не удалось определить длительность файла\n"
+                "❌ Не удалось определить длительность файла\n\n"
                 "Возможно, формат не поддерживается или файл повреждён",
                 chat_id=chat_id,
             )
@@ -210,7 +210,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         if duration > MAX_AUDIO_DURATION:
             max_duration_str = format_duration(MAX_AUDIO_DURATION)
             await safe_send_message(bot,
-                f"❌ Файл слишком длинный: {duration_str}\n"
+                f"❌ Файл слишком длинный: {duration_str}\n\n"
                 f"Максимально допустимая длительность — {max_duration_str}",
                 chat_id=chat_id,
             )
@@ -248,17 +248,17 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         if convert_error:
             if convert_error == "no_audio_stream":
                 error_text = (
-                    "❌ В этом файле не обнаружено аудио\n"
+                    "❌ В этом файле не обнаружено аудио\n\n"
                     "Пожалуйста, отправьте файл со звуком"
                 )
             elif convert_error == "moov_atom_not_found":
                 error_text = (
-                    "❌ Файл повреждён — запись была прервана и не сохранена до конца\n"
+                    "❌ Файл повреждён — запись была прервана и не сохранена до конца\n\n"
                     "Попробуйте записать снова"
                 )
             else:
                 error_text = (
-                    "❌ Не удалось обработать файл\n"
+                    "❌ Не удалось обработать файл\n\n"
                     "Возможно, он имеет неподдерживаемый формат"
                 )
             await safe_send_message(bot, error_text, chat_id=chat_id)
@@ -278,7 +278,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         s3_url = await upload_file(ogg_path, object_name)
         if not s3_url:
             await safe_send_message(bot,
-                "❌ Не удалось загрузить файл\n"
+                "❌ Не удалось загрузить файл\n\n"
                 "Пожалуйста, попробуйте ещё раз чуть позже",
                 chat_id=chat_id,
             )
@@ -327,7 +327,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
 
     if needs_topup:
         await safe_send_message(bot,
-            f"⚠️ На балансе не хватает средств\n"
+            f"⚠️ На балансе не хватает средств\n\n"
             f"Баланс: {user.balance} ₽, стоимость: {price_for_user} ₽\n\n"
             f"Пополните баланс и нажмите «Распознать»",
             chat_id=chat_id,

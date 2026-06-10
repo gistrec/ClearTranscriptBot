@@ -41,7 +41,7 @@ async def handle_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     )
 
     if msg is None:
-        await safe_reply_text(query.message, "Не удалось создать конспект")
+        await safe_reply_text(query.message, "❌ Не удалось создать конспект")
         return
 
     create_refinement(

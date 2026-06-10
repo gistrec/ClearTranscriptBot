@@ -165,7 +165,7 @@ async def _expire_payment(context: ContextTypes.DEFAULT_TYPE, payment) -> None:
         return  # already cancelled by the user or another process
 
     if payment.message_id:
-        expire_text = "Пополнение отменено автоматически — прошло более 3 часов с момента создания"
+        expire_text = "🚫 Пополнение отменено автоматически — прошло более 3 часов с момента создания"
         await sender.safe_edit_message(context, payment.user_platform, payment.user_id, payment.message_id, expire_text)
 
     try:

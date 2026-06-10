@@ -55,7 +55,7 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     text = await download_text(object_name_from_url(transcription.result_s3_path))
     if not text:
         logging.warning("send_as_text: failed to download text for transcription %s", transcription_id)
-        await safe_reply_text(query.message, "Не удалось получить текст")
+        await safe_reply_text(query.message, "❌ Не удалось получить текст")
         return
 
     show_improve = not has_refinement(transcription_id, "improve")
@@ -69,7 +69,7 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
             await safe_edit_message_reply_markup(query, reply_markup=make_send_as_text_keyboard(transcription_id, show_send_as_text=True, show_improve=show_improve, show_timecodes=show_timecodes))
             await safe_reply_text(
                 query.message,
-                "⚠️ Не удалось отправить текст целиком\n"
+                "⚠️ Не удалось отправить текст целиком\n\n"
                 "Нажмите «Отправить текстом» ещё раз чуть позже",
             )
             return

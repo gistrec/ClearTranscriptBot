@@ -55,7 +55,7 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # after a topup the user can press it again without re-uploading.
         await safe_reply_text(
             query.message,
-            f"❌ Недостаточно средств\n"
+            f"❌ Недостаточно средств\n\n"
             f"Баланс: {user.balance} ₽, требуется: {price_for_user} ₽\n\n"
             f"Пополните баланс и нажмите «Распознать» ещё раз",
             reply_markup=make_topup_amounts_keyboard(),

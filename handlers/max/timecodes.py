@@ -102,12 +102,12 @@ async def handle_max_timecodes_format(callback: aiomax.Callback, bot: aiomax.Bot
 
     payload = parse_result_json(transcription.result_json)
     if payload is None:
-        await safe_send_message(bot, "Не удалось получить таймкоды для этой расшифровки", chat_id=chat_id)
+        await safe_send_message(bot, "❌ Не удалось получить таймкоды для этой расшифровки", chat_id=chat_id)
         return
 
     segments = extract_segments(payload)
     if not segments:
-        await safe_send_message(bot, "В этой расшифровке нет данных с таймкодами", chat_id=chat_id)
+        await safe_send_message(bot, "❌ В этой расшифровке нет данных с таймкодами", chat_id=chat_id)
         return
 
     text = formatter(segments)
@@ -118,7 +118,7 @@ async def handle_max_timecodes_format(callback: aiomax.Callback, bot: aiomax.Bot
 
     sent = await safe_send_document(bot, chat_id, text.encode("utf-8"), filename, "")
     if sent is None:
-        await safe_send_message(bot, "Не удалось отправить файл", chat_id=chat_id)
+        await safe_send_message(bot, "❌ Не удалось отправить файл", chat_id=chat_id)
         return
 
     await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=_restore_main_keyboard(transcription))

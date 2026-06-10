@@ -88,7 +88,7 @@ async def handle_max_history_doc(callback: aiomax.Callback, bot: aiomax.Bot) -> 
     text = await download_text(object_name)
     if not text:
         await safe_send_message(bot,
-            "Не удалось получить текст\n"
+            "❌ Не удалось получить текст\n\n"
             "Попробуйте ещё раз чуть позже",
             chat_id=callback.message.recipient.chat_id,
         )

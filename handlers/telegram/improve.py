@@ -43,7 +43,7 @@ async def handle_improve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
     if msg is None:
-        await safe_reply_text(query.message, "Не удалось оформить текст")
+        await safe_reply_text(query.message, "❌ Не удалось оформить текст")
         return
 
     create_refinement(
