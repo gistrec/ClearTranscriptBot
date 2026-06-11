@@ -15,7 +15,7 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, STATUS_PENDING
 from database.queries import add_transcription, add_user, get_user
 
-from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_media_duration
+from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_mean_volume, get_media_duration
 from utils.s3 import upload_file
 from utils.sentry import sentry_bind_user, sentry_transaction
 from utils.tg import ANCHOR, is_supported_mime, sanitize_filename, truncate_filename, extract_local_path
@@ -321,6 +321,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         if show_progress:
             await safe_edit_message(context.bot, ack.chat_id, ack.message_id, "✨ Почти готово…")
 
+        mean_volume_db = await get_mean_volume(ogg_path)
+
         object_name = f"source/{user_id}/{message.message_id}_{ogg_path.name}"
         s3_url = await upload_file(ogg_path, object_name)
         if not s3_url:
@@ -338,6 +340,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         audio_s3_path=s3_url,
         provider=PROVIDER_REPLICATE,
         duration_seconds=int(duration),
+        mean_volume_db=mean_volume_db,
         price_for_user=price_for_user,
         result_s3_path=None,
     )

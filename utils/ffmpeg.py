@@ -1,4 +1,5 @@
 """Utility functions for working with ffmpeg."""
+import re
 import time
 import asyncio
 import logging
@@ -106,6 +107,40 @@ async def get_media_duration(source: str | Path) -> float:
     except Exception:
         logging.warning(f"Failed to get media duration for {source}", exc_info=True)
         return 0.0
+
+
+@sentry_span(op="ffmpeg.volumedetect")
+async def get_mean_volume(source: str | Path) -> float | None:
+    """Return mean volume of the audio in dB, or ``None`` on failure.
+
+    Uses the ffmpeg ``volumedetect`` filter; relies on ``ffmpeg`` being
+    available in the system PATH.
+    """
+    command = [
+        "ffmpeg",
+        "-i",
+        str(Path(source)),
+        "-af",
+        "volumedetect",
+        "-f",
+        "null",
+        "-",
+    ]
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await process.communicate()
+        if process.returncode != 0:
+            logging.warning(f"volumedetect failed for {source}: {stderr.decode().strip()[-200:]}")
+            return None
+        match = re.search(r"mean_volume: (-?[\d.]+) dB", stderr.decode())
+        return float(match.group(1)) if match else None
+    except Exception:
+        logging.warning(f"Failed to measure mean volume for {source}", exc_info=True)
+        return None
 
 
 @sentry_span(op="ffmpeg.convert")

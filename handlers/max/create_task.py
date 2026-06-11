@@ -70,6 +70,7 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         task.audio_s3_path,
         provider=task.provider,
         duration_seconds=task.duration_seconds,
+        mean_volume_db=task.mean_volume_db,
     )
     if not operation_id:
         fail_transcription_and_refund(task.id)

@@ -6,6 +6,7 @@ from sqlalchemy import (
     UniqueConstraint,
     BigInteger,
     DateTime,
+    Float,
     Integer,
     Numeric,
     String,
@@ -93,6 +94,10 @@ class Transcription(Base):
 
     # Duration of the audio in seconds
     duration_seconds = Column(Integer, nullable=True)
+
+    # Mean volume of the converted audio in dB (ffmpeg volumedetect);
+    # quiet recordings get a more sensitive VAD on Replicate
+    mean_volume_db = Column(Float, nullable=True)
 
     # Estimated cost shown to and charged from the user, in rubles
     price_for_user = Column(Numeric(10, 2), nullable=True)

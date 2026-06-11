@@ -224,6 +224,7 @@ CREATE TABLE IF NOT EXISTS transcriptions (
     result_json            MEDIUMTEXT,     -- raw provider payload; WhisperX output exceeds 64 KB TEXT
     llm_tokens_by_encoding JSON,
     duration_seconds       INTEGER,
+    mean_volume_db         FLOAT,          -- ffmpeg volumedetect; quiet records get a sensitive VAD
     price_for_user         DECIMAL(10,2),
     actual_price           DECIMAL(10,2),
     result_s3_path         TEXT,

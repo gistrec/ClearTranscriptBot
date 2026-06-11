@@ -14,6 +14,11 @@ MODEL_LARGE = "victor-upmeet/whisperx-a40-large:8aad2534a4f2a268a80ab781928cf4bc
 ONE_HOUR = 3600
 USD_TO_RUB = Decimal("80")
 
+# Recordings quieter than this (ffmpeg volumedetect mean_volume) get a more
+# sensitive VAD: validated complaint cases sat at -38..-91 dB, the quietest
+# good recording at -32.8 dB.
+QUIET_MEAN_VOLUME_DB = -35.0
+
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 
 if not REPLICATE_API_TOKEN:
@@ -47,18 +52,30 @@ def cost_in_rub(predict_time_sec: float, model: str = "") -> Decimal:
     return (usd * USD_TO_RUB).quantize(Decimal("0.01"))
 
 
-async def start_transcription(audio_url: str, duration_seconds: int) -> Optional[str]:
+async def start_transcription(
+    audio_url: str,
+    duration_seconds: int,
+    mean_volume_db: Optional[float] = None,
+) -> Optional[str]:
     """Start a Replicate transcription and return its ID."""
     model = get_model(duration_seconds)
+    payload = {
+        "audio_file": audio_url,
+        "language_detection_min_prob": 0.9,
+        "language_detection_max_tries": 10,
+    }
+    if mean_volume_db is not None and mean_volume_db < QUIET_MEAN_VOLUME_DB:
+        # Default VAD (0.5/0.363) drops quiet speech entirely (missing intros,
+        # multi-minute gaps), while lowering it globally reshuffles output on
+        # normal recordings. Quiet records (< -35 dB) get a sensitive VAD;
+        # everything else keeps the byte-identical default behaviour.
+        payload["vad_onset"] = 0.35
+        payload["vad_offset"] = 0.25
     try:
         transcription = await asyncio.to_thread(
             client.predictions.create,
             version=model,
-            input={
-                "audio_file": audio_url,
-                "language_detection_min_prob": 0.9,
-                "language_detection_max_tries": 10,
-            },
+            input=payload,
         )
         return transcription.id
     except Exception:

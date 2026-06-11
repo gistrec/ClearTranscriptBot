@@ -14,7 +14,7 @@ from database.queries import add_transcription, add_user, get_user, update_trans
 
 import providers.speechkit as speechkit_provider
 
-from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_media_duration
+from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_mean_volume, get_media_duration
 from utils.max_download import download_max_file
 from utils.s3 import upload_file
 from utils.tg import is_supported_mime, sanitize_filename, truncate_filename
@@ -274,6 +274,8 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         if show_progress:
             await safe_edit_message(bot, ack.body.message_id, "✨ Почти готово…")
 
+        mean_volume_db = await get_mean_volume(ogg_path)
+
         object_name = f"source/{user_id}/{message.body.message_id}_{ogg_path.name}"
         s3_url = await upload_file(ogg_path, object_name)
         if not s3_url:
@@ -291,6 +293,7 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
         audio_s3_path=s3_url,
         provider=PROVIDER_REPLICATE,
         duration_seconds=int(duration),
+        mean_volume_db=mean_volume_db,
         price_for_user=price_for_user,
         result_s3_path=None,
     )

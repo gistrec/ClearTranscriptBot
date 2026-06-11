@@ -62,6 +62,7 @@ def add_transcription(
     audio_s3_path: str,
     provider: str | None = None,
     duration_seconds: int | None = None,
+    mean_volume_db: float | None = None,
     price_for_user: Decimal | None = None,
     result_s3_path: str | None = None,
 ) -> Transcription:
@@ -74,6 +75,7 @@ def add_transcription(
             audio_s3_path=audio_s3_path,
             provider=provider,
             duration_seconds=duration_seconds,
+            mean_volume_db=mean_volume_db,
             price_for_user=price_for_user,
             result_s3_path=result_s3_path,
         )
