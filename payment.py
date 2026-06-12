@@ -1,10 +1,21 @@
-import httpx
 import hashlib
+import ssl
+from pathlib import Path
+
+import certifi
+import httpx
 
 import config
 
 from utils.sentry import sentry_span
 
+
+# Т-Банк переводит эквайринг на сертификаты Минцифры, которых нет в certifi,
+# поэтому доверяем бандлу certifi плюс корневому сертификату Минцифры.
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+_SSL_CONTEXT.load_verify_locations(
+    Path(__file__).parent / "certs" / "russian_trusted_root_ca.pem"
+)
 
 TERMINAL_KEY = config.TERMINAL_KEY
 TERMINAL_PASSWORD = config.TERMINAL_PASSWORD
@@ -80,7 +91,7 @@ async def init_payment(
         payload["FailURL"] = fail_url
     payload["Token"] = _generate_token(payload)
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, verify=_SSL_CONTEXT) as client:
         response = await client.post(f"{BASE_URL}/Init", json=payload)
         response.raise_for_status()
         return response.json()
@@ -94,7 +105,7 @@ async def get_payment_state(payment_id: int) -> dict:
     }
     payload["Token"] = _generate_token(payload)
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, verify=_SSL_CONTEXT) as client:
         response = await client.post(f"{BASE_URL}/GetState", json=payload)
         response.raise_for_status()
         return response.json()
@@ -108,7 +119,7 @@ async def cancel_payment(payment_id: int) -> dict:
     }
     payload["Token"] = _generate_token(payload)
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, verify=_SSL_CONTEXT) as client:
         response = await client.post(f"{BASE_URL}/Cancel", json=payload)
         response.raise_for_status()
         return response.json()
