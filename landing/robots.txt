@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://clear-transcript-bot.ru/sitemap.xml
