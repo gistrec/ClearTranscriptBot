@@ -182,8 +182,6 @@ async def run_bots() -> None:
         async def _on_max_bot_start(event) -> None:
             yclid = (getattr(event, "payload", None) or "").strip() or None
             logging.info("Max bot_start from user_id=%s payload=%r", getattr(event, "user_id", "?"), yclid)
-            if yclid:
-                application.create_task(track_goal(yclid, "max_startbot"))
             try:
                 user_id = int(event.user_id)
             except (ValueError, TypeError):
@@ -192,6 +190,8 @@ async def run_bots() -> None:
             is_new = user is None
             if is_new:
                 user = add_user(user_id, PLATFORM_MAX, yclid=yclid)
+                if yclid:
+                    application.create_task(track_goal(yclid, "max_startbot"))
             balance = Decimal(user.balance or 0)
             duration_str = available_time_by_balance(balance)
             if is_new:
