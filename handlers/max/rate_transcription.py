@@ -38,6 +38,6 @@ async def handle_max_rate(callback: aiomax.Callback, bot: aiomax.Bot) -> None:
         keyboard=keyboard,
     )
 
-    if rating <= 2:
+    if rating <= 3:
         _awaiting_feedback[user_id] = transcription_id
         await safe_send_message(bot, FEEDBACK_PROMPT, user_id=user_id)

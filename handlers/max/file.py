@@ -11,6 +11,7 @@ from pathlib import Path
 
 from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, STATUS_PENDING
 from database.queries import add_transcription, add_user, get_user, update_transcription
+from handlers.max.rate_transcription import _awaiting_feedback
 
 import providers.speechkit as speechkit_provider
 
@@ -87,6 +88,10 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     except (ValueError, TypeError):
         logging.warning("Max: cannot parse user_id: %s", message.sender)
         return
+
+    # A new file means the user moved on; drop any pending rating-comment flag
+    # so an unrelated later message is not captured as feedback.
+    _awaiting_feedback.pop(user_id, None)
 
     chat_id = message.recipient.chat_id
 

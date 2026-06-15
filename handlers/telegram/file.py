@@ -122,6 +122,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     message = update.message
     if message is None:  # edited_message updates have no .message
         return
+    # A new file means the user moved on; drop any pending rating-comment flag
+    # so an unrelated later message is not captured as feedback.
+    if context.user_data:
+        context.user_data.pop("awaiting_feedback_for", None)
     user_id = message.from_user.id
     user = get_user(user_id, PLATFORM_TELEGRAM)
     if user is None:
