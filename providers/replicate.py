@@ -7,6 +7,8 @@ import replicate
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
+from utils.timecodes import is_phantom_segment
+
 
 MODEL_SMALL = "victor-upmeet/whisperx:655845d6190ef70573c669245f245892cd039df4b880a1e3a65852c09252f5cc"
 MODEL_LARGE = "victor-upmeet/whisperx-a40-large:8aad2534a4f2a268a80ab781928cf4bc624b0bbed25afe4d789c70c5781c47b1"
@@ -118,10 +120,17 @@ async def cancel(operation_id: str) -> bool:
 def _segments(payload: Dict[str, Any]) -> list:
     output = payload.get("output")
     if isinstance(output, dict):
-        return output.get("segments") or []
-    if isinstance(output, list) and output and isinstance(output[0], dict):
-        return output
-    return []
+        raw = output.get("segments") or []
+    elif isinstance(output, list) and output and isinstance(output[0], dict):
+        raw = output
+    else:
+        raw = []
+    # Drop subtitle-credit hallucinations here, the single chokepoint feeding
+    # both get_text and looks_like_hallucination.
+    return [
+        s for s in raw
+        if isinstance(s, dict) and not is_phantom_segment(s.get("text") or "")
+    ]
 
 
 def get_text(payload: Dict[str, Any]) -> str:

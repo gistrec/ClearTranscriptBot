@@ -1,8 +1,24 @@
 """Convert Replicate WhisperX segments into user-facing timecoded formats."""
 import ast
 import logging
+import re
 
 from typing import Any, Dict, List, Optional
+
+
+# WhisperX inherits YouTube/TV subtitle credits from its training data and emits
+# them as confident phantom segments over silence, foreign, or garbled audio
+# (~4% of completed transcriptions). These exact names never occur in real user
+# speech, so the whole segment is dropped from every rendering of the output.
+_PHANTOM_CREDIT_RE = re.compile(
+    r"DimaTorzok|Редактор\s+субтитров|Корректор\s+А\.\s*Егорова",
+    re.IGNORECASE,
+)
+
+
+def is_phantom_segment(text: str) -> bool:
+    """True if a WhisperX segment is a known subtitle-credit hallucination."""
+    return bool(_PHANTOM_CREDIT_RE.search(text or ""))
 
 
 def parse_result_json(raw: Optional[str]) -> Optional[Dict[str, Any]]:
@@ -32,7 +48,7 @@ def extract_segments(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(seg, dict):
             continue
         text = (seg.get("text") or "").strip()
-        if not text:
+        if not text or is_phantom_segment(text):
             continue
         start = seg.get("start")
         end = seg.get("end")
