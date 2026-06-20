@@ -10,12 +10,13 @@ import time
 
 # Loop name -> max seconds allowed between ticks before it counts as stale.
 # Ticks run far more often than these (transcription/refinement @1s, payments
-# @10s); thresholds are loose enough to tolerate a slow tick under load without
-# flapping, yet still catch a real stall within a minute or two.
+# @10s, pollers @30s); thresholds are loose enough to tolerate a slow tick under
+# load without flapping, yet still catch a real stall within a minute or two.
 THRESHOLDS = {
     "transcription": 60,
     "refinement": 60,
     "payments": 120,
+    "pollers": 120,
 }
 
 _started_at = time.monotonic()
