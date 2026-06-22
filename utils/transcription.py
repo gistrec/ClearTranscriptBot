@@ -8,6 +8,7 @@ from database.models import PROVIDER_REPLICATE, PROVIDER_SPEECHKIT
 
 from utils.s3 import get_signed_url, object_name_from_url
 from utils.sentry import sentry_span
+from utils.timecodes import parse_result_json
 
 from typing import Any, Dict, Optional
 
@@ -82,3 +83,19 @@ def get_result(check_info: Dict[str, Any]) -> Optional[str]:
         return replicate_provider.get_text(payload)
     else:
         return speechkit_provider.get_text(payload)
+
+
+def get_result_text(provider: Optional[str], result_json: Optional[str]) -> Optional[str]:
+    """Extract transcription text straight from a stored ``result_json`` cell.
+
+    The text is served from the DB (the raw provider payload), not the S3
+    ``.txt`` copy: that copy is removed by the bucket lifecycle after ~30 days,
+    while ``result_json`` is kept indefinitely.
+    """
+    payload = parse_result_json(result_json)
+    if payload is None:
+        return None
+
+    if provider == PROVIDER_REPLICATE:
+        return replicate_provider.get_text(payload)
+    return speechkit_provider.get_text(payload)

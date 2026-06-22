@@ -15,7 +15,7 @@ from database.queries import (
     get_transcription,
     update_refinement,
 )
-from utils.s3 import download_text, object_name_from_url
+from utils.transcription import get_result_text
 from utils.summarize import REPLICATE_LLM_MODEL, check_refinement, start_refinement
 from utils.tg import need_edit, prune_edit_cache
 from utils.utils import MoscowTimezone, format_duration
@@ -43,16 +43,9 @@ async def _process_pending(context: ContextTypes.DEFAULT_TYPE, pending_refinemen
         fail_text = "❌ Не удалось оформить текст" if record.task_type == "improve" else "❌ Не удалось создать конспект"
 
         transcription = get_transcription(record.transcription_id)
-        if transcription is None or not transcription.result_s3_path:
-            logging.warning("Refinement %s failed: transcription %s missing or has no result", record.id, record.transcription_id)
-            update_refinement(record.id, status=STATUS_FAILED, finished_at=datetime.now(MoscowTimezone))
-            await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
-            continue
-
-        object_name = object_name_from_url(transcription.result_s3_path)
-        text = await download_text(object_name)
+        text = get_result_text(transcription.provider, transcription.result_json) if transcription else None
         if not text:
-            logging.warning("Refinement %s failed: could not download text from %s", record.id, object_name)
+            logging.warning("Refinement %s failed: transcription %s missing or has no result text", record.id, record.transcription_id)
             update_refinement(record.id, status=STATUS_FAILED, finished_at=datetime.now(MoscowTimezone))
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, fail_text)
             continue

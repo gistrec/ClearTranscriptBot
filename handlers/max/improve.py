@@ -27,7 +27,7 @@ async def handle_max_improve(callback: aiomax.Callback, bot: aiomax.Bot) -> None
     if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
 
-    if not transcription.result_s3_path:
+    if not transcription.result_json:
         return
 
     if has_refinement(transcription_id, "improve"):

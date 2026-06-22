@@ -8,7 +8,7 @@ from telegram.ext import ContextTypes
 
 from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, is_owner
 from database.queries import get_transcription, has_refinement
-from utils.s3 import download_text, object_name_from_url
+from utils.transcription import get_result_text
 from utils.sentry import sentry_bind_user, sentry_transaction
 from messengers.telegram import safe_query_answer, safe_reply_text, safe_edit_message_reply_markup, make_send_as_text_keyboard
 
@@ -49,12 +49,9 @@ async def handle_send_as_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not is_owner(transcription, query.from_user.id, PLATFORM_TELEGRAM):
         return
 
-    if not transcription.result_s3_path:
-        return
-
-    text = await download_text(object_name_from_url(transcription.result_s3_path))
+    text = get_result_text(transcription.provider, transcription.result_json)
     if not text:
-        logging.warning("send_as_text: failed to download text for transcription %s", transcription_id)
+        logging.warning("send_as_text: no result text for transcription %s", transcription_id)
         await safe_reply_text(query.message, "❌ Не удалось получить текст")
         return
 

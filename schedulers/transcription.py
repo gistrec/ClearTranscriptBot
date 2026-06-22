@@ -1,6 +1,5 @@
 """Periodic scheduler for checking transcription statuses."""
 import logging
-import tempfile
 
 import providers.replicate as replicate_provider
 import providers.speechkit as speechkit_provider
@@ -20,7 +19,6 @@ from database.queries import fail_transcription_and_refund, get_transcriptions_b
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, INLINE_MAX_CHARS, RATING_PROMPT
 from utils.transcription import check_transcription, get_result
 from utils.tg import need_edit, prune_edit_cache
-from utils.s3 import upload_file
 from utils.tokens import tokens_by_model
 from utils.sentry import sentry_transaction, sentry_drop_transaction
 
@@ -177,87 +175,73 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         # so long Russian names overflow. Truncate stem to fit ".txt" suffix safely.
         encoded = source_stem.encode("utf-8")[:240]
         source_stem = encoded.decode("utf-8", errors="ignore") or "transcript"
-        with tempfile.TemporaryDirectory() as workdir:
-            path = Path(workdir) / f"{source_stem}.txt"
-            path.write_text(text, encoding="utf-8")
+        filename = f"{source_stem}.txt"
 
-            object_name = f"result/{task.user_id}/{path.name}"
-            s3_url = await upload_file(path, object_name)
-            if not s3_url:
-                logging.warning("S3 upload failed task=%s object=%s", task.id, object_name)
-                fail_transcription_and_refund(task.id)
-                fail_text = (
-                    "❌ Распознавание завершилось с ошибкой\n\n"
-                    "Деньги вернули на баланс, попробуйте ещё раз"
+        audio_duration_str = format_duration(task.duration_seconds)
+
+        # Short results go straight into the chat as text — a .txt file for a
+        # couple of sentences is the friction users complained about. The cap
+        # stays under the 4000 Max / 4096 Telegram message limit with room to
+        # spare. Wrong-language output stays a file: it is garbage the user
+        # will re-transcribe, not read inline.
+        inline = not wrong_language and len(text) <= INLINE_MAX_CHARS
+
+        # Build platform-specific action keyboard
+        show_timecodes = task.provider == PROVIDER_REPLICATE
+        if wrong_language:
+            # Garbage in the wrong language — the only useful action is a
+            # free re-transcribe, so offer the language picker instead.
+            tg_action_keyboard = tg_sender.make_language_retry_keyboard(task.id)
+            max_action_keyboard = max_sender.make_language_retry_keyboard(task.id)
+        elif (task.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
+            tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
+            max_action_keyboard = max_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
+        else:
+            # Inlined text makes the "Отправить текстом" button redundant.
+            tg_action_keyboard = tg_sender.make_send_as_text_keyboard(task.id, show_send_as_text=not inline, show_timecodes=show_timecodes)
+            max_action_keyboard = max_sender.make_send_as_text_keyboard(task.id, show_send_as_text=not inline, show_timecodes=show_timecodes)
+
+        done_text = (
+            f"✅ Распознавание завершено\n\n"
+            f"Длительность: {audio_duration_str}\n"
+            f"Стоимость: {task.price_for_user} ₽\n\n"
+            f"Время обработки: {duration_str}\n\n"
+        )
+        if wrong_language:
+            done_text += (
+                "🌐 Похоже, язык распознан неверно. Если запись на другом "
+                "языке — распознайте её заново бесплатно, выбрав язык ниже\n\n"
+            )
+        # Persist final state before delivering the action keyboard so the
+        # buttons (send-as-text / summarize / timecodes) find a usable result
+        # the moment they become clickable. The text is served from result_json,
+        # so there is no S3 copy to record.
+        update_transcription(
+            task.id,
+            status=STATUS_COMPLETED,
+            llm_tokens_by_encoding=token_counts,
+        )
+        await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, done_text, tg_keyboard=tg_action_keyboard, max_keyboard=max_action_keyboard, bold_header=True)
+
+        try:
+            if inline:
+                await sender.safe_send_message(
+                    context, task.user_platform, task.user_id, text,
                 )
-                await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, fail_text, bold_header=True)
-                continue
-
-            audio_duration_str = format_duration(task.duration_seconds)
-
-            # Short results go straight into the chat as text — a .txt file for a
-            # couple of sentences is the friction users complained about. The cap
-            # stays under the 4000 Max / 4096 Telegram message limit with room to
-            # spare. Wrong-language output stays a file: it is garbage the user
-            # will re-transcribe, not read inline.
-            inline = not wrong_language and len(text) <= INLINE_MAX_CHARS
-
-            # Build platform-specific action keyboard
-            show_timecodes = task.provider == PROVIDER_REPLICATE
-            if wrong_language:
-                # Garbage in the wrong language — the only useful action is a
-                # free re-transcribe, so offer the language picker instead.
-                tg_action_keyboard = tg_sender.make_language_retry_keyboard(task.id)
-                max_action_keyboard = max_sender.make_language_retry_keyboard(task.id)
-            elif (task.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
-                tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
-                max_action_keyboard = max_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
             else:
-                # Inlined text makes the "Отправить текстом" button redundant.
-                tg_action_keyboard = tg_sender.make_send_as_text_keyboard(task.id, show_send_as_text=not inline, show_timecodes=show_timecodes)
-                max_action_keyboard = max_sender.make_send_as_text_keyboard(task.id, show_send_as_text=not inline, show_timecodes=show_timecodes)
-
-            done_text = (
-                f"✅ Распознавание завершено\n\n"
-                f"Длительность: {audio_duration_str}\n"
-                f"Стоимость: {task.price_for_user} ₽\n\n"
-                f"Время обработки: {duration_str}\n\n"
-            )
-            if wrong_language:
-                done_text += (
-                    "🌐 Похоже, язык распознан неверно. Если запись на другом "
-                    "языке — распознайте её заново бесплатно, выбрав язык ниже\n\n"
+                await sender.safe_send_document(
+                    context, task.user_platform, task.user_id, task.message_id,
+                    text.encode("utf-8"), filename, "",
                 )
-            # Persist final state before delivering the action keyboard so the
-            # buttons (send-as-text / summarize / timecodes) see result_s3_path
-            # the moment they become clickable.
-            update_transcription(
-                task.id,
-                status=STATUS_COMPLETED,
-                result_s3_path=s3_url,
-                llm_tokens_by_encoding=token_counts,
+
+            tg_rating_keyboard = tg_sender.make_rating_keyboard(task.id)
+            max_rating_keyboard = max_sender.make_rating_keyboard(task.id)
+            await sender.safe_send_message_with_keyboard(
+                context, task.user_platform, task.user_id,
+                RATING_PROMPT,
+                tg_keyboard=tg_rating_keyboard, max_keyboard=max_rating_keyboard,
             )
-            await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, done_text, tg_keyboard=tg_action_keyboard, max_keyboard=max_action_keyboard, bold_header=True)
-
-            try:
-                if inline:
-                    await sender.safe_send_message(
-                        context, task.user_platform, task.user_id, text,
-                    )
-                else:
-                    await sender.safe_send_document(
-                        context, task.user_platform, task.user_id, task.message_id,
-                        text.encode("utf-8"), path.name, "",
-                    )
-
-                tg_rating_keyboard = tg_sender.make_rating_keyboard(task.id)
-                max_rating_keyboard = max_sender.make_rating_keyboard(task.id)
-                await sender.safe_send_message_with_keyboard(
-                    context, task.user_platform, task.user_id,
-                    RATING_PROMPT,
-                    tg_keyboard=tg_rating_keyboard, max_keyboard=max_rating_keyboard,
-                )
-            except Exception:
-                # Best-effort delivery: transcription succeeded and result lives
-                # in S3 — user can re-fetch via the "Отправить текстом" button.
-                logging.exception(f"Failed to deliver result for task {task.id}")
+        except Exception:
+            # Best-effort delivery: transcription succeeded and the text lives
+            # in result_json — user can re-fetch via the "Отправить текстом" button.
+            logging.exception(f"Failed to deliver result for task {task.id}")

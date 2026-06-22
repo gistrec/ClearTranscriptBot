@@ -5,7 +5,7 @@ import aiomax
 
 from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, is_owner
 from database.queries import get_transcription, has_refinement
-from utils.s3 import download_text, object_name_from_url
+from utils.transcription import get_result_text
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import safe_callback_answer, safe_send_message, safe_edit_message, make_send_as_text_keyboard
 
@@ -30,12 +30,9 @@ async def handle_max_send_as_text(callback: aiomax.Callback, bot: aiomax.Bot) ->
     if not is_owner(transcription, user_id, PLATFORM_MAX):
         return
 
-    if not transcription.result_s3_path:
-        return
-
-    text = await download_text(object_name_from_url(transcription.result_s3_path))
+    text = get_result_text(transcription.provider, transcription.result_json)
     if not text:
-        logging.warning("Max send_as_text: failed to download text for transcription %s", transcription_id)
+        logging.warning("Max send_as_text: no result text for transcription %s", transcription_id)
         chat_id = callback.message.recipient.chat_id
         await safe_send_message(bot, "❌ Не удалось получить текст", chat_id=chat_id)
         return

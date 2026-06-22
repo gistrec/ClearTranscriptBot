@@ -79,27 +79,6 @@ async def get_signed_url(object_name: str, expires_in: int = 3600) -> Optional[s
     return None
 
 
-@sentry_span(op="s3.download")
-async def download_text(object_name: str) -> Optional[str]:
-    """Download a text file from S3 and return its contents."""
-
-    def _download() -> Optional[str]:
-        try:
-            response = _s3.get_object(Bucket=S3_BUCKET, Key=object_name)
-            return response["Body"].read().decode("utf-8")
-        except Exception:
-            logging.exception(f"Failed to download {object_name} from S3")
-            return None
-
-    for attempt in range(3):
-        result = await asyncio.to_thread(_download)
-        if result is not None:
-            return result
-        if attempt < 2:
-            await asyncio.sleep(1)
-    return None
-
-
 def object_name_from_url(plain_url: str) -> str:
     """Extract the S3 object key from a plain URL produced by upload_file."""
     prefix = f"{S3_ENDPOINT}/{S3_BUCKET}/"

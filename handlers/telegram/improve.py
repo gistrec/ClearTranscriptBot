@@ -22,7 +22,7 @@ async def handle_improve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not is_owner(transcription, query.from_user.id, PLATFORM_TELEGRAM):
         return
 
-    if not transcription.result_s3_path:
+    if not transcription.result_json:
         return
 
     if has_refinement(transcription_id, "improve"):
