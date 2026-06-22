@@ -9,6 +9,8 @@ from payment import format_payment_status
 MAX_AUDIO_DURATION = 6 * 60 * 60  # seconds; files longer than this are rejected
 MIN_PRICE_RUB = Decimal("1.00")  # minimum charge so very short clips stay profitable
 SUMMARIZE_THRESHOLD = 300  # seconds; show summarize button only for audio longer than this
+INLINE_MAX_CHARS = 3000  # chars; shorter transcripts are sent inline as text instead of a .txt file
+                         # (stays under the 4000 Max / 4096 Telegram message limit, with headroom)
 RATING_PROMPT = "Оцените качество распознавания"
 FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание."
 
