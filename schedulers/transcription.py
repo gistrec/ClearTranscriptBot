@@ -143,11 +143,22 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         text = get_result(result_info)
         token_counts = tokens_by_model(text)
 
+        # Wrong-language detection needs the real text (before the no-speech
+        # placeholder) — an empty result is "no speech", not "wrong language".
+        wrong_language = bool(
+            text
+            and result_info.get("provider") == PROVIDER_REPLICATE
+            and replicate_provider.is_wrong_language(payload)
+        )
+
         if not text:
             text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
 
+        # Wrong language is the more specific, actionable signal — when it fires
+        # it usually drags avg_logprob down too, so suppress the generic warning.
         low_quality = (
-            result_info.get("provider") == PROVIDER_REPLICATE
+            not wrong_language
+            and result_info.get("provider") == PROVIDER_REPLICATE
             and replicate_provider.looks_like_hallucination(payload)
         )
 
@@ -176,7 +187,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
 
             # Build platform-specific action keyboard
             show_timecodes = task.provider == PROVIDER_REPLICATE
-            if (task.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
+            if wrong_language:
+                # Garbage in the wrong language — the only useful action is a
+                # free re-transcribe, so offer the language picker instead.
+                tg_action_keyboard = tg_sender.make_language_retry_keyboard(task.id)
+                max_action_keyboard = max_sender.make_language_retry_keyboard(task.id)
+            elif (task.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
                 tg_action_keyboard = tg_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
                 max_action_keyboard = max_sender.make_summarize_keyboard(task.id, show_timecodes=show_timecodes)
             else:
@@ -189,7 +205,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 f"Стоимость: {task.price_for_user} ₽\n\n"
                 f"Время обработки: {duration_str}\n\n"
             )
-            if low_quality:
+            if wrong_language:
+                done_text += (
+                    "🌐 Похоже, язык распознан неверно. Если запись на другом "
+                    "языке — распознайте её заново бесплатно, выбрав язык ниже\n\n"
+                )
+            elif low_quality:
                 done_text += (
                     "⚠️ Запись похожа на зашумлённую или неразборчивую — "
                     "проверьте результат, распознавание может быть неточным\n\n"

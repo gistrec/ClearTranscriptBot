@@ -7,12 +7,16 @@ import os
 
 os.environ.setdefault("REPLICATE_API_TOKEN", "test")
 
-from providers.replicate import get_text, looks_like_hallucination
+from providers.replicate import detected_language, get_text, is_wrong_language, looks_like_hallucination
 from utils.timecodes import extract_segments, is_phantom_segment
 
 
 def _payload(segments):
     return {"output": {"detected_language": "xx", "segments": segments}}
+
+
+def _payload_lang(lang, segments):
+    return {"output": {"detected_language": lang, "segments": segments}}
 
 
 def test_get_text_joins_segments():
@@ -101,3 +105,49 @@ def test_is_phantom_segment_scope():
     assert is_phantom_segment("Редактор субтитров А.Синецкая")
     assert not is_phantom_segment("Спасибо за просмотр")
     assert not is_phantom_segment("Продолжение следует...")
+
+
+def test_detected_language():
+    assert detected_language(_payload_lang("ru", [])) == "ru"
+    assert detected_language({"output": None}) is None
+    assert detected_language({}) is None
+
+
+def test_wrong_language_flags_misdetect_codes():
+    # uk/nn/kk/ko/zh/es: validated as near-always a misdetection of Russian.
+    for code in ("uk", "nn", "kk", "ko", "zh", "es"):
+        payload = _payload_lang(code, [{"text": "какой-то текст"}])
+        assert is_wrong_language(payload) is True, code
+
+
+def test_wrong_language_flags_foreign_script():
+    # "Все пришло в иероглифах" / "разшифровало в китайский" — id 16070, 18630.
+    assert is_wrong_language(_payload_lang("ja", [{"text": "これは日本語のテキストです"}])) is True
+    assert is_wrong_language(_payload_lang("ar", [{"text": "هذا نص باللغة العربية"}])) is True
+
+
+def test_wrong_language_passes_russian():
+    payload = _payload_lang("ru", [{"text": "Привет, это обычная русская речь"}])
+    assert is_wrong_language(payload) is False
+
+
+def test_wrong_language_passes_english():
+    payload = _payload_lang("en", [{"text": "This is a normal English transcript"}])
+    assert is_wrong_language(payload) is False
+
+
+def test_wrong_language_passes_legit_latin_foreign():
+    # Genuine de/fr/tr/it (avg rating ~5) are Latin script and not blacklisted:
+    # forcing a retry on them would be a false positive on good transcriptions.
+    payload = _payload_lang("de", [{"text": "Das ist ein deutscher Text"}])
+    assert is_wrong_language(payload) is False
+
+
+def test_wrong_language_ignores_stray_foreign_glyph():
+    # A single quoted foreign word inside Russian must not trip the detector.
+    payload = _payload_lang("ru", [{"text": "Он купил телефон модели 小米 в магазине сегодня"}])
+    assert is_wrong_language(payload) is False
+
+
+def test_wrong_language_empty_text():
+    assert is_wrong_language(_payload_lang("ru", [])) is False

@@ -39,6 +39,7 @@ from handlers.telegram.summarize import handle_summarize
 from handlers.telegram.send_as_text import handle_send_as_text
 from handlers.telegram.improve import handle_improve
 from handlers.telegram.timecodes import handle_timecodes, handle_timecodes_back, handle_timecodes_format
+from handlers.telegram.retranscribe import handle_retranscribe, handle_retranscribe_back, handle_retranscribe_more
 
 from handlers.max.balance import handle_max_balance
 from handlers.max.cancel_task import handle_max_cancel_task
@@ -51,6 +52,7 @@ from handlers.max.summarize import handle_max_summarize
 from handlers.max.send_as_text import handle_max_send_as_text
 from handlers.max.improve import handle_max_improve
 from handlers.max.timecodes import handle_max_timecodes, handle_max_timecodes_back, handle_max_timecodes_format
+from handlers.max.retranscribe import handle_max_retranscribe, handle_max_retranscribe_back, handle_max_retranscribe_more
 from handlers.max.text import handle_max_text
 from handlers.max.topup import (
     handle_max_topup,
@@ -158,6 +160,15 @@ async def run_bots() -> None:
     )
     application.add_handler(
         CallbackQueryHandler(handle_timecodes_format, pattern=r"^tc_fmt:\d+:(txt|srt|vtt)$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_retranscribe, pattern=r"^retrans:\d+:[a-z]{2}$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_retranscribe_more, pattern=r"^retrans_more:\d+$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_retranscribe_back, pattern=r"^retrans_back:\d+$")
     )
 
     # --- Build Max bot (optional) ---
@@ -267,6 +278,12 @@ async def run_bots() -> None:
                 await handle_max_timecodes_back(callback, max_bot)
             elif payload.startswith("tc:"):
                 await handle_max_timecodes(callback, max_bot)
+            elif payload.startswith("retrans_more:"):
+                await handle_max_retranscribe_more(callback, max_bot)
+            elif payload.startswith("retrans_back:"):
+                await handle_max_retranscribe_back(callback, max_bot)
+            elif payload.startswith("retrans:"):
+                await handle_max_retranscribe(callback, max_bot)
             elif payload.startswith("topup:"):
                 await handle_max_topup_callback(callback, max_bot)
             elif payload.startswith("payment:cancel:"):

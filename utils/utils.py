@@ -12,6 +12,25 @@ SUMMARIZE_THRESHOLD = 300  # seconds; show summarize button only for audio longe
 RATING_PROMPT = "Оцените качество распознавания"
 FEEDBACK_PROMPT = "Расскажите, что пошло не так? Напишите пару слов — это поможет улучшить распознавание."
 
+# Languages offered when WhisperX likely picked the wrong one. ru/en cover 96%
+# of uploads and sit on top-level buttons; the rest live behind "Другие языки"
+# — the codes that actually show up in prod detected-language stats.
+RETRY_LANGUAGE_NAMES = {
+    "ru": "Русский",
+    "en": "English",
+    "uk": "Украинский",
+    "kk": "Казахский",
+    "de": "Немецкий",
+    "fr": "Французский",
+    "es": "Испанский",
+    "it": "Итальянский",
+    "tr": "Турецкий",
+    "ar": "Арабский",
+    "zh": "Китайский",
+    "ja": "Японский",
+}
+RETRY_OTHER_CODES = ("uk", "kk", "de", "fr", "es", "it", "tr", "ar", "zh", "ja")
+
 _OFFER_URL = "https://clear-transcript-bot.ru/user-agreement"
 _PRIVACY_URL = "https://clear-transcript-bot.ru/privacy-policy"
 

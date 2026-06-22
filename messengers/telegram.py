@@ -6,6 +6,8 @@ from typing import Optional
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest, Forbidden
 
+from utils.utils import RETRY_LANGUAGE_NAMES, RETRY_OTHER_CODES
+
 _MSG_NOT_MODIFIED = "message is not modified"
 _BOT_BLOCKED = "bot was blocked by the user"
 _QUERY_TOO_OLD = "query is too old"
@@ -249,6 +251,29 @@ def make_timecodes_format_keyboard(transcription_id: int) -> InlineKeyboardMarku
         [InlineKeyboardButton("🎞 .vtt", callback_data=f"tc_fmt:{transcription_id}:vtt")],
         [InlineKeyboardButton("← Назад", callback_data=f"tc_back:{transcription_id}")],
     ])
+
+
+def make_language_retry_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🇷🇺 Русский", callback_data=f"retrans:{transcription_id}:ru"),
+            InlineKeyboardButton("🇬🇧 English", callback_data=f"retrans:{transcription_id}:en"),
+        ],
+        [InlineKeyboardButton("🌐 Другие языки", callback_data=f"retrans_more:{transcription_id}")],
+    ])
+
+
+def make_language_other_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+    codes = RETRY_OTHER_CODES
+    rows = [
+        [
+            InlineKeyboardButton(RETRY_LANGUAGE_NAMES[c], callback_data=f"retrans:{transcription_id}:{c}")
+            for c in codes[i:i + 2]
+        ]
+        for i in range(0, len(codes), 2)
+    ]
+    rows.append([InlineKeyboardButton("← Назад", callback_data=f"retrans_back:{transcription_id}")])
+    return InlineKeyboardMarkup(rows)
 
 
 def make_topup_amounts_keyboard() -> InlineKeyboardMarkup:

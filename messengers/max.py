@@ -7,6 +7,8 @@ from typing import Optional
 from aiomax.buttons import CallbackButton, LinkButton, KeyboardBuilder
 from aiomax.exceptions import ChatNotFound, InternalError
 
+from utils.utils import RETRY_LANGUAGE_NAMES, RETRY_OTHER_CODES
+
 
 def patch_aiomax() -> None:
     """Apply runtime fixes for aiomax bugs that crash message parsing.
@@ -250,6 +252,28 @@ def make_timecodes_format_keyboard(transcription_id: int) -> KeyboardBuilder:
         .row(CallbackButton("🎞 .vtt", f"tc_fmt:{transcription_id}:vtt"))
         .row(CallbackButton("← Назад", f"tc_back:{transcription_id}"))
     )
+
+
+def make_language_retry_keyboard(transcription_id: int) -> KeyboardBuilder:
+    return (
+        KeyboardBuilder()
+        .row(
+            CallbackButton("🇷🇺 Русский", f"retrans:{transcription_id}:ru"),
+            CallbackButton("🇬🇧 English", f"retrans:{transcription_id}:en"),
+        )
+        .row(CallbackButton("🌐 Другие языки", f"retrans_more:{transcription_id}"))
+    )
+
+
+def make_language_other_keyboard(transcription_id: int) -> KeyboardBuilder:
+    codes = RETRY_OTHER_CODES
+    kb = KeyboardBuilder()
+    for i in range(0, len(codes), 2):
+        kb = kb.row(*[
+            CallbackButton(RETRY_LANGUAGE_NAMES[c], f"retrans:{transcription_id}:{c}")
+            for c in codes[i:i + 2]
+        ])
+    return kb.row(CallbackButton("← Назад", f"retrans_back:{transcription_id}"))
 
 
 async def safe_send_document(bot: aiomax.Bot, chat_id, data, filename: str, caption: str, keyboard=None):

@@ -27,6 +27,7 @@ async def start_transcription(
     provider: str,
     duration_seconds: int,
     mean_volume_db: Optional[float] = None,
+    language: Optional[str] = None,
 ) -> Optional[str]:
     """Start transcription and return the operation id, or ``None`` on any failure."""
 
@@ -36,7 +37,7 @@ async def start_transcription(
             signed_url = await get_signed_url(object_name_from_url(audio_url), expires_in=6 * 3600)
             if not signed_url:
                 return None
-            return await replicate_provider.start_transcription(signed_url, duration_seconds, mean_volume_db)
+            return await replicate_provider.start_transcription(signed_url, duration_seconds, mean_volume_db, language)
 
         return await speechkit_provider.start_transcription(audio_url, duration_seconds)
     except Exception:

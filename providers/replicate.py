@@ -1,5 +1,6 @@
 """Interact with Replicate for transcription."""
 import os
+import re
 import asyncio
 import logging
 import replicate
@@ -58,14 +59,21 @@ async def start_transcription(
     audio_url: str,
     duration_seconds: int,
     mean_volume_db: Optional[float] = None,
+    language: Optional[str] = None,
 ) -> Optional[str]:
-    """Start a Replicate transcription and return its ID."""
+    """Start a Replicate transcription and return its ID.
+
+    ``language`` forces WhisperX to a specific language (ISO code) for the
+    "re-transcribe in another language" retry; left unset it auto-detects.
+    """
     model = get_model(duration_seconds)
     payload = {
         "audio_file": audio_url,
         "language_detection_min_prob": 0.9,
         "language_detection_max_tries": 10,
     }
+    if language:
+        payload["language"] = language
     if mean_volume_db is not None and mean_volume_db < QUIET_MEAN_VOLUME_DB:
         # Default VAD (0.5/0.363) drops quiet speech entirely (missing intros,
         # multi-minute gaps), while lowering it globally reshuffles output on
@@ -141,6 +149,55 @@ def get_text(payload: Dict[str, Any]) -> str:
         if text:
             parts.append(text)
     return "\n".join(parts)
+
+
+# detected_language codes that, for our Russian/English audience, are almost
+# always a misdetection of Russian speech rather than a genuine foreign upload:
+# validated against prod ratings (avg <=2, vs ~5 for real de/fr/ar/tr/it/ja).
+WRONG_LANGUAGE_CODES = frozenset({"uk", "nn", "kk", "ko", "zh", "es"})
+
+# Scripts a Russian/English speaker would never expect in their own transcript.
+# A WhisperX language misdetection renders the whole output in one of these, so
+# a substantial share of such letters means "wrong language".
+_FOREIGN_SCRIPT_RE = re.compile(
+    "["
+    "一-鿿"   # CJK (Chinese, Japanese kanji)
+    "぀-ヿ"   # Hiragana + Katakana
+    "가-힣"   # Hangul
+    "؀-ۿ"   # Arabic
+    "֐-׿"   # Hebrew
+    "฀-๿"   # Thai
+    "ऀ-ॿ"   # Devanagari
+    "]"
+)
+
+
+def detected_language(payload: Dict[str, Any]) -> Optional[str]:
+    """Language code WhisperX reported for the recording, if any."""
+    output = payload.get("output")
+    if isinstance(output, dict):
+        lang = output.get("detected_language")
+        if isinstance(lang, str):
+            return lang
+    return None
+
+
+def is_wrong_language(payload: Dict[str, Any]) -> bool:
+    """Heuristic flag that WhisperX transcribed in the wrong language.
+
+    Either it reported a language that for our audience is almost always a
+    misdetection of Russian, or the text is written in a script no Russian or
+    English speaker would expect (Chinese, Arabic, Hangul...). Drives the
+    "re-transcribe in another language" prompt.
+    """
+    if detected_language(payload) in WRONG_LANGUAGE_CODES:
+        return True
+    text = get_text(payload)
+    if not text:
+        return False
+    foreign = len(_FOREIGN_SCRIPT_RE.findall(text))
+    letters = sum(1 for ch in text if ch.isalpha())
+    return letters > 0 and foreign / letters > 0.20
 
 
 def looks_like_hallucination(payload: Dict[str, Any]) -> bool:
