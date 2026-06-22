@@ -143,24 +143,34 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
         text = get_result(result_info)
         token_counts = tokens_by_model(text)
 
-        # Wrong-language detection needs the real text (before the no-speech
-        # placeholder) — an empty result is "no speech", not "wrong language".
+        # Wrong-language detection needs the real text (before any fallback):
+        # an empty result is "no speech", not "wrong language".
         wrong_language = bool(
             text
             and result_info.get("provider") == PROVIDER_REPLICATE
             and replicate_provider.is_wrong_language(payload)
         )
 
-        if not text:
-            text = "(речь в записи отсутствует или слишком неразборчива для распознавания)"
-
-        # Wrong language is the more specific, actionable signal — when it fires
-        # it usually drags avg_logprob down too, so suppress the generic warning.
-        low_quality = (
+        # Output the user must not pay for: no discernible speech, or garbled /
+        # looping recognition. Wrong language is excluded — it gets a free
+        # re-transcribe, which is more useful than a refund. Refund and stop:
+        # there is nothing worth delivering.
+        hallucinated = (
             not wrong_language
             and result_info.get("provider") == PROVIDER_REPLICATE
             and replicate_provider.looks_like_hallucination(payload)
         )
+        if not text or hallucinated:
+            refund_text = (
+                "🔇 В записи не нашлось разборчивой речи\n\n"
+                "Деньги вернули на баланс"
+                if not text else
+                "😕 Запись слишком зашумлённая или неразборчивая — распознать не удалось\n\n"
+                "Деньги вернули на баланс"
+            )
+            fail_transcription_and_refund(task.id, finished_at=now)
+            await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, refund_text, bold_header=True)
+            continue
 
         source_stem = Path(task.audio_s3_path).stem
         # Most filesystems cap filenames at 255 bytes; Cyrillic UTF-8 is 2 bytes/char,
@@ -209,11 +219,6 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 done_text += (
                     "🌐 Похоже, язык распознан неверно. Если запись на другом "
                     "языке — распознайте её заново бесплатно, выбрав язык ниже\n\n"
-                )
-            elif low_quality:
-                done_text += (
-                    "⚠️ Запись похожа на зашумлённую или неразборчивую — "
-                    "проверьте результат, распознавание может быть неточным\n\n"
                 )
             # Persist final state before delivering the action keyboard so the
             # buttons (send-as-text / summarize / timecodes) see result_s3_path
