@@ -105,6 +105,9 @@ def _log_aiomax_failure(label: str, ident: str, exc: Exception) -> None:
     if _is_aiomax_upload_failure(exc):
         logging.warning("%s upload returned no token %s", label, ident)
         return
+    if str(exc) == "Session is not initialized":
+        logging.warning("%s skipped %s (aiomax session closed at shutdown)", label, ident)
+        return
     logging.exception("%s failed %s", label, ident)
 
 
