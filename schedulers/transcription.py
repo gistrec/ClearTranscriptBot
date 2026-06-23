@@ -13,7 +13,7 @@ from datetime import datetime
 
 from telegram.ext import ContextTypes
 
-from database.models import PROVIDER_REPLICATE, STATUS_RUNNING, STATUS_COMPLETED
+from database.models import PROVIDER_REPLICATE, STATUS_RUNNING, STATUS_COMPLETED, STATUS_REJECTED
 from database.queries import fail_transcription_and_refund, get_transcriptions_by_status, update_transcription
 
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, INLINE_MAX_CHARS, RATING_PROMPT
@@ -166,7 +166,7 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 "😕 Запись слишком зашумлённая или неразборчивая — распознать не удалось\n\n"
                 "Деньги вернули на баланс"
             )
-            fail_transcription_and_refund(task.id, finished_at=now)
+            fail_transcription_and_refund(task.id, status=STATUS_REJECTED, finished_at=now)
             await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, refund_text, bold_header=True)
             continue
 

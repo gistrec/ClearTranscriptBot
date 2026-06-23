@@ -9,7 +9,7 @@ from sqlalchemy import text, update
 from database.connection import SessionLocal
 from database.models import (
     User, Transcription, Payment, Refinement,
-    STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED,
+    STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_REJECTED, STATUS_CANCELLED,
 )
 from utils.utils import MoscowTimezone
 
@@ -172,12 +172,14 @@ def cancel_transcription_if_pending(transcription_id: int) -> bool:
         return result.rowcount > 0
 
 
-def fail_transcription_and_refund(transcription_id: int, **fields: Any) -> bool:
+def fail_transcription_and_refund(transcription_id: int, *, status: str = STATUS_FAILED, **fields: Any) -> bool:
     """Atomically mark a running transcription failed and refund its price.
 
     The status transition and the balance refund happen in one transaction
-    guarded by the running→failed claim, so a crash cannot separate them and
-    concurrent callers cannot refund twice. Extra *fields* are applied to the
+    guarded by the running→terminal claim, so a crash cannot separate them and
+    concurrent callers cannot refund twice. *status* is the terminal status to
+    set: STATUS_FAILED for genuine errors, STATUS_REJECTED for quality-gate
+    refunds (no speech / too noisy). Extra *fields* are applied to the
     transcription row. Returns True if this caller performed the transition.
     """
     with SessionLocal() as session:
@@ -192,7 +194,7 @@ def fail_transcription_and_refund(transcription_id: int, **fields: Any) -> bool:
         )
         if task is None:
             return False
-        task.status = STATUS_FAILED
+        task.status = status
         for key, value in fields.items():
             setattr(task, key, value)
         if task.price_for_user:

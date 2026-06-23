@@ -8,6 +8,7 @@ from database.models import (
     STATUS_RUNNING,
     STATUS_COMPLETED,
     STATUS_FAILED,
+    STATUS_REJECTED,
     STATUS_CANCELLED,
 )
 
@@ -53,6 +54,7 @@ STATUS_EMOJI = {
     STATUS_RUNNING: "⏳",
     STATUS_COMPLETED: "✅",
     STATUS_FAILED: "❌",
+    STATUS_REJECTED: "↩️",
     STATUS_CANCELLED: "🚫",
 }
 

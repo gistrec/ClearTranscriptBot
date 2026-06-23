@@ -39,7 +39,7 @@ async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     msg = (
         "Последние 10 распознаваний:\n"
         + "\n".join(lines)
-        + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • 🚫 отменено"
+        + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • ↩️ возврат • 🚫 отменено"
     )
 
     await safe_reply_text(update.message, msg)

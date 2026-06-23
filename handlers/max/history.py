@@ -45,7 +45,7 @@ async def handle_max_history(message: aiomax.Message, bot: aiomax.Bot) -> None:
     msg = (
         "Последние 10 распознаваний:\n"
         + "\n".join(lines)
-        + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • 🚫 отменено"
+        + "\n\nСтатусы: 🕓 ожидание • ⏳ в работе • ✅ готово • ❌ ошибка • ↩️ возврат • 🚫 отменено"
     )
 
     await safe_send_message(bot, msg, chat_id=message.recipient.chat_id)

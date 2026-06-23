@@ -34,6 +34,7 @@ STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
 STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
+STATUS_REJECTED = "rejected"
 STATUS_CANCELLED = "cancelled"
 
 
