@@ -8,7 +8,8 @@ import aiomax
 from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, is_owner
 from database.queries import get_transcription, has_refinement
 from utils.sentry import sentry_bind_user_max, sentry_transaction
-from utils.utils import SUMMARIZE_THRESHOLD
+from utils.utils import SUMMARIZE_THRESHOLD, INLINE_MAX_CHARS
+from utils.transcription import get_result_text
 from utils.timecodes import FORMATTERS, extract_segments, parse_result_json
 from messengers.max import (
     make_send_as_text_keyboard,
@@ -26,7 +27,9 @@ def _restore_main_keyboard(transcription):
     show_improve = not has_refinement(transcription.id, "improve")
     if (transcription.duration_seconds or 0) > SUMMARIZE_THRESHOLD:
         return make_summarize_keyboard(transcription.id, show_summarize=show_summarize, show_improve=show_improve, show_timecodes=True)
-    return make_send_as_text_keyboard(transcription.id, show_improve=show_improve, show_timecodes=True)
+    text = get_result_text(transcription.provider, transcription.result_json) or ""
+    show_send_as_text = len(text) > INLINE_MAX_CHARS
+    return make_send_as_text_keyboard(transcription.id, show_send_as_text=show_send_as_text, show_improve=show_improve, show_timecodes=True)
 
 
 @sentry_bind_user_max
