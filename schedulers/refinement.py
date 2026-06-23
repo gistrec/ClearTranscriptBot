@@ -18,7 +18,7 @@ from database.queries import (
 from utils.transcription import get_result_text
 from utils.summarize import REPLICATE_LLM_MODEL, check_refinement, start_refinement
 from utils.tg import need_edit, prune_edit_cache
-from utils.utils import MoscowTimezone, format_duration
+from utils.utils import MoscowTimezone, format_duration, INLINE_MAX_CHARS
 from utils.sentry import sentry_transaction, sentry_drop_transaction
 
 
@@ -104,7 +104,10 @@ async def _process_running(context: ContextTypes.DEFAULT_TYPE, running_refinemen
 
         if is_improve:
             await sender.safe_edit_message(context, record.user_platform, record.user_id, record.message_id, "✏️ Текст оформлен")
-            await sender.safe_send_document(context, record.user_platform, record.user_id, None, result["text"].encode("utf-8"), "formatted.txt", "")
+            if len(result["text"]) <= INLINE_MAX_CHARS:
+                await sender.safe_send_message(context, record.user_platform, record.user_id, result["text"])
+            else:
+                await sender.safe_send_document(context, record.user_platform, record.user_id, None, result["text"].encode("utf-8"), "formatted.txt", "")
         else:
             message = "📝 Конспект\n\n" + result["text"]
             # Telegram message limit is 4096 characters
