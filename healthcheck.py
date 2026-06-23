@@ -16,9 +16,12 @@ from utils.heartbeat import overdue
 
 app = FastAPI()
 
+_unhealthy = False
+
 
 @app.get("/healthcheck")
 async def healthcheck():
+    global _unhealthy
     problems: dict[str, object] = {}
 
     stale = overdue()
@@ -28,11 +31,19 @@ async def healthcheck():
     try:
         ping_db()
     except Exception as exc:
-        logging.exception("Healthcheck: database ping failed")
         problems["database"] = repr(exc)
 
     if problems:
+        # Probed every few seconds and the 503 persists for the whole incident,
+        # so log the breakdown only on the healthy -> unhealthy edge, not per probe.
+        if not _unhealthy:
+            logging.warning("Healthcheck returning 503, unhealthy: %s", problems)
+        _unhealthy = True
         return JSONResponse(status_code=503, content={"status": "unhealthy", "problems": problems})
+
+    if _unhealthy:
+        logging.info("Healthcheck recovered, returning 200")
+    _unhealthy = False
     return {"status": "ok"}
 
 
