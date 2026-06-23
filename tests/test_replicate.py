@@ -2,6 +2,15 @@
 
 Lock the hallucination heuristic against the real-audio cases it was tuned on:
 genuine foreign speech must pass, looping/low-confidence garbage must flag.
+
+NOTE / ПРИМЕЧАНИЕ: the production cases referenced below by transcription id
+were surfaced and their content analysed by an automated AI assistant during
+heuristic calibration. The operator did NOT manually read the underlying user
+recordings or transcripts; only the AI inspected that content, and only to tune
+the false-positive thresholds.
+Реальные кейсы (по id транскрибаций) ниже отбирал и анализировал
+ИИ-ассистент автоматически; владелец сервиса сами записи/расшифровки
+пользователей лично не просматривал.
 """
 import os
 
@@ -51,6 +60,32 @@ def test_repetition_flags():
 def test_repeated_short_phrase_does_not_flag():
     ok = {"text": "да", "avg_logprob": -0.05}
     assert looks_like_hallucination(_payload([ok, ok, ok, ok])) is False
+
+
+def test_real_speech_low_confidence_passes():
+    # id 20107: a genuine heartfelt toast, dragged to mean -0.41 only by honest
+    # repetition of "Спасибо". Must deliver, not refund (zero FP on good speech).
+    payload = _payload([
+        {"text": " Ребята, просто фантастика. Спасибо. Спасибо. Спасибо.", "avg_logprob": -0.4595},
+        {"text": " Сегодня был очень веселый день. Мы вас любим.", "avg_logprob": -0.3646},
+    ])
+    assert looks_like_hallucination(payload) is False
+
+
+def test_minor_repeat_in_long_transcript_passes():
+    # id 20108/20158: a 1h+ meeting/lecture where one phrase loops 3x must not
+    # condemn the whole otherwise-confident transcript.
+    good = [{"text": f"Осмысленная реплика участника номер {i}", "avg_logprob": -0.1} for i in range(60)]
+    loop = [{"text": "Спасибо за внимание коллеги", "avg_logprob": -0.1}] * 3
+    assert looks_like_hallucination(_payload(good + loop)) is False
+
+
+def test_dominant_loop_flags():
+    # id 20143: near-silent recording where "Продолжение следует..." is most of
+    # the output — looping that dominates is still garbage.
+    loop = {"text": "Продолжение следует...", "avg_logprob": -0.25}
+    other = {"text": "ЗВОНОК В ДВЕРЬ, ничего полезного", "avg_logprob": -0.35}
+    assert looks_like_hallucination(_payload([loop, loop, loop, loop, loop, other])) is True
 
 
 def test_empty_output_does_not_flag():

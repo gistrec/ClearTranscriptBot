@@ -200,21 +200,30 @@ def is_wrong_language(payload: Dict[str, Any]) -> bool:
     return letters > 0 and foreign / letters > 0.20
 
 
+# Calibrated on real prod cases: genuine hard audio runs to mean ~-0.41, garbage
+# to -0.52 and below. Do not raise toward -0.30 — it refunds good transcripts.
+_HALLUCINATION_MEAN_LOGPROB = -0.50
+_HALLUCINATION_LOOP_SHARE = 0.5
+
+
 def looks_like_hallucination(payload: Dict[str, Any]) -> bool:
     """Heuristic flag for likely-garbage WhisperX output.
 
-    Two orthogonal signals observed in real misrecognitions: a low mean
-    ``avg_logprob`` (genuine speech stays above -0.17, hallucinations fall
-    below -0.38), and a long segment text repeated several times (looping).
+    Two signals, both scaled so a blemish in otherwise-good speech is not
+    refunded: a mean ``avg_logprob`` below ``-0.50`` (pervasively low confidence,
+    not just a rough patch), or a long segment text repeated enough to make up at
+    least half of all segments (looping that dominates the output).
     """
     segments = _segments(payload)
+    if not segments:
+        return False
 
     logprobs = [
         s["avg_logprob"]
         for s in segments
         if isinstance(s.get("avg_logprob"), (int, float))
     ]
-    if logprobs and sum(logprobs) / len(logprobs) < -0.30:
+    if logprobs and sum(logprobs) / len(logprobs) < _HALLUCINATION_MEAN_LOGPROB:
         return True
 
     counts: Dict[str, int] = {}
@@ -222,7 +231,5 @@ def looks_like_hallucination(payload: Dict[str, Any]) -> bool:
         text = (segment.get("text") or "").strip()
         if len(text) >= 15:
             counts[text] = counts.get(text, 0) + 1
-            if counts[text] >= 3:
-                return True
-
-    return False
+    looped = sum(count for count in counts.values() if count >= 3)
+    return bool(looped) and looped / len(segments) >= _HALLUCINATION_LOOP_SHARE
