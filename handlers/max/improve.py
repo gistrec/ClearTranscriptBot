@@ -5,7 +5,8 @@ import aiomax
 
 from database.queries import create_refinement, get_transcription, has_refinement
 from database.models import PLATFORM_MAX, PROVIDER_REPLICATE, is_owner
-from utils.utils import format_duration, SUMMARIZE_THRESHOLD
+from utils.transcription import get_result_text
+from utils.utils import format_duration, SUMMARIZE_THRESHOLD, INLINE_MAX_CHARS
 from utils.sentry import sentry_bind_user_max, sentry_transaction
 from messengers.max import make_summarize_keyboard, make_send_as_text_keyboard, safe_callback_answer, safe_send_message, safe_edit_message
 
@@ -42,7 +43,8 @@ async def handle_max_improve(callback: aiomax.Callback, bot: aiomax.Bot) -> None
     if duration > SUMMARIZE_THRESHOLD:
         remaining_keyboard = make_summarize_keyboard(transcription_id, show_summarize=show_summarize, show_improve=False, show_timecodes=show_timecodes)
     else:
-        remaining_keyboard = make_send_as_text_keyboard(transcription_id, show_improve=False, show_timecodes=show_timecodes)
+        text = get_result_text(transcription.provider, transcription.result_json) or ""
+        remaining_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=len(text) > INLINE_MAX_CHARS, show_improve=False, show_timecodes=show_timecodes)
     await safe_edit_message(bot, message_id, callback.message.body.text or "", keyboard=remaining_keyboard)
 
     msg = await safe_send_message(bot,

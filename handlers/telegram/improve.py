@@ -5,7 +5,8 @@ from telegram.ext import ContextTypes
 from database.models import PLATFORM_TELEGRAM, PROVIDER_REPLICATE, is_owner
 from database.queries import create_refinement, get_transcription, has_refinement
 from utils.sentry import sentry_bind_user, sentry_transaction
-from utils.utils import format_duration, SUMMARIZE_THRESHOLD
+from utils.transcription import get_result_text
+from utils.utils import format_duration, SUMMARIZE_THRESHOLD, INLINE_MAX_CHARS
 from messengers.telegram import make_summarize_keyboard, make_send_as_text_keyboard, safe_query_answer, safe_reply_text, safe_edit_message_reply_markup
 
 
@@ -34,7 +35,8 @@ async def handle_improve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if duration > SUMMARIZE_THRESHOLD:
         remaining_keyboard = make_summarize_keyboard(transcription_id, show_summarize=show_summarize, show_improve=False, show_timecodes=show_timecodes)
     else:
-        remaining_keyboard = make_send_as_text_keyboard(transcription_id, show_improve=False, show_timecodes=show_timecodes)
+        text = get_result_text(transcription.provider, transcription.result_json) or ""
+        remaining_keyboard = make_send_as_text_keyboard(transcription_id, show_send_as_text=len(text) > INLINE_MAX_CHARS, show_improve=False, show_timecodes=show_timecodes)
     await safe_edit_message_reply_markup(query, reply_markup=remaining_keyboard)
     msg = await safe_reply_text(
         query.message,
