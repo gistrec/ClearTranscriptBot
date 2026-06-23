@@ -14,6 +14,7 @@ from database.queries import add_transcription, add_user, get_user, update_trans
 from handlers.max.rate_transcription import _awaiting_feedback
 
 import providers.speechkit as speechkit_provider
+import providers.replicate as replicate_provider
 
 from utils.ffmpeg import convert_to_ogg, get_conversion_progress, get_mean_volume, get_media_duration
 from utils.max_download import download_max_file
@@ -306,9 +307,16 @@ async def handle_max_file(message: aiomax.Message, bot: aiomax.Bot) -> None:
     keyboard = make_confirm_keyboard(history.id)
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
+    quiet_warning = (
+        "\n\n⚠️ Запись тихая — возможна потеря фрагментов. "
+        "Лучше перезаписать громче или ближе к микрофону"
+        if mean_volume_db is not None and mean_volume_db < replicate_provider.QUIET_MEAN_VOLUME_DB
+        else ""
+    )
     details = (
         f"Длительность: {duration_str}\n"
         f"Стоимость: {price_for_user} ₽"
+        f"{quiet_warning}"
         f"{hint}"
     )
     confirm_msg = await safe_send_message(bot,

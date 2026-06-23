@@ -6,6 +6,7 @@ import tempfile
 import time
 
 import providers.speechkit as speechkit_provider
+import providers.replicate as replicate_provider
 
 from pathlib import Path
 
@@ -359,11 +360,18 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     ]
 
     hint = "\n\n💡 Бот лучше всего работает с записями от 5 минут" if duration < 300 else ""
+    quiet_warning = (
+        "\n\n⚠️ Запись тихая — возможна потеря фрагментов. "
+        "Лучше перезаписать громче или ближе к микрофону"
+        if mean_volume_db is not None and mean_volume_db < replicate_provider.QUIET_MEAN_VOLUME_DB
+        else ""
+    )
     confirm = await safe_reply_text(
         message,
         "<b>🎧 Аудио подготовлено</b>\n\n"
         f"Длительность: {duration_str}\n"
         f"Стоимость: {price_for_user} ₽"
+        f"{quiet_warning}"
         f"{hint}",
         reply_markup=InlineKeyboardMarkup([buttons]),
         parse_mode="HTML",
