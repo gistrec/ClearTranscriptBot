@@ -9,6 +9,7 @@ import asyncio
 import config
 import logging
 import os
+import time
 
 from decimal import Decimal
 from telegram import BotCommand
@@ -70,10 +71,17 @@ from utils.utils import available_time_by_balance
 from healthcheck import start_healthcheck_server
 
 
+def _msk_time(secs):
+    """Render log timestamps in Moscow time (fixed UTC+3, matches the DB / MoscowTimezone)."""
+    return time.gmtime(secs + 3 * 3600)
+
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S MSK",
 )
+logging.Formatter.converter = staticmethod(_msk_time)
 # Mute noisy loggers
 logging.getLogger("apscheduler").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.WARNING)
