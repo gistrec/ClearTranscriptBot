@@ -136,6 +136,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
 .envrc
 .venv
 env/
@@ -208,3 +209,14 @@ __marimo__/
 
 # MacOS
 .DS_Store
+
+# Local deploy helper (owner-only, not committed)
+deploy.sh
+
+# Local ops digests (owner-only launchd tooling, not committed)
+scripts/ops/
+
+# e2e artifacts
+e2e/bot.log
+*.session
+*.session-journal
