@@ -76,7 +76,7 @@ def _fmt_short(seconds: float) -> str:
 
 
 def format_txt(segments: List[Dict[str, Any]]) -> str:
-    return "\n".join(f"[{_fmt_short(seg['start'])}] {seg['text']}" for seg in segments)
+    return "\n\n".join(f"[{_fmt_short(seg['start'])}] {seg['text']}" for seg in segments)
 
 
 def format_srt(segments: List[Dict[str, Any]]) -> str:
