@@ -12,6 +12,7 @@ connection. With --file the message is sent as the document's caption, and the
 preview shows the document too. The admin preview id is the ADMIN_TELEGRAM_ID
 constant in broadcast.py.
 """
+# ruff: noqa: E402
 import argparse
 import asyncio
 import os

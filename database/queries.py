@@ -9,7 +9,7 @@ from sqlalchemy import text, update
 from database.connection import SessionLocal
 from database.models import (
     User, Transcription, Payment, Refinement,
-    STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_REJECTED, STATUS_CANCELLED,
+    STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED,
 )
 from utils.utils import MoscowTimezone
 
