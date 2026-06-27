@@ -72,6 +72,15 @@ def test_real_speech_low_confidence_passes():
     assert looks_like_hallucination(payload) is False
 
 
+def test_mean_dragged_by_minority_passes():
+    # id 20158/20129: a long coherent recording whose MEAN dips below -0.5 only
+    # because a minority of segments are catastrophic. The share of low segments
+    # stays small, so it must deliver, not refund.
+    good = [{"text": f"Связная реплика номер {i}", "avg_logprob": -0.15} for i in range(8)]
+    bad = [{"text": f"невнятный кусок {i}", "avg_logprob": -2.0} for i in range(3)]
+    assert looks_like_hallucination(_payload(good + bad)) is False
+
+
 def test_minor_repeat_in_long_transcript_passes():
     # id 20108/20158: a 1h+ meeting/lecture where one phrase loops 3x must not
     # condemn the whole otherwise-confident transcript.

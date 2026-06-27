@@ -200,9 +200,12 @@ def is_wrong_language(payload: Dict[str, Any]) -> bool:
     return letters > 0 and foreign / letters > 0.20
 
 
-# Calibrated on real prod cases: genuine hard audio runs to mean ~-0.41, garbage
-# to -0.52 and below. Do not raise toward -0.30 — it refunds good transcripts.
-_HALLUCINATION_MEAN_LOGPROB = -0.50
+# Calibrated on prod: garbage has 45-100% of its segments below -0.5, coherent
+# and good recordings 0-8%. Flag on the SHARE of low-confidence segments, not the
+# mean — a mean is dragged below the bar by a minority of bad patches and refunds
+# good long transcripts. Keep it lenient: never refund good audio.
+_HALLUCINATION_LOW_LOGPROB = -0.5
+_HALLUCINATION_LOW_SHARE = 0.5
 _HALLUCINATION_LOOP_SHARE = 0.5
 
 
@@ -210,9 +213,10 @@ def looks_like_hallucination(payload: Dict[str, Any]) -> bool:
     """Heuristic flag for likely-garbage WhisperX output.
 
     Two signals, both scaled so a blemish in otherwise-good speech is not
-    refunded: a mean ``avg_logprob`` below ``-0.50`` (pervasively low confidence,
-    not just a rough patch), or a long segment text repeated enough to make up at
-    least half of all segments (looping that dominates the output).
+    refunded: at least half the segments individually below ``-0.5`` (pervasively
+    low confidence — robust to a minority of bad patches dragging a mean down,
+    which used to refund good long recordings), or a long segment text repeated
+    enough to make up at least half of all segments (looping that dominates).
     """
     segments = _segments(payload)
     if not segments:
@@ -223,8 +227,10 @@ def looks_like_hallucination(payload: Dict[str, Any]) -> bool:
         for s in segments
         if isinstance(s.get("avg_logprob"), (int, float))
     ]
-    if logprobs and sum(logprobs) / len(logprobs) < _HALLUCINATION_MEAN_LOGPROB:
-        return True
+    if logprobs:
+        low = sum(1 for lp in logprobs if lp < _HALLUCINATION_LOW_LOGPROB)
+        if low / len(logprobs) >= _HALLUCINATION_LOW_SHARE:
+            return True
 
     counts: Dict[str, int] = {}
     for segment in segments:
