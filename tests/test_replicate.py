@@ -81,9 +81,9 @@ def test_minor_repeat_in_long_transcript_passes():
 
 
 def test_dominant_loop_flags():
-    # id 20143: near-silent recording where "Продолжение следует..." is most of
-    # the output — looping that dominates is still garbage.
-    loop = {"text": "Продолжение следует...", "avg_logprob": -0.25}
+    # A long segment repeated until it dominates the output is still garbage,
+    # even when the phrase itself is not a known phantom.
+    loop = {"text": "Это очень длинный повторяющийся фрагмент", "avg_logprob": -0.25}
     other = {"text": "ЗВОНОК В ДВЕРЬ, ничего полезного", "avg_logprob": -0.35}
     assert looks_like_hallucination(_payload([loop, loop, loop, loop, loop, other])) is True
 
@@ -119,12 +119,25 @@ def test_get_text_phantom_only_becomes_empty():
 
 def test_get_text_keeps_lookalike_phrases():
     # Conservative scope: benign phrases users may actually say must survive
-    # (zero false positives on good transcriptions).
+    # (zero false positives on good transcriptions). "Продолжение следует" is a
+    # phantom only as a whole segment, never inside real speech.
     payload = _payload([
         {"text": " Спасибо за просмотр"},
+        {"text": " значит продолжение следует активно, дальше по плану"},
+    ])
+    assert get_text(payload) == (
+        "Спасибо за просмотр\nзначит продолжение следует активно, дальше по плану"
+    )
+
+
+def test_get_text_drops_standalone_continuation():
+    # 468/471 prod hits: a bare "Продолжение следует..." segment over
+    # silence/music is a hallucination, dropped like the subtitle credits.
+    payload = _payload([
+        {"text": " Реальная речь"},
         {"text": " Продолжение следует..."},
     ])
-    assert get_text(payload) == "Спасибо за просмотр\nПродолжение следует..."
+    assert get_text(payload) == "Реальная речь"
 
 
 def test_extract_segments_drops_phantom_credit():
@@ -139,7 +152,9 @@ def test_is_phantom_segment_scope():
     assert is_phantom_segment("Субтитры перевёл DimaTorzok")
     assert is_phantom_segment("Редактор субтитров А.Синецкая")
     assert not is_phantom_segment("Спасибо за просмотр")
-    assert not is_phantom_segment("Продолжение следует...")
+    assert is_phantom_segment("Продолжение следует...")
+    assert is_phantom_segment(" Продолжение следует")
+    assert not is_phantom_segment("значит продолжение следует активно")
 
 
 def test_detected_language():

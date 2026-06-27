@@ -15,10 +15,23 @@ _PHANTOM_CREDIT_RE = re.compile(
     re.IGNORECASE,
 )
 
+_PHANTOM_CONTINUATION_RE = re.compile(
+    r"^\s*продолжение\s+следует[\s.…]*$",
+    re.IGNORECASE,
+)
+
 
 def is_phantom_segment(text: str) -> bool:
-    """True if a WhisperX segment is a known subtitle-credit hallucination."""
-    return bool(_PHANTOM_CREDIT_RE.search(text or ""))
+    """True if a WhisperX segment is a known hallucination to drop.
+
+    Two kinds: the subtitle-credit lines, matched anywhere because those exact
+    names never occur in real speech; and a bare "Продолжение следует" segment.
+    The continuation phrase is matched only as a whole segment — 468 of 471 prod
+    occurrences are standalone hallucinations over silence/music, but it is real
+    Russian a speaker can say mid-sentence, so embedded uses are kept.
+    """
+    text = text or ""
+    return bool(_PHANTOM_CREDIT_RE.search(text) or _PHANTOM_CONTINUATION_RE.search(text))
 
 
 def parse_result_json(raw: Optional[str]) -> Optional[Dict[str, Any]]:
