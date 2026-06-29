@@ -4,7 +4,7 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.models import PLATFORM_TELEGRAM, is_owner
+from database.models import PLATFORM_TELEGRAM, is_owner, STATUS_EXPIRED
 from database.queries import (
     claim_and_charge_transcription,
     fail_transcription_and_refund,
@@ -47,7 +47,10 @@ async def handle_create_task(update: Update, context: ContextTypes.DEFAULT_TYPE)
         task.id, now, model, str(query.message.message_id), price_for_user
     )
     if outcome == "not_pending":
-        await safe_edit_message_text(query, "Задача уже запущена")
+        if task.status == STATUS_EXPIRED:
+            await safe_edit_message_text(query, "⌛ Заявка устарела — загрузите файл заново")
+        else:
+            await safe_edit_message_text(query, "Задача уже запущена")
         return
     if outcome == "insufficient_funds":
         user = get_user(user_id, PLATFORM_TELEGRAM)

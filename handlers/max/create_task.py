@@ -5,7 +5,7 @@ from datetime import datetime
 
 import aiomax
 
-from database.models import PLATFORM_MAX, is_owner
+from database.models import PLATFORM_MAX, is_owner, STATUS_EXPIRED
 from database.queries import (
     claim_and_charge_transcription,
     fail_transcription_and_refund,
@@ -51,7 +51,10 @@ async def handle_max_create_task(callback: aiomax.Callback, bot: aiomax.Bot) -> 
         task.id, now, model, str(message_id), price_for_user
     )
     if outcome == "not_pending":
-        await safe_edit_message(bot, message_id, "Задача уже запущена", attachments=[])
+        if task.status == STATUS_EXPIRED:
+            await safe_edit_message(bot, message_id, "⌛ Заявка устарела — загрузите файл заново", attachments=[])
+        else:
+            await safe_edit_message(bot, message_id, "Задача уже запущена", attachments=[])
         return
     if outcome == "insufficient_funds":
         user = get_user(user_id, PLATFORM_MAX)
