@@ -36,6 +36,7 @@ STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
 STATUS_REJECTED = "rejected"
 STATUS_CANCELLED = "cancelled"
+STATUS_EXPIRED = "expired"
 
 
 def is_owner(record, user_id: int, platform: str) -> bool:

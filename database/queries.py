@@ -10,6 +10,7 @@ from database.connection import SessionLocal
 from database.models import (
     User, Transcription, Payment, Refinement,
     STATUS_PENDING, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED,
+    STATUS_EXPIRED,
 )
 from utils.utils import MoscowTimezone
 
@@ -170,6 +171,27 @@ def cancel_transcription_if_pending(transcription_id: int) -> bool:
         )
         session.commit()
         return result.rowcount > 0
+
+
+def expire_stale_pending_transcriptions(cutoff: datetime) -> int:
+    """Mark never-started pending transcriptions created before *cutoff* as expired.
+
+    Only rows still in 'pending' with no started_at are touched, so a concurrent
+    'Распознать' click that already claimed a task for running is never affected.
+    Returns the number of transcriptions transitioned.
+    """
+    with SessionLocal() as session:
+        result = session.execute(
+            update(Transcription)
+            .where(
+                Transcription.status == STATUS_PENDING,
+                Transcription.started_at.is_(None),
+                Transcription.created_at < cutoff,
+            )
+            .values(status=STATUS_EXPIRED)
+        )
+        session.commit()
+        return result.rowcount
 
 
 def fail_transcription_and_refund(transcription_id: int, *, status: str = STATUS_FAILED, **fields: Any) -> bool:
