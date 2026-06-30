@@ -12,6 +12,8 @@ _MSG_NOT_MODIFIED = "message is not modified"
 _BOT_BLOCKED = "bot was blocked by the user"
 _QUERY_TOO_OLD = "query is too old"
 _CHAT_NOT_FOUND = "chat not found"
+_CANT_INITIATE = "bot can't initiate conversation"
+_MSG_NOT_FOUND = "message to edit not found"
 
 
 async def safe_query_answer(query, *args, **kwargs):
@@ -54,6 +56,9 @@ async def safe_send_message(bot, *args, **kwargs):
     except Forbidden as exc:
         if _BOT_BLOCKED in exc.message.lower():
             logging.warning("TG send_message skipped (bot blocked): %s", exc)
+            return None
+        if _CANT_INITIATE in exc.message.lower():
+            logging.warning("TG send_message skipped (cant initiate): %s", exc)
             return None
         logging.exception("TG send_message failed")
         return None
@@ -120,6 +125,9 @@ async def safe_edit_message(bot, chat_id, message_id, text: str, reply_markup=No
     except BadRequest as exc:
         if _MSG_NOT_MODIFIED in exc.message.lower():
             logging.info("TG edit_message skipped (not modified): %s", exc)
+            return None
+        if _MSG_NOT_FOUND in exc.message.lower():
+            logging.warning("TG edit_message skipped (message not found): %s", exc)
             return None
         logging.exception("TG edit_message failed")
         return None
