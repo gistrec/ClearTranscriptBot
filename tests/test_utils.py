@@ -18,8 +18,8 @@ from utils.utils import (
 @pytest.mark.parametrize(
     "seconds, expected",
     [
-        (None, "<1 сек."),
-        (0, "<1 сек."),
+        (None, "менее 1 сек."),
+        (0, "менее 1 сек."),
         (1, "1 сек."),
         (59, "59 сек."),
         (75, "1 мин. 15 сек."),
@@ -34,7 +34,7 @@ def test_format_duration(seconds, expected):
 @pytest.mark.parametrize(
     "balance, expected",
     [
-        (Decimal("0"), "<1 сек."),
+        (Decimal("0"), "менее 1 сек."),
         (Decimal("0.15"), "15 сек."),
         (Decimal("1"), "1 мин."),
         (Decimal("50"), "1 ч. 23 мин."),

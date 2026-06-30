@@ -78,7 +78,7 @@ def format_duration(duration_sec: Optional[int]) -> str:
     """
     total = int(duration_sec or 0)
     if total < 1:
-        return "<1 сек."
+        return "менее 1 сек."
 
     hours, r = divmod(total, 3600)
     minutes, seconds = divmod(r, 60)
