@@ -14,7 +14,14 @@ from datetime import datetime
 from telegram.ext import ContextTypes
 
 from database.models import PROVIDER_REPLICATE, STATUS_RUNNING, STATUS_COMPLETED, STATUS_REJECTED
-from database.queries import fail_transcription_and_refund, get_transcriptions_by_status, update_transcription
+from database.queries import (
+    fail_transcription_and_refund,
+    get_transcriptions_by_status,
+    get_user,
+    has_other_completed_transcription,
+    update_transcription,
+)
+from utils.marketing import track_goal
 
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, INLINE_MAX_CHARS, RATING_PROMPT
 from utils.transcription import check_transcription, get_result
@@ -221,6 +228,12 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             status=STATUS_COMPLETED,
             llm_tokens_by_encoding=token_counts,
         )
+        if not has_other_completed_transcription(task.user_id, task.user_platform, task.id):
+            user = get_user(task.user_id, task.user_platform)
+            if user is not None and user.yclid:
+                context.application.create_task(
+                    track_goal(user.yclid, f"{task.user_platform}_first_transcription")
+                )
         await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, done_text, tg_keyboard=tg_action_keyboard, max_keyboard=max_action_keyboard, bold_header=True)
 
         try:

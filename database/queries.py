@@ -107,6 +107,26 @@ def update_transcription(transcription_id: int, **fields: Any) -> Optional[Trans
         return history
 
 
+def has_other_completed_transcription(user_id: int, platform: str, exclude_id: int) -> bool:
+    """True if the user has a completed transcription besides *exclude_id*.
+
+    Drives the one-shot ``*_first_transcription`` marketing goal: it must fire
+    only when the just-completed task is the user's first successful one.
+    """
+    with SessionLocal() as session:
+        return (
+            session.query(Transcription.id)
+            .filter(
+                Transcription.user_id == user_id,
+                Transcription.user_platform == platform,
+                Transcription.status == STATUS_COMPLETED,
+                Transcription.id != exclude_id,
+            )
+            .first()
+            is not None
+        )
+
+
 def claim_and_charge_transcription(
     transcription_id: int,
     started_at: datetime,
