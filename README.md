@@ -17,6 +17,7 @@ Bot for automatic audio/video transcription, available on **Telegram** and **Max
 - 📝 AI-generated summaries for long recordings (via Replicate LLM)
 - ✏️ AI-powered punctuation and paragraph formatting (via Replicate LLM)
 - ⏱ Timecoded transcripts and .srt/.vtt subtitles (for WhisperX results)
+- 🔁 Free re-transcription in a user-picked language when auto-detection guesses wrong (for WhisperX results)
 - 💰 Balance and billing inside the bot
 - 📜 Full request history
 - 🐞 Optional error reporting via Sentry
@@ -29,11 +30,15 @@ ClearTranscriptBot
 ├── main.py              # Bot entry point (starts Telegram + Max bots concurrently)
 ├── healthcheck.py       # Optional FastAPI healthcheck server on port 9000
 ├── payment.py           # Tinkoff acquiring API wrappers
+├── config.py            # Centralized credential config, validated at startup
 ├── messengers/          # Safe message-sending wrappers (used by handlers and schedulers)
+│   ├── common.py        # Dispatches safe send/edit calls by platform
 │   ├── telegram.py      # Telegram safe send/edit helpers
 │   └── max.py           # Max messenger safe send/edit helpers
 ├── schedulers/          # Periodic task schedulers
+│   ├── expire_pending.py
 │   ├── landing_stats.py # Renders fresh stats into the static landing page
+│   ├── poller.py        # Liveness probe for the Telegram and Max polling loops
 │   ├── refinement.py
 │   ├── topup.py
 │   └── transcription.py
@@ -47,6 +52,7 @@ ClearTranscriptBot
 │   │   ├── improve.py
 │   │   ├── price.py
 │   │   ├── rate_transcription.py
+│   │   ├── retranscribe.py
 │   │   ├── send_as_text.py
 │   │   ├── summarize.py
 │   │   ├── text.py
@@ -61,6 +67,7 @@ ClearTranscriptBot
 │       ├── improve.py
 │       ├── price.py
 │       ├── rate_transcription.py
+│       ├── retranscribe.py
 │       ├── send_as_text.py
 │       ├── summarize.py
 │       ├── text.py
@@ -100,8 +107,8 @@ The bot loads variables from a `.env` file in the project root via `python-doten
 | Variable             | Description                                                       |
 |----------------------|-------------------------------------------------------------------|
 | `TELEGRAM_BOT_TOKEN` | Token used to authenticate the bot                                |
-| `TELEGRAM_API_ID`    | Optional, required only when using a local Bot API server         |
-| `TELEGRAM_API_HASH`  | Optional, required only when using a local Bot API server         |
+| `TELEGRAM_API_ID`    | Not read by the bot — used only by the local Bot API server `docker run` command below, so export it in your shell rather than `.env` |
+| `TELEGRAM_API_HASH`  | Not read by the bot — used only by the local Bot API server `docker run` command below, so export it in your shell rather than `.env` |
 | `USE_LOCAL_PTB`      | Any value → use a local Bot API server at `http://127.0.0.1:8081` |
 
 ### Max messenger
@@ -170,8 +177,7 @@ The bot loads variables from a `.env` file in the project root via `python-doten
 
 ## Local Bot API server
 
-To handle large files you can run a local copy of Telegram's Bot API server.
-Example using Docker:
+To handle large files you can run a local copy of Telegram's Bot API server. Example using Docker:
 
 ```bash
 docker run \
@@ -195,8 +201,7 @@ sudo setfacl -R -m u:$(whoami):rwx /var/lib/telegram-bot-api
 sudo setfacl -R -d -m u:$(whoami):rwx /var/lib/telegram-bot-api
 ```
 
-Run this container and set `USE_LOCAL_PTB` so that the bot uses the local
-server.
+Run this container and set `USE_LOCAL_PTB` so that the bot uses the local server.
 
 ## Database schema
 
@@ -216,7 +221,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- History of transcription requests made by users
 CREATE TABLE IF NOT EXISTS transcriptions (
-    id                     BIGINT          PRIMARY KEY AUTO_INCREMENT,
+    id                     INTEGER         PRIMARY KEY AUTO_INCREMENT,
     user_id                BIGINT          NOT NULL,
     user_platform          VARCHAR(16)     NOT NULL,
     status                 VARCHAR(32)     NOT NULL,
@@ -258,7 +263,7 @@ CREATE TABLE IF NOT EXISTS payments (
     next_check_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id, user_platform) REFERENCES users(user_id, user_platform),
-    INDEX idx_payments_user (user_id, user_platform),
+    INDEX idx_payments_user_recent (user_id, user_platform, id),
     INDEX idx_payments_status_check (status, next_check_at)
 );
 
@@ -269,7 +274,7 @@ CREATE TABLE IF NOT EXISTS refinements (
     user_id           BIGINT          NOT NULL,
     user_platform     VARCHAR(16)     NOT NULL,
     status            VARCHAR(32)     NOT NULL,
-    task_type         VARCHAR(16)     NOT NULL DEFAULT 'summarize',
+    task_type         VARCHAR(16)     NOT NULL,
     operation_id      VARCHAR(64),
     result_text       MEDIUMTEXT,
     llm_model         VARCHAR(64),
@@ -320,17 +325,18 @@ The bot runs under [pm2](https://pm2.keymetrics.io/) via the provided `ecosystem
 
 1. Put env vars into `/home/gistrec/ClearTranscriptBot/.env` (loaded automatically via `python-dotenv`).
 2. Start, inspect and persist the process:
-   ```bash
-   pm2 start ecosystem.config.js
-   pm2 logs clear-transcript-bot
-   pm2 save            # persist across reboots (with `pm2 startup`)
-   ```
+
+```bash
+pm2 start ecosystem.config.js
+pm2 logs clear-transcript-bot
+pm2 save            # persist across reboots (with `pm2 startup`)
+```
 
 The config assumes the project lives at `/home/gistrec/ClearTranscriptBot`; adjust `cwd` and `interpreter` if your layout differs.
 
 ## Admin scripts
 
-One-off operational scripts live in `scripts/` and are run by hand from the project root. Both read the bot tokens (`TELEGRAM_BOT_TOKEN`, `MAX_BOT_TOKEN`) and `ADMIN_TELEGRAM_ID` from `.env`, and preview the message to you before anything is delivered.
+One-off operational scripts live in `scripts/` and are run by hand from the project root. Both read the bot tokens (`TELEGRAM_BOT_TOKEN`, `MAX_BOT_TOKEN`) from `.env` and preview the message to you before anything is delivered; the admin preview ids are constants in `scripts/broadcast.py` (`ADMIN_TELEGRAM_ID`, `ADMIN_MAX_ID`) — change them when deploying your own copy.
 
 ### `refund.py`
 
@@ -345,7 +351,7 @@ python scripts/refund.py --platform telegram --user_id 12345 --amount 50 --messa
 Sends one message to a fixed list of Telegram and Max users. Edit the `TELEGRAM_IDS`, `MAX_IDS` and `MESSAGE` constants at the top of the file, then:
 
 ```bash
-python scripts/broadcast.py            # dry run — prints recipients, sends nothing
+python scripts/broadcast.py            # dry run — lists recipients + previews to you (real users get nothing)
 python scripts/broadcast.py --send     # deliver after an on-screen confirmation
 ```
 
@@ -399,7 +405,7 @@ Collecting mysqlclient (from -r requirements.txt (line 8))
       [end of output]
 ```
 
-In that case install libmysqlclient-dev: `sudo apt install libmysqlclient-dev` or `brew install libmysqlclient-dev`
+In that case install the MySQL client dev files: `sudo apt install libmysqlclient-dev` or `brew install mysql-client`
 
 **libmysqlclient-dev** — is the package that provides the headers and libraries required to build applications that link against MySQL
 
