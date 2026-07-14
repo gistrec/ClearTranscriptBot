@@ -110,6 +110,7 @@ The bot loads variables from a `.env` file in the project root via `python-doten
 | `TELEGRAM_API_ID`    | Not read by the bot — used only by the local Bot API server `docker run` command below, so export it in your shell rather than `.env` |
 | `TELEGRAM_API_HASH`  | Not read by the bot — used only by the local Bot API server `docker run` command below, so export it in your shell rather than `.env` |
 | `USE_LOCAL_PTB`      | Any value → use a local Bot API server at `http://127.0.0.1:8081` |
+| `ADMIN_TELEGRAM_ID`  | Optional. Admin chat id: the liveness probe sends a typing chat action there every 30s so the check crosses the local Bot API server all the way to Telegram; falls back to `get_me` when unset |
 
 ### Max messenger
 

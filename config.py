@@ -9,6 +9,9 @@ import os
 
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+# Optional owner chat for the end-to-end Telegram liveness probe; see
+# schedulers/poller.py for why get_me alone is not enough.
+ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID")
 MAX_BOT_TOKEN = os.getenv("MAX_BOT_TOKEN")
 
 TERMINAL_KEY = os.getenv("TERMINAL_KEY")
