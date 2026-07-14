@@ -49,6 +49,7 @@ def _load_env(path: str) -> None:
 _load_env(_env_path_from_argv())
 
 import telegram
+import aiohttp
 import aiomax
 from telegram import InputFile
 
@@ -129,13 +130,24 @@ async def main():
         if not max_token:
             print("MAX_BOT_TOKEN не задан")
             sys.exit(1)
+        max_sender.patch_aiomax()
         max_bot = aiomax.Bot(access_token=max_token)
-        if file_bytes is not None:
-            await max_sender.safe_send_document(
-                max_bot, args.user_id, file_bytes, file_name, args.message,
-            )
-        else:
-            await max_bot.send_message(args.message, user_id=args.user_id)
+        max_bot.session = aiohttp.ClientSession(headers={"Authorization": max_token})
+        try:
+            if file_bytes is not None:
+                sent = await max_sender.safe_send_document(
+                    max_bot, args.user_id, file_bytes, file_name, args.message,
+                )
+            else:
+                sent = await max_sender.safe_send_message(
+                    max_bot, args.message, user_id=args.user_id,
+                )
+        finally:
+            await max_bot.session.close()
+            max_bot.session = None
+        if sent is None:
+            print("Отправка в Max не удалась — баланс не изменён.")
+            sys.exit(1)
 
     updated = change_user_balance(args.user_id, args.platform, args.amount)
     print(f"Готово. Новый баланс: {updated.balance} ₽")
