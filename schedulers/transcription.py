@@ -2,12 +2,14 @@
 import logging
 
 import providers.replicate as replicate_provider
+import providers.scribe as scribe_provider
 import providers.speechkit as speechkit_provider
 import messengers.telegram as tg_sender
 import messengers.max as max_sender
 import messengers.common as sender
 import utils.heartbeat as heartbeat
 
+from decimal import Decimal
 from pathlib import Path
 from datetime import datetime
 
@@ -23,7 +25,9 @@ from database.queries import (
 )
 from utils.marketing import track_goal
 
+from utils.s3 import get_signed_url, object_name_from_url
 from utils.utils import format_duration, MoscowTimezone, SUMMARIZE_THRESHOLD, INLINE_MAX_CHARS, RATING_PROMPT
+from utils.timecodes import parse_result_json
 from utils.transcription import check_transcription, get_result
 from utils.tg import need_edit, prune_edit_cache
 from utils.tokens import tokens_by_model
@@ -47,6 +51,80 @@ DELAY_APOLOGY_SECONDS = 15 * 60
 # operation. It will never produce a result — fail it and refund. Normally that
 # window lasts seconds; 10 minutes is far beyond any legitimate start delay.
 ZOMBIE_SECONDS = 10 * 60
+
+# Marks a task whose primary result is saved and a Scribe challenger is
+# running; the operation_id column carries the challenger's prediction id.
+# The task stays 'running', so the existing polling and timeout machinery
+# apply, and a process restart resumes the challenge from the DB.
+SCRIBE_OP_PREFIX = "scribe:"
+
+
+async def _start_scribe_challenge(task, reason: str) -> bool:
+    """Kick off the challenger for a suspicious primary result."""
+    signed_url = await get_signed_url(
+        object_name_from_url(task.audio_s3_path), expires_in=6 * 3600
+    )
+    if not signed_url:
+        return False
+    prediction_id = await scribe_provider.start_transcription(signed_url)
+    if not prediction_id:
+        return False
+    update_transcription(task.id, operation_id=SCRIBE_OP_PREFIX + prediction_id)
+    logging.info("Scribe challenge started task=%s reason=%s", task.id, reason)
+    return True
+
+
+async def _resolve_scribe_challenge(task, duration: int):
+    """Settle a finished challenge: pick the better result for delivery.
+
+    Returns ``(text, wrong_language, hallucinated)``, or ``None`` while the
+    challenger is still running. The primary result is already persisted in
+    ``result_json``, so no outcome can lose it: on challenger failure or
+    timeout the primary is delivered as-is, never refunded.
+    """
+    operation_id = task.operation_id.removeprefix(SCRIBE_OP_PREFIX)
+    info = await scribe_provider.check_transcription(operation_id)
+    if info is None:
+        if duration <= MAX_PROCESSING_SECONDS:
+            return None
+        logging.warning("Scribe challenge timed out task=%s, delivering primary", task.id)
+        info = {"status": "canceled"}
+
+    prod_payload = parse_result_json(task.result_json) or {}
+    prod_text = replicate_provider.get_text(prod_payload)
+
+    if info.get("status") == "succeeded" and info.get("output"):
+        scribe_payload = scribe_provider.build_payload(operation_id, info)
+        scribe_text = replicate_provider.get_text(scribe_payload)
+        wins = scribe_provider.challenger_wins(
+            prod_text, scribe_text
+        ) and not replicate_provider.looks_like_hallucination(scribe_payload)
+        actual_price = (task.actual_price or Decimal("0")) + scribe_provider.cost_in_rub(
+            task.duration_seconds
+        )
+        logging.info(
+            "Scribe challenge finished task=%s prod_chars=%s scribe_chars=%s winner=%s",
+            task.id,
+            scribe_provider.meaningful_chars(prod_text),
+            scribe_provider.meaningful_chars(scribe_text),
+            "scribe" if wins else "prod",
+        )
+        if wins:
+            update_transcription(
+                task.id,
+                result_json=scribe_payload,
+                model=scribe_provider.MODEL,
+                actual_price=actual_price,
+            )
+            return scribe_text, replicate_provider.is_wrong_language(scribe_payload), False
+        update_transcription(task.id, actual_price=actual_price)
+    else:
+        logging.warning(
+            "Scribe challenge failed task=%s status=%s error=%s",
+            task.id, info.get("status"), info.get("error"),
+        )
+
+    return prod_text, False, replicate_provider.looks_like_hallucination(prod_payload)
 
 
 @sentry_transaction(name="transcription.poll", op="task.check")
@@ -99,72 +177,95 @@ async def check_running_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
                 )
             await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, status_text)
 
-        try:
-            result_info = await check_transcription(task.operation_id, provider=task.provider)
-        except Exception:
-            logging.exception("Failed to check transcription for task %s", task.id)
-            continue
-
-        # Результата ещё нет
-        if result_info is None:
-            # Задача висит слишком долго (очередь провайдера перегружена) —
-            # отменяем её, возвращаем деньги и просим повторить.
-            if duration > MAX_PROCESSING_SECONDS:
-                if task.provider == PROVIDER_REPLICATE:
-                    await replicate_provider.cancel(task.operation_id)
-                logging.warning("Cancelling stuck task=%s after %ss", task.id, duration)
-                if fail_transcription_and_refund(task.id, finished_at=now):
-                    timeout_text = (
-                        "❌ Не удалось распознать — очередь обработки перегружена\n\n"
-                        "Деньги вернули на баланс, попробуйте ещё раз"
-                    )
-                    await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, timeout_text)
-            continue
-
-        payload = result_info.get("payload") or {}
-        predict_time = payload.get("predict_time")
-        if result_info.get("provider") == PROVIDER_REPLICATE and predict_time:
-            actual_price = replicate_provider.cost_in_rub(predict_time, task.model)
+        if task.operation_id.startswith(SCRIBE_OP_PREFIX):
+            resolution = await _resolve_scribe_challenge(task, duration)
+            if resolution is None:
+                continue
+            text, wrong_language, hallucinated = resolution
         else:
-            actual_price = speechkit_provider.cost_in_rub(task.duration_seconds)
+            try:
+                result_info = await check_transcription(task.operation_id, provider=task.provider)
+            except Exception:
+                logging.exception("Failed to check transcription for task %s", task.id)
+                continue
 
-        update_transcription(
-            task.id,
-            result_json=payload,
-            finished_at=now,
-            actual_price=actual_price,
-        )
+            # Результата ещё нет
+            if result_info is None:
+                # Задача висит слишком долго (очередь провайдера перегружена) —
+                # отменяем её, возвращаем деньги и просим повторить.
+                if duration > MAX_PROCESSING_SECONDS:
+                    if task.provider == PROVIDER_REPLICATE:
+                        await replicate_provider.cancel(task.operation_id)
+                    logging.warning("Cancelling stuck task=%s after %ss", task.id, duration)
+                    if fail_transcription_and_refund(task.id, finished_at=now):
+                        timeout_text = (
+                            "❌ Не удалось распознать — очередь обработки перегружена\n\n"
+                            "Деньги вернули на баланс, попробуйте ещё раз"
+                        )
+                        await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, timeout_text)
+                continue
 
-        if not result_info.get("success"):
-            logging.warning("Transcription failed task=%s payload=%s", task.id, payload)
-            fail_transcription_and_refund(task.id)
-            fail_text = (
-                "❌ Распознавание завершилось с ошибкой\n\n"
-                "Деньги вернули на баланс, попробуйте ещё раз"
+            payload = result_info.get("payload") or {}
+            predict_time = payload.get("predict_time")
+            if result_info.get("provider") == PROVIDER_REPLICATE and predict_time:
+                actual_price = replicate_provider.cost_in_rub(predict_time, task.model)
+            else:
+                actual_price = speechkit_provider.cost_in_rub(task.duration_seconds)
+
+            update_transcription(
+                task.id,
+                result_json=payload,
+                finished_at=now,
+                actual_price=actual_price,
             )
-            await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, fail_text, bold_header=True)
-            continue
 
-        text = get_result(result_info)
+            if not result_info.get("success"):
+                logging.warning("Transcription failed task=%s payload=%s", task.id, payload)
+                fail_transcription_and_refund(task.id)
+                fail_text = (
+                    "❌ Распознавание завершилось с ошибкой\n\n"
+                    "Деньги вернули на баланс, попробуйте ещё раз"
+                )
+                await sender.safe_edit_message(context, task.user_platform, task.user_id, task.message_id, fail_text, bold_header=True)
+                continue
+
+            text = get_result(result_info)
+
+            # Wrong-language detection needs the real text (before any fallback):
+            # an empty result is "no speech", not "wrong language".
+            wrong_language = bool(
+                text
+                and result_info.get("provider") == PROVIDER_REPLICATE
+                and replicate_provider.is_wrong_language(payload)
+            )
+
+            # Output the user must not pay for: no discernible speech, or garbled /
+            # looping recognition. Wrong language is excluded — it gets a free
+            # re-transcribe, which is more useful than a refund. Refund and stop:
+            # there is nothing worth delivering.
+            hallucinated = (
+                not wrong_language
+                and result_info.get("provider") == PROVIDER_REPLICATE
+                and replicate_provider.looks_like_hallucination(payload)
+            )
+
+            # A suspicious primary result gets one shot at a better outcome
+            # before the reject/deliver decision: the task returns to the poll
+            # loop while the challenger runs.
+            reason = scribe_provider.should_try(
+                provider=task.provider,
+                duration_seconds=task.duration_seconds,
+                mean_volume_db=task.mean_volume_db,
+                payload=payload,
+                text=text,
+                wrong_language=wrong_language,
+                hallucinated=hallucinated,
+            )
+            if reason and await _start_scribe_challenge(task, reason):
+                continue
+
         token_counts = tokens_by_model(text)
 
-        # Wrong-language detection needs the real text (before any fallback):
-        # an empty result is "no speech", not "wrong language".
-        wrong_language = bool(
-            text
-            and result_info.get("provider") == PROVIDER_REPLICATE
-            and replicate_provider.is_wrong_language(payload)
-        )
-
-        # Output the user must not pay for: no discernible speech, or garbled /
-        # looping recognition. Wrong language is excluded — it gets a free
-        # re-transcribe, which is more useful than a refund. Refund and stop:
-        # there is nothing worth delivering.
-        hallucinated = (
-            not wrong_language
-            and result_info.get("provider") == PROVIDER_REPLICATE
-            and replicate_provider.looks_like_hallucination(payload)
-        )
         if not text or hallucinated:
             refund_text = (
                 "🔇 В записи не нашлось разборчивой речи\n\n"
