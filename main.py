@@ -9,6 +9,7 @@ import asyncio
 import config
 import logging
 import os
+import signal
 import time
 
 from decimal import Decimal
@@ -339,8 +340,17 @@ async def run_bots() -> None:
         tasks.append(asyncio.Event().wait())
     if ENABLE_HEALTHCHECK:
         tasks.append(start_healthcheck_server())
+    # SIGINT/SIGTERM cancel only the polling tasks: the default
+    # KeyboardInterrupt path on Python 3.10 cancels every task at once,
+    # killing in-flight handlers before aiomax and PTB can drain them.
+    gather = asyncio.gather(*tasks)
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, gather.cancel)
     try:
-        await asyncio.gather(*tasks)
+        await gather
+    except asyncio.CancelledError:
+        pass
     finally:
         await application.updater.stop()
         await application.stop()

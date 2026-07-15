@@ -11,6 +11,9 @@ module.exports = {
       exp_backoff_restart_delay: 100,
       // Keep retrying indefinitely instead of giving up after the default 16.
       max_restarts: Number.MAX_SAFE_INTEGER,
+      // Give the graceful shutdown path time to drain in-flight handlers
+      // and jobs before SIGKILL (pm2 default is 1600 ms).
+      kill_timeout: 30000,
     },
   ],
 };
