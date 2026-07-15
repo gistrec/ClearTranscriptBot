@@ -86,6 +86,33 @@ def add_transcription(
         return history
 
 
+def add_shadow_transcription(task: Transcription, model: str, result_json: Any) -> Transcription:
+    """Persist the losing result of a Scribe challenge as a shadow row.
+
+    Copies the audio metadata of *task* so the pair can be joined on
+    ``operation_id``; shadow rows carry no prices and are excluded from all
+    user-facing queries and stats.
+    """
+    with SessionLocal() as session:
+        shadow = Transcription(
+            user_id=task.user_id,
+            user_platform=task.user_platform,
+            status=STATUS_COMPLETED,
+            is_shadow=True,
+            audio_s3_path=task.audio_s3_path,
+            duration_seconds=task.duration_seconds,
+            mean_volume_db=task.mean_volume_db,
+            provider=task.provider,
+            model=model,
+            result_json=result_json,
+            operation_id=task.operation_id,
+        )
+        session.add(shadow)
+        session.commit()
+        session.refresh(shadow)
+        return shadow
+
+
 def get_transcription(transcription_id: int) -> Optional[Transcription]:
     """Fetch a transcription history record by its identifier."""
     with SessionLocal() as session:
@@ -120,6 +147,7 @@ def has_other_completed_transcription(user_id: int, platform: str, exclude_id: i
                 Transcription.user_id == user_id,
                 Transcription.user_platform == platform,
                 Transcription.status == STATUS_COMPLETED,
+                Transcription.is_shadow.is_(False),
                 Transcription.id != exclude_id,
             )
             .first()
@@ -266,7 +294,11 @@ def get_recent_transcriptions(user_id: int, platform: str, limit: int = 10) -> l
     with SessionLocal() as session:
         return (
             session.query(Transcription)
-            .filter(Transcription.user_id == user_id, Transcription.user_platform == platform)
+            .filter(
+                Transcription.user_id == user_id,
+                Transcription.user_platform == platform,
+                Transcription.is_shadow.is_(False),
+            )
             .order_by(Transcription.id.desc())
             .limit(limit)
             .all()
@@ -535,6 +567,7 @@ def get_landing_stats() -> dict[str, int]:
                     SUM(CASE WHEN status = :completed THEN 1 ELSE 0 END) AS completed,
                     SUM(CASE WHEN status = :failed    THEN 1 ELSE 0 END) AS failed
                 FROM transcriptions
+                WHERE is_shadow = 0
                 """
             ),
             {"completed": STATUS_COMPLETED, "failed": STATUS_FAILED},

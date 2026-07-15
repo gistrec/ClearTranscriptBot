@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS transcriptions (
     user_id                BIGINT          NOT NULL,
     user_platform          VARCHAR(16)     NOT NULL,
     status                 VARCHAR(32)     NOT NULL,
+    is_shadow              TINYINT(1)      NOT NULL DEFAULT 0,  -- losing Scribe-challenge result kept for comparison; hidden from users and stats
     audio_s3_path          TEXT            NOT NULL,
     result_json            MEDIUMTEXT,     -- raw provider payload; WhisperX output exceeds 64 KB TEXT
     llm_tokens_by_encoding JSON,

@@ -5,6 +5,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     UniqueConstraint,
     BigInteger,
+    Boolean,
     DateTime,
     Float,
     Integer,
@@ -90,6 +91,10 @@ class Transcription(Base):
 
     # Processing status of the request
     status = Column(String(32), nullable=False)
+
+    # Losing result of a Scribe challenge, kept for offline comparison;
+    # shadow rows are never shown to users, billed or counted in stats
+    is_shadow = Column(Boolean, nullable=False, default=False)
 
     # Path to the audio file in S3
     audio_s3_path = Column(Text, nullable=False)

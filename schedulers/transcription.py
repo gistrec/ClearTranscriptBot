@@ -17,6 +17,7 @@ from telegram.ext import ContextTypes
 
 from database.models import PROVIDER_REPLICATE, STATUS_RUNNING, STATUS_COMPLETED, STATUS_REJECTED
 from database.queries import (
+    add_shadow_transcription,
     fail_transcription_and_refund,
     get_transcriptions_by_status,
     get_user,
@@ -80,7 +81,9 @@ async def _resolve_scribe_challenge(task, duration: int):
     Returns ``(text, wrong_language, hallucinated)``, or ``None`` while the
     challenger is still running. The primary result is already persisted in
     ``result_json``, so no outcome can lose it: on challenger failure or
-    timeout the primary is delivered as-is, never refunded.
+    timeout the primary is delivered as-is, never refunded. The losing result
+    is kept as a shadow row for offline comparison — Replicate scrubs
+    elevenlabs prediction data within hours, so this is the only copy.
     """
     operation_id = task.operation_id.removeprefix(SCRIBE_OP_PREFIX)
     info = await scribe_provider.check_transcription(operation_id)
@@ -110,6 +113,7 @@ async def _resolve_scribe_challenge(task, duration: int):
             "scribe" if wins else "prod",
         )
         if wins:
+            add_shadow_transcription(task, model=task.model, result_json=task.result_json)
             update_transcription(
                 task.id,
                 result_json=scribe_payload,
@@ -117,6 +121,7 @@ async def _resolve_scribe_challenge(task, duration: int):
                 actual_price=actual_price,
             )
             return scribe_text, replicate_provider.is_wrong_language(scribe_payload), False
+        add_shadow_transcription(task, model=scribe_provider.MODEL, result_json=scribe_payload)
         update_transcription(task.id, actual_price=actual_price)
     else:
         logging.warning(
