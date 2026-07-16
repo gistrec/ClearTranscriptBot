@@ -1,4 +1,4 @@
-"""FastAPI healthcheck server on port 9000.
+"""FastAPI healthcheck server on port 9010.
 
 Deep check: returns 503 when a critical loop has stopped ticking or the database
 is unreachable, so an external GET monitor catches the silent-failure case
@@ -48,6 +48,6 @@ async def healthcheck():
 
 
 async def start_healthcheck_server() -> None:
-    config = uvicorn.Config(app, host="0.0.0.0", port=9000, log_level="warning")
+    config = uvicorn.Config(app, host="0.0.0.0", port=9010, log_level="warning")
     server = uvicorn.Server(config)
     await server.serve()
