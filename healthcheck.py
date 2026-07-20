@@ -5,14 +5,18 @@ is unreachable, so an external GET monitor catches the silent-failure case
 ("process alive but bot broken"), not just a hard crash. Defined as async so the
 check is itself subject to event-loop health — a frozen loop fails the probe.
 """
+import asyncio
 import logging
+import os
+import shutil
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from database.queries import ping_db
+from database.queries import oldest_running_task_age_seconds, ping_db
 from utils.heartbeat import overdue
+from utils.tg import ANCHOR
 
 app = FastAPI()
 
@@ -28,10 +32,27 @@ async def healthcheck():
     if stale:
         problems["stale_loops"] = {name: round(age, 1) for name, age in stale.items()}
 
-    try:
+    # DB ping + stuck-task probe are sync blocking I/O — off-load them so a slow
+    # DB can't freeze the event loop shared with both bots, and bound the wait.
+    def _db_probe() -> float | None:
         ping_db()
+        return oldest_running_task_age_seconds()
+
+    try:
+        age = await asyncio.wait_for(asyncio.to_thread(_db_probe), timeout=5)
     except Exception as exc:
         problems["database"] = repr(exc)
+    else:
+        if age is not None and age > 1800:
+            problems["stuck_transcriptions"] = round(age, 1)
+
+    # Local Bot API downloads land on this volume; a full disk stalls large files.
+    if os.environ.get("USE_LOCAL_PTB"):
+        try:
+            if shutil.disk_usage(ANCHOR).free < 5 * 1024**3:
+                problems["disk"] = {"anchor": ANCHOR, "free_gb": round(shutil.disk_usage(ANCHOR).free / 1024**3, 1)}
+        except FileNotFoundError:
+            pass
 
     if problems:
         # Probed every few seconds and the 503 persists for the whole incident,

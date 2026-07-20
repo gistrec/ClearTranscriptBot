@@ -21,6 +21,29 @@ def ping_db() -> None:
         session.execute(text("SELECT 1"))
 
 
+def oldest_running_task_age_seconds() -> Optional[float]:
+    """Age in seconds of the oldest running transcription, or None if none run.
+
+    Feeds the healthcheck stuck-task probe: an old running row means the
+    transcription loop stopped advancing tasks even though the process is up.
+    """
+    with SessionLocal() as session:
+        started_at = (
+            session.query(Transcription.started_at)
+            .filter(
+                Transcription.status == STATUS_RUNNING,
+                Transcription.started_at.isnot(None),
+            )
+            .order_by(Transcription.started_at.asc())
+            .limit(1)
+            .scalar()
+        )
+    if started_at is None:
+        return None
+    started_at = started_at.replace(tzinfo=MoscowTimezone)
+    return (datetime.now(MoscowTimezone) - started_at).total_seconds()
+
+
 def add_user(user_id: int, platform: str, yclid: str | None = None) -> User:
     """Create and persist a new user."""
     with SessionLocal() as session:

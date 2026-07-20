@@ -25,6 +25,8 @@ assert os.path.isfile(ssl_ca_path), "Не найден сертификат дл
 engine = create_engine(
     f"mysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?ssl_ca={ssl_ca_path}",
     pool_pre_ping=True,
+    # Cap connect stalls so a dead DB fails the healthcheck fast instead of hanging.
+    connect_args={"connect_timeout": 5},
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
