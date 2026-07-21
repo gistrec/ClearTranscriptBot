@@ -28,7 +28,7 @@ Bot for automatic audio/video transcription, available on **Telegram** and **Max
 ```
 ClearTranscriptBot
 ├── main.py              # Bot entry point (starts Telegram + Max bots concurrently)
-├── healthcheck.py       # Optional FastAPI healthcheck server on port 9000
+├── healthcheck.py       # Optional FastAPI healthcheck server on port 9010
 ├── payment.py           # Tinkoff acquiring API wrappers
 ├── config.py            # Centralized credential config, validated at startup
 ├── messengers/          # Safe message-sending wrappers (used by handlers and schedulers)
@@ -174,7 +174,7 @@ The bot loads variables from a `.env` file in the project root via `python-doten
 
 | Variable             | Description                                                        |
 |----------------------|--------------------------------------------------------------------|
-| `ENABLE_HEALTHCHECK` | Set to `1` to start an HTTP healthcheck server on port `9000`. `GET /healthcheck` returns `200 OK`. |
+| `ENABLE_HEALTHCHECK` | Set to `1` to start an HTTP healthcheck server on port `9010`. `GET /healthcheck` runs a deep check (DB, scheduler loops, poller/API reachability) and returns `503` on failure. |
 
 ## Local Bot API server
 
