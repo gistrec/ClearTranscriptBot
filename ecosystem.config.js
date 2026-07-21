@@ -4,7 +4,7 @@ module.exports = {
       name: "clear-transcript-bot",
       script: "main.py",
       interpreter: "./venv/bin/python",
-      cwd: "/home/gistrec/ClearTranscriptBot",
+      cwd: __dirname,
       autorestart: true,
       // Exponential backoff between restarts: 100ms, 200ms, 400ms ...
       // pm2 caps the delay at 15000ms, so restarts settle at one attempt / 15s.
