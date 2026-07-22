@@ -1,6 +1,6 @@
 # Core
 python-telegram-bot>=20.0
-aiomax
+aiomax>=2.12.5
 python-telegram-bot[job-queue]
 python-telegram-bot[callback-data]
 
