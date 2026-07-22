@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import aiohttp
 import aiomax
 import asyncio
 import config
@@ -68,6 +69,7 @@ from database.queries import add_user, get_user
 from messengers.max import safe_send_message as max_safe_send_message
 from messengers.max import patch_aiomax
 from utils.marketing import track_goal
+from utils.russian_ca import SSL_CONTEXT as MAX_SSL_CONTEXT
 from utils.utils import available_time_by_balance
 
 from healthcheck import start_healthcheck_server
@@ -334,7 +336,11 @@ async def run_bots() -> None:
     tasks = []
     if max_bot is not None:
         logging.info("Starting Max bot polling...")
-        tasks.append(max_bot.start_polling())
+        max_session = aiohttp.ClientSession(
+            headers={"Authorization": MAX_BOT_TOKEN},
+            connector=aiohttp.TCPConnector(ssl=MAX_SSL_CONTEXT),
+        )
+        tasks.append(max_bot.start_polling(session=max_session))
     else:
         logging.info("MAX_BOT_TOKEN not set; running Telegram only. Press Ctrl+C to stop.")
         tasks.append(asyncio.Event().wait())

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import httpx
 
+from utils.russian_ca import SSL_CONTEXT
 from utils.sentry import sentry_span
 
 
@@ -22,7 +23,7 @@ async def download_max_file(url: str, destination: str | Path) -> bool:
         if attempt:
             await asyncio.sleep(1.0)
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=120.0, verify=SSL_CONTEXT) as client:
                 async with client.stream("GET", url) as resp:
                     resp.raise_for_status()
                     with dst.open("wb") as f:
